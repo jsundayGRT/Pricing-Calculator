@@ -607,15 +607,14 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
             <div class="label">When it's approved, record it here</div>
             <div class="row2">
               <div class="field"><label class="label" for="apr-by">Approved by</label><input id="apr-by" type="text" maxlength="80" placeholder="Executive's name"></div>
-              <div class="field"><label class="label" for="apr-link">Link to the approval</label><input id="apr-link" type="text" placeholder="Slack message link" spellcheck="false"></div>
+              <div class="field"><label class="label" for="apr-link">Link to the approval</label><input id="apr-link" type="text" placeholder="Optional link" spellcheck="false"></div>
             </div>
             <button class="btn primary" type="button" id="apr-unlock">Record approval and download PDF</button>
             <div class="err" id="apr-err"></div>
           </div>
-          <button class="btn small hidden" type="button" id="slack-retry">Post to Slack again</button>
         </div>
         <div class="err" id="lockerr"></div>
-        <div class="hint">Downloads the quote as a PDF to send to the customer and the executive team. A Deal Review is sent to an executive for approval first. Later changes save as the next version.</div>
+        <div class="hint">Downloads the quote as a PDF to send to the customer and the executive team. A Deal Review is held until an executive approves it. Later changes save as the next version.</div>
       </div>
       <div class="card hidden" id="history-card">
         <h2>Your locked requests <span class="optional">This browser</span></h2>
@@ -633,7 +632,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 
 <div id="print-area"></div>
 
-<script type="application/json" id="grt-config">{"version":1,"note":"Initial import from GRT_Pricing_Model_OCT 2026 v14 1.xlsx","updatedAt":"2026-11-02T20:11:28.086Z","config":{"source":"GRT_Pricing_Model_OCT 2026 v14 1.xlsx — Assumptions tab","tiers":["Micro","SMB","Mid-Market","Corporate","Enterprise"],"locations":["US","AUS","LATAM"],"terms":["1-Year","2-Year","3+ Year"],"modules":[{"key":"codeAi","name":"Code + AI","billing":"devSeats"},{"key":"shadow","name":"Shadow","billing":"governed"},{"key":"drift","name":"Drift","billing":"governed"},{"key":"content","name":"Content","billing":"governed"},{"key":"creative","name":"Creative","billing":"governed"},{"key":"aiq","name":"AiQ","billing":"governed"}],"tier":{"governedEmployees":{"Micro":20,"SMB":100,"Mid-Market":500,"Corporate":1000,"Enterprise":2500},"workflows":{"Micro":1,"SMB":4,"Mid-Market":6,"Corporate":8,"Enterprise":20},"seatRate":{"codeAi":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"shadow":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"drift":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"content":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"creative":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"aiq":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7}},"pilotFeePerModule":{"Micro":1200,"SMB":1200,"Mid-Market":1200,"Corporate":1200,"Enterprise":1200},"commandCenterMonthly":{"Micro":2000,"SMB":4000,"Mid-Market":7000,"Corporate":13000,"Enterprise":18000},"implementation":{"Micro":12000,"SMB":25000,"Mid-Market":40000,"Corporate":65000,"Enterprise":150000},"premiumSupportPct":{"Micro":0,"SMB":0,"Mid-Market":0,"Corporate":0.1,"Enterprise":0.1},"cac":{"Micro":4000,"SMB":30000,"Mid-Market":70000,"Corporate":110000,"Enterprise":200000},"usageIntensity":{"Micro":0.7,"SMB":0.85,"Mid-Market":1,"Corporate":1.1,"Enterprise":1.25},"csHoursPerMonth":{"Micro":0.5,"SMB":1,"Mid-Market":4,"Corporate":8,"Enterprise":16},"supportTicketsPerMonth":{"Micro":2,"SMB":5,"Mid-Market":15,"Corporate":30,"Enterprise":60},"hostingBaselinePerYear":{"Micro":1200,"SMB":2400,"Mid-Market":6000,"Corporate":9600,"Enterprise":18000},"securityAuditPerYear":{"Micro":500,"SMB":1500,"Mid-Market":4000,"Corporate":7500,"Enterprise":15000},"implementationHours":{"Micro":40,"SMB":100,"Mid-Market":240,"Corporate":400,"Enterprise":600}},"devSeatRatio":0.25,"modulesInSuite":5,"bundleDiscountByModuleCount":[0,0.05,0.1,0.15,0.2,0.25],"unitCosts":{"inferencePerSeatMonth":1.2,"cloudPerSeatMonth":0.6,"dataPerSeatMonth":0.35,"licensesPerSeatMonth":0.25,"commandCenterRuntimePerWorkflowMonth":45,"csCostPerHour":85,"supportCostPerTicket":45,"implementationCostPerHour":110,"rdPctOfRecurring":0.22,"gaPctOfRecurring":0.12,"retainedLifeYears":3},"enterprise":{"commandCenter":{"coefficient":6324.56,"exponent":0.5},"trafficLight":{"coefficient":3794.73,"exponent":-0.5},"inferenceCost":{"coefficient":20112.92,"exponent":0.3},"inferenceCharge":{"coefficient":16760.77,"exponent":0.3},"techSupportCost":{"coefficient":5586.92,"exponent":0.3},"hostingSecurityCost":{"coefficient":13967.31,"exponent":0.3},"implementation":{"coefficient":8812.48,"exponent":0.3},"implementationCap":450000,"csHours":{"coefficient":2.0143,"exponent":0.3}},"policy":{"minimumMargin":0.36,"marginTarget":{"US":0.6,"AUS":0.4,"LATAM":0.4},"earlyPayDiscount":0.05,"multiYearDiscount":{"1-Year":0,"2-Year":0.05,"3+ Year":0.075},"inferencePctOfArr":0.125726,"onPremCostPerSeatYear":0,"termYears":{"1-Year":1,"2-Year":2,"3+ Year":3},"annualUplift":0,"repDiscountLimit":0.2,"quoteValidDays":30,"foldCustomerSuccess":false,"pilotStandardModules":["shadow","drift","codeAi"]},"dealReviewEmail":"","slackWebhookUrl":"","slackChannel":"#deal-review","pilotRules":{"AUS":{"currency":"AUD","thresholdYear1":75000,"flatFee":20000,"percentOfYear1":0.2}},"currencyByLocation":{"US":"USD","AUS":"AUD","LATAM":"MXN"},"fxRates":{"AUD":{"rate":1.42,"asOf":"2026-10-29","source":"FXStreet AUD/USD market rate","url":"https://www.fxstreet.com/news/australian-dollar-edges-higher-above-07050-as-hot-cpi-lifts-rba-rate-hike-odds-202610290240"},"MXN":{"rate":18.6,"asOf":"2026-10-29","source":"Banco de México reported rate","url":"https://world-today-journal.com/banco-de-mexico-reports-usd-mxn-exchange-rate-at-18-66/"}},"permissions":{"scopedOnPremPriceEditors":["exec","admin"]}}}</script>
+<script type="application/json" id="grt-config">{"version":1,"note":"Initial import from GRT_Pricing_Model_OCT 2026 v14 1.xlsx","updatedAt":"2026-11-02T20:11:28.086Z","config":{"source":"GRT_Pricing_Model_OCT 2026 v14 1.xlsx \u2014 Assumptions tab","tiers":["Micro","SMB","Mid-Market","Corporate","Enterprise"],"locations":["US","AUS","LATAM"],"terms":["1-Year","2-Year","3+ Year"],"modules":[{"key":"codeAi","name":"Code + AI","billing":"devSeats"},{"key":"shadow","name":"Shadow","billing":"governed"},{"key":"drift","name":"Drift","billing":"governed"},{"key":"content","name":"Content","billing":"governed"},{"key":"creative","name":"Creative","billing":"governed"},{"key":"aiq","name":"AiQ","billing":"governed"}],"tier":{"governedEmployees":{"Micro":20,"SMB":100,"Mid-Market":500,"Corporate":1000,"Enterprise":2500},"workflows":{"Micro":1,"SMB":4,"Mid-Market":6,"Corporate":8,"Enterprise":20},"seatRate":{"codeAi":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"shadow":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"drift":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"content":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"creative":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"aiq":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7}},"pilotFeePerModule":{"Micro":1200,"SMB":1200,"Mid-Market":1200,"Corporate":1200,"Enterprise":1200},"commandCenterMonthly":{"Micro":2000,"SMB":4000,"Mid-Market":7000,"Corporate":13000,"Enterprise":18000},"implementation":{"Micro":12000,"SMB":25000,"Mid-Market":40000,"Corporate":65000,"Enterprise":150000},"premiumSupportPct":{"Micro":0,"SMB":0,"Mid-Market":0,"Corporate":0.1,"Enterprise":0.1},"cac":{"Micro":4000,"SMB":30000,"Mid-Market":70000,"Corporate":110000,"Enterprise":200000},"usageIntensity":{"Micro":0.7,"SMB":0.85,"Mid-Market":1,"Corporate":1.1,"Enterprise":1.25},"csHoursPerMonth":{"Micro":0.5,"SMB":1,"Mid-Market":4,"Corporate":8,"Enterprise":16},"supportTicketsPerMonth":{"Micro":2,"SMB":5,"Mid-Market":15,"Corporate":30,"Enterprise":60},"hostingBaselinePerYear":{"Micro":1200,"SMB":2400,"Mid-Market":6000,"Corporate":9600,"Enterprise":18000},"securityAuditPerYear":{"Micro":500,"SMB":1500,"Mid-Market":4000,"Corporate":7500,"Enterprise":15000},"implementationHours":{"Micro":40,"SMB":100,"Mid-Market":240,"Corporate":400,"Enterprise":600}},"devSeatRatio":0.25,"modulesInSuite":5,"bundleDiscountByModuleCount":[0,0.05,0.1,0.15,0.2,0.25],"unitCosts":{"inferencePerSeatMonth":1.2,"cloudPerSeatMonth":0.6,"dataPerSeatMonth":0.35,"licensesPerSeatMonth":0.25,"commandCenterRuntimePerWorkflowMonth":45,"csCostPerHour":85,"supportCostPerTicket":45,"implementationCostPerHour":110,"rdPctOfRecurring":0.22,"gaPctOfRecurring":0.12,"retainedLifeYears":3},"enterprise":{"commandCenter":{"coefficient":6324.56,"exponent":0.5},"trafficLight":{"coefficient":3794.73,"exponent":-0.5},"inferenceCost":{"coefficient":20112.92,"exponent":0.3},"inferenceCharge":{"coefficient":16760.77,"exponent":0.3},"techSupportCost":{"coefficient":5586.92,"exponent":0.3},"hostingSecurityCost":{"coefficient":13967.31,"exponent":0.3},"implementation":{"coefficient":8812.48,"exponent":0.3},"implementationCap":450000,"csHours":{"coefficient":2.0143,"exponent":0.3}},"policy":{"minimumMargin":0.36,"marginTarget":{"US":0.6,"AUS":0.4,"LATAM":0.4},"earlyPayDiscount":0.05,"multiYearDiscount":{"1-Year":0,"2-Year":0.05,"3+ Year":0.075},"inferencePctOfArr":0.125726,"onPremCostPerSeatYear":0,"termYears":{"1-Year":1,"2-Year":2,"3+ Year":3},"annualUplift":0,"repDiscountLimit":0.2,"quoteValidDays":30,"foldCustomerSuccess":false,"pilotStandardModules":["shadow","drift","codeAi"]},"dealReviewEmail":"","pilotRules":{"AUS":{"currency":"AUD","thresholdYear1":75000,"flatFee":20000,"percentOfYear1":0.2}},"currencyByLocation":{"US":"USD","AUS":"AUD","LATAM":"MXN"},"fxRates":{"AUD":{"rate":1.42,"asOf":"2026-10-29","source":"FXStreet AUD/USD market rate","url":"https://www.fxstreet.com/news/australian-dollar-edges-higher-above-07050-as-hot-cpi-lifts-rba-rate-hike-odds-202610290240"},"MXN":{"rate":18.6,"asOf":"2026-10-29","source":"Banco de M\u00e9xico reported rate","url":"https://world-today-journal.com/banco-de-mexico-reports-usd-mxn-exchange-rate-at-18-66/"}},"permissions":{"scopedOnPremPriceEditors":["exec","admin"]}}}</script>
 
 
 
@@ -1152,8 +1151,6 @@ const DEFAULTS = {
   'policy.quoteValidDays': 30,
   'policy.pilotStandardModules': ['shadow', 'drift', 'codeAi'],
   dealReviewEmail: '',
-  slackWebhookUrl: '',
-  slackChannel: '#deal-review',
   pilotRules: { AUS: { currency: 'AUD', thresholdYear1: 75000, flatFee: 20000, percentOfYear1: 0.2 } },
   currencyByLocation: { US: 'USD', AUS: 'AUD', LATAM: 'MXN' },
   // Company exchange rates (1 USD = rate), used whenever a live rate isn't available.
@@ -1255,10 +1252,6 @@ function validate(next, current) {
   const dre = String(next?.dealReviewEmail ?? current.dealReviewEmail ?? '').split(/[,;]/).map((x) => x.trim()).filter(Boolean);
   if (dre.some((a) => !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(a))) errors.push('Deal Review email must be one or more email addresses, separated by commas');
   else out.dealReviewEmail = dre.join(', ');
-  const hook = String(next?.slackWebhookUrl ?? current.slackWebhookUrl ?? '').trim();
-  if (hook && !/^https:\/\/hooks\.slack\.com\/services\/\S+$/.test(hook)) errors.push('Slack webhook must be a https://hooks.slack.com/services/… link');
-  else out.slackWebhookUrl = hook;
-  out.slackChannel = String(next?.slackChannel ?? current.slackChannel ?? '').trim().slice(0, 80);
   const editors = next?.permissions?.scopedOnPremPriceEditors;
   if (!Array.isArray(editors) || editors.some((r) => !schema.roles.includes(r))) errors.push('On-prem price editors must be a list of roles');
   else out.permissions.scopedOnPremPriceEditors = [...new Set(editors)];
@@ -2279,7 +2272,7 @@ async function readRequestFile(f) {
     empty.classList.add('hidden'); out.classList.remove('hidden'); lock.classList.remove('hidden');
     out.innerHTML = salesSummaryHtml(r.customer, fxBoxHtml(fx), r.inputs);
     animatePrice(r.customer);
-    $('#lockbtn').textContent = r.customer.dealStatus === 'DEAL REVIEW' ? 'Lock and send to Slack for Deal Review' : 'Lock in pricing request';
+    $('#lockbtn').textContent = r.customer.dealStatus === 'DEAL REVIEW' ? 'Lock for Deal Review' : 'Lock in pricing request';
     showDiscountsSoFar(r.customer);
     updateMobileBar(r.customer);
     $('#onprem-flag').classList.toggle('hidden', !r.customer.onPremActionRequired);
@@ -2295,60 +2288,28 @@ async function readRequestFile(f) {
     const d = new Date(), p = (n) => String(n).padStart(2, '0');
     return `GRT-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   }
-  // Approvals are given in Slack. The rep records who approved and the link to
-  // that message; the quote PDF unlocks and carries the record so it can be checked later.
+  // A Deal Review stays locked until an executive approval is recorded.
   const APPROVALS_KEY = 'grt-approvals-v2';
   const approvalKey = (s) => `${s.requestId}-v${s.version}`;
   function readApprovals() { try { return JSON.parse(localStorage.getItem(APPROVALS_KEY) || '{}'); } catch { return {}; } }
   function approvalFor(s) { return readApprovals()[approvalKey(s)] || null; }
   function saveApproval(s, a) { try { const all = readApprovals(); all[approvalKey(s)] = a; localStorage.setItem(APPROVALS_KEY, JSON.stringify(all)); } catch { /* fine */ } }
   function withApproval(s) { const a = approvalFor(s); return a ? { ...s, approval: a } : s; }
-  const SLACK_LINK = /^https:\/\/[a-z0-9-]+\.slack\.com\/archives\/\S+$/i;
   function recordApproval(s, by, link) {
     by = by.trim(); link = link.trim();
     if (!by) return 'Enter who approved it.';
-    if (!SLACK_LINK.test(link)) return 'Paste the Slack link to the approval reply (in Slack: hover the reply, More actions, Copy link).';
-    const a = { by, at: new Date().toISOString().slice(0, 10), link, via: 'Slack' };
+    if (link && !/^https:\/\/\S+$/i.test(link)) return 'The approval link must start with https://';
+    const a = { by, at: new Date().toISOString().slice(0, 10), link: link || null, via: link ? 'link' : null };
     saveApproval(s, a);
     downloadQuotePdf({ ...s, approval: a });
     renderHistory();
     toast(`Approval by ${by} recorded. Quote PDF downloaded.`);
     return null;
   }
-  // ---- post the Deal Review to Slack (incoming webhook). The browser can send it but can't
-  // read Slack's reply, so a failure only shows if the network refuses it.
-  function slackMessage(s) {
-    const c = s.customer, i = s.inputs, m = moneyFor(c.fx), D = c.discounts;
-    const names = Object.fromEntries(c.lines.modules.map((x) => [x.key, x.name.replace('Traffic Light for ', '')]));
-    const sel = (o) => Object.entries(o || {}).filter(([, v]) => v).map(([k]) => names[k]).join(', ') || 'none';
-    const f = (t, v) => ({ type: 'mrkdwn', text: `*${t}*\n${v}` });
-    const text = `Deal Review: ${s.customerName} (${s.requestId}-v${s.version}) from ${s.rep}. ${c.dealNote}`;
-    return { text, blocks: [
-      { type: 'header', text: { type: 'plain_text', text: `Deal Review: ${s.customerName}`.slice(0, 150) } },
-      { type: 'section', text: { type: 'mrkdwn', text: `:red_circle: *${c.dealNote}*` } },
-      { type: 'section', fields: [
-        f('Rep', s.rep), f('Quote', `${s.requestId}, v${s.version}${s.stage ? ` (${s.stage})` : ''}`),
-        f('Band and location', `${i.band}, ${LOC_NAMES[i.location] || i.location}`), f('Term', `${i.term}${i.earlyPay ? ', Early Pay' : ''}`),
-        f('Modules', `${sel(i.modules)}${i.commandCenter ? ' + AI Command Center' : ''}`), f('Pilot', `${sel(i.pilot)}${c.pilot.total ? ` (${m(c.pilot.total)})` : ''}`),
-        f('List price', m(c.totalMSRP)), f('Discounts', D.total ? `${m(D.total)} (${fmtPct(D.totalPctOfMSRP, 1)})` : 'none'),
-        f('Final price (Year 1)', m(c.finalPrice)), f('Due at signing', m(c.year1DueAtSigning)),
-      ] },
-      ...(s.hubspotRecord ? [{ type: 'section', text: { type: 'mrkdwn', text: `*HubSpot:* ${/^https:/.test(s.hubspotRecord) ? `<${s.hubspotRecord}|Open the deal>` : s.hubspotRecord}` } }] : []),
-      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread with *Approved*, or what to change.' }] },
-    ] };
-  }
-  const slackOn = () => /^https:\/\/hooks\.slack\.com\/services\/\S+$/.test(cfg.slackWebhookUrl || '');
-  async function postToSlack(s) {
-    try {
-      await fetch(cfg.slackWebhookUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'payload=' + encodeURIComponent(JSON.stringify(slackMessage(s))) });
-      return true;
-    } catch { return false; }
-  }
   function showReviewMail(s) {
     const box = $('#review-mail');
     if (!s || s.status !== 'DEAL REVIEW') { box.classList.add('hidden'); return; }
-    $('#review-where').textContent = `Posted to ${cfg.slackChannel || 'Slack'} for an executive to approve.`;
+    $('#review-where').textContent = 'Held for an executive to approve. No quote PDF until then.';
     $('#apr-by').value = ''; $('#apr-link').value = ''; $('#apr-err').textContent = '';
     box.classList.remove('hidden');
   }
@@ -2358,16 +2319,6 @@ async function readRequestFile(f) {
     if (err) { $('#apr-err').textContent = err; return; }
     $('#review-mail').classList.add('hidden'); $('#printbtn').classList.remove('hidden');
   });
-  $('#slack-retry').addEventListener('click', () => { if (lastLocked) sendForReview(lastLocked); });
-  // post the Deal Review to Slack; on failure the rep can try again
-  function sendForReview(s) {
-    $('#slack-retry').classList.add('hidden');
-    if (!slackOn()) { $('#slack-retry').classList.remove('hidden'); toast('Slack isn\'t set up in this calculator. Ask for the latest version.'); return; }
-    postToSlack(s).then((ok) => {
-      if (ok) toast(`Locked ${s.requestId}, version ${s.version}. Posted to ${cfg.slackChannel || 'Slack'} for Deal Review.`);
-      else { $('#slack-retry').classList.remove('hidden'); toast("Couldn't reach Slack. Check your connection and try again."); }
-    });
-  }
   $('#lockbtn').addEventListener('click', () => {
     const name = $('#cname').value.trim(), rep = $('#repname').value.trim();
     const hubspot = $('#hubspot').value.trim(), stage = $('#stage').value;
@@ -2398,8 +2349,7 @@ async function readRequestFile(f) {
     saveHistory(snap); renderHistory();
     showReviewMail(snap);
     if (review) {
-      // no quote PDF for a Deal Review: it goes to an executive for approval first
-      sendForReview(snap);
+      toast(`Locked ${requestId}, version ${version}. Held for Deal Review.`);
     } else {
       downloadQuotePdf(snap);
       $('#printbtn').classList.remove('hidden');
@@ -2450,7 +2400,7 @@ async function readRequestFile(f) {
     $('#history-card').classList.toggle('hidden', !h.length);
     $('#history').innerHTML = h.map((s, i) => {
       const review = s.status === 'DEAL REVIEW', apr = review ? approvalFor(s) : null;
-      return `<div class="hist"><div><b>${esc(s.customerName)}</b> · v${s.version}${s.stage ? ` · <span class="stage">${esc(s.stage)}</span>` : ''}<div class="hint">${esc(fmtDate(s.lockedAt))} · ${moneyFor(s.customer.fx)(s.customer.finalPrice)} ${apr ? `<span class="pill standard">Approved by ${esc(apr.by)}</span>${apr.link ? ` <a href="${esc(apr.link)}" target="_blank" rel="noopener noreferrer">${apr.via === 'Slack' ? 'Slack' : 'link'} ↗</a>` : ''}` : `<span class="pill ${review ? 'review' : 'standard'}">${review ? 'Deal Review' : 'Standard'}</span>`}</div></div>
+      return `<div class="hist"><div><b>${esc(s.customerName)}</b> · v${s.version}${s.stage ? ` · <span class="stage">${esc(s.stage)}</span>` : ''}<div class="hint">${esc(fmtDate(s.lockedAt))} · ${moneyFor(s.customer.fx)(s.customer.finalPrice)} ${apr ? `<span class="pill standard">Approved by ${esc(apr.by)}</span>${apr.link ? ` <a href="${esc(apr.link)}" target="_blank" rel="noopener noreferrer">link ↗</a>` : ''}` : `<span class="pill ${review ? 'review' : 'standard'}">${review ? 'Deal Review' : 'Standard'}</span>`}</div></div>
         <div class="acts">${review && !apr ? `<button class="btn small" type="button" data-h="${i}" data-a="code">Record approval</button>` : `<button class="btn small" type="button" data-h="${i}" data-a="pdf">Quote PDF</button>`}<button class="btn small" type="button" data-h="${i}" data-a="revise">Revise</button></div></div>`;
     }).join('');
   }
