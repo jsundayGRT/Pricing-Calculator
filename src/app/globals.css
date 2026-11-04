@@ -94,7 +94,18 @@ p { margin: 0; }
 }
 .nav a:hover { background: rgba(255,255,255,.08); color: #fff; }
 .nav a.active { color: #fff; background: rgba(255,255,255,.12); font-weight: 600; }
-.who { color: var(--nav-muted); font-size: 13px; display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+.who { color: var(--nav-muted); font-size: 13px; display: flex; gap: 10px; align-items: center; min-width: 0; }
+.nav a:focus-visible, .who a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 800px) {
+  .topbar { height: auto; flex-wrap: wrap; align-items: center; padding: 10px 12px; gap: 8px 12px; }
+  .brand { min-width: 0; }
+  .brand img { height: 28px; }
+  .brand .brand-app { font-size: 16px; }
+  .nav { flex: 1 1 100%; order: 3; min-width: 0; overflow-x: auto; }
+  .who { margin-left: auto; font-size: 12px; max-width: 100%; }
+  .who span { display: inline-block; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+html, body { overflow-x: clip; }
 .who .btn {
   background: transparent;
   color: #fff;

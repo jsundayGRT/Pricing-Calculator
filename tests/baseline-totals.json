@@ -1,0 +1,135 @@
+[
+  {
+    "id": "smb-shadow",
+    "inputs": {
+      "id": "smb-shadow",
+      "band": "SMB",
+      "location": "US",
+      "employees": 80,
+      "modules": [
+        "shadow"
+      ],
+      "term": "1-Year",
+      "earlyPay": false,
+      "commandCenter": true,
+      "onPrem": false,
+      "pilot": true,
+      "discount": 0
+    },
+    "totals": {
+      "finalPrice": "$100,594",
+      "dueAtSigning": "$99,394",
+      "recurring": "$75,594",
+      "totalDiscount": "—",
+      "lockLabel": "Lock in pricing request"
+    }
+  },
+  {
+    "id": "mid-market-suite",
+    "inputs": {
+      "id": "mid-market-suite",
+      "band": "Mid-Market",
+      "location": "US",
+      "employees": 400,
+      "modules": [
+        "codeAi",
+        "shadow",
+        "drift",
+        "content"
+      ],
+      "term": "3+ Year",
+      "earlyPay": true,
+      "commandCenter": true,
+      "onPrem": false,
+      "pilot": true,
+      "discount": 10
+    },
+    "totals": {
+      "finalPrice": "$288,887",
+      "dueAtSigning": "$285,287",
+      "recurring": "$325,275",
+      "totalDiscount": "$111,488 27.8%",
+      "lockLabel": "Lock in pricing request"
+    }
+  },
+  {
+    "id": "enterprise-full",
+    "inputs": {
+      "id": "enterprise-full",
+      "band": "Enterprise",
+      "location": "US",
+      "seats": 2500,
+      "modules": [
+        "codeAi",
+        "shadow",
+        "drift",
+        "content",
+        "creative",
+        "aiq"
+      ],
+      "term": "2-Year",
+      "earlyPay": false,
+      "commandCenter": true,
+      "onPrem": false,
+      "pilot": false,
+      "discount": 5
+    },
+    "totals": {
+      "finalPrice": "$1,327,234",
+      "dueAtSigning": "$1,327,234",
+      "recurring": "$1,378,472",
+      "totalDiscount": "$392,415 22.8%",
+      "lockLabel": "Lock in pricing request"
+    }
+  },
+  {
+    "id": "corporate-onprem",
+    "inputs": {
+      "id": "corporate-onprem",
+      "band": "Corporate",
+      "location": "US",
+      "employees": 800,
+      "modules": [
+        "content",
+        "aiq"
+      ],
+      "term": "1-Year",
+      "earlyPay": false,
+      "commandCenter": false,
+      "onPrem": true,
+      "scoped": 25000,
+      "pilot": false,
+      "discount": 0
+    },
+    "totals": {
+      "finalPrice": "$324,550",
+      "dueAtSigning": "$324,550",
+      "recurring": "$324,550",
+      "totalDiscount": "$12,000 3.6%",
+      "lockLabel": "Lock in pricing request"
+    }
+  },
+  {
+    "id": "micro-command-center",
+    "inputs": {
+      "id": "micro-command-center",
+      "band": "Micro",
+      "location": "US",
+      "employees": 12,
+      "modules": [],
+      "term": "1-Year",
+      "earlyPay": true,
+      "commandCenter": true,
+      "onPrem": false,
+      "pilot": false,
+      "discount": 0
+    },
+    "totals": {
+      "finalPrice": "$37,807",
+      "dueAtSigning": "$37,807",
+      "recurring": "$27,797",
+      "totalDiscount": "$1,990 5.0%",
+      "lockLabel": "Lock in pricing request"
+    }
+  }
+]

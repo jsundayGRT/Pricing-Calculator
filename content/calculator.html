@@ -28,9 +28,11 @@
   --ok: #3D7F3A;
   --ok-soft: #EDF7EC;
   --bad: #D24F47;
+  --bad-text: #9B2C28;
   --bad-soft: #FBEDEC;
   --warn: #8F5C12;
   --warn-soft: #FCF3E3;
+  --placeholder: #3E4A57;
   --radius: 16px;
   --shadow: 0 6px 25px rgba(6, 5, 16, .04);
   color-scheme: light;
@@ -40,7 +42,7 @@
     --bg: #060510; --surface: #0F1622; --surface-2: #15202E; --border: #243243;
     --text: #EAF6FE; --muted: #9BB0C2; --accent: #4FB0E6; --accent-ink: #060510; --accent-soft: #10283B; --primary: #1B8ECD;
     --nav: #12324D; --nav-muted: #A0C4D6; --hero-a: #173C5B; --hero-b: #0B1E30; --on-hero: #CFE6F3;
-    --ok: #8ED18B; --ok-soft: #13261A; --bad: #EE7A72; --bad-soft: #351816; --warn: #F0C27A; --warn-soft: #2E2310;
+    --ok: #8ED18B; --ok-soft: #13261A; --bad: #EE7A72; --bad-text: #FFB4AE; --bad-soft: #351816; --warn: #F0C27A; --warn-soft: #2E2310; --placeholder: #C5D4E0;
     color-scheme: dark;
   }
 }
@@ -126,8 +128,8 @@ h3 { font-size: 15px; margin: 0 0 8px; }
 
 .toggle-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
 .toggle-row:first-of-type { border-top: 0; padding-top: 0; }
-.switch { position: relative; width: 40px; height: 22px; border-radius: 999px; border: 0; background: var(--border); cursor: pointer; flex: none; padding: 0; }
-.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.switch { position: relative; width: 44px; height: 26px; border-radius: 999px; border: 0; background: #5C6770; cursor: pointer; flex: none; padding: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
 .switch[aria-checked="true"] { background: var(--accent); }
 .switch[aria-checked="true"]::after { transform: translateX(18px); }
 
@@ -202,7 +204,7 @@ table.grid th.num, table.grid td.num { text-align: right; font-variant-numeric: 
 .pill.review { background: var(--bad); color: #fff; }
 .pill.standard { background: var(--ok-soft); color: var(--ok); }
 .pill.placeholder { background: var(--warn-soft); color: var(--warn); }
-.neg { color: var(--bad); }
+.neg { color: var(--bad-text); }
 .pos { color: var(--ok); }
 .reason { color: var(--bad); font-size: 12px; display: block; }
 
@@ -242,7 +244,7 @@ table.grid th.num, table.grid td.num { text-align: right; font-variant-numeric: 
 /* ---- login */
 .login { max-width: 360px; margin: 12vh auto; }
 .login .card { padding: 28px; }
-.err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 8px; }
+.err { color: var(--bad-text); font-size: 13px; min-height: 18px; margin-top: 8px; font-weight: 600; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px; z-index: 40; font-size: 13px; }
 .empty { padding: 32px; text-align: center; color: var(--muted); }
 
@@ -357,7 +359,27 @@ body.sales .lock h2 { margin-bottom: 12px; }
 .btn.ghost { background: transparent; }
 body.sales .btn.primary { box-shadow: 0 1px 2px rgba(16,24,40,.12); }
 body.sales .btn.primary:hover { filter: brightness(1.06); }
-body.sales .empty { padding: 40px 16px; }
+body.sales .empty { padding: 8px 4px 4px; text-align: left; color: var(--text); }
+.empty-kicker { margin: 0; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.empty-amount { margin: 6px 0 10px; font-size: 44px; font-weight: 500; letter-spacing: -0.5px; line-height: 1.15; color: var(--muted); font-variant-numeric: tabular-nums; }
+#empty-msg { margin: 0; color: var(--muted); max-width: 36ch; }
+fieldset.plain { border: 0; padding: 0; margin: 0 0 16px; min-width: 0; }
+fieldset.plain legend.label { padding: 0; }
+.req { margin-left: 6px; color: var(--bad-text); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body.sales ::placeholder { color: var(--placeholder); opacity: 1; }
+body.sales input[aria-invalid="true"], body.sales select[aria-invalid="true"] { border-color: var(--bad-text); box-shadow: 0 0 0 3px var(--bad-soft); }
+body.sales { overflow-x: clip; }
+.inputs, .results, .card { min-width: 0; }
+.disc-already, .hint, .option b { overflow-wrap: anywhere; }
+@media (max-width: 960px) {
+  .calc { display: flex; flex-direction: column; }
+  .results { display: contents; }
+  .summary { order: 0; }
+  .inputs { order: 1; }
+  #lock { order: 2; }
+  #history-card { order: 3; }
+}
+body.sales .hero .amount { font-size: 48px; font-weight: 700; line-height: 1; }
 
 /* phone: price bar pinned to the bottom */
 .mbar { display: none; }
@@ -449,7 +471,8 @@ details.grp > summary:focus-visible { border-radius: 6px; }
   body.sales .card { padding: 18px 16px; }
   body.sales h1 { font-size: 21px; }
   .page-head { flex-wrap: wrap; gap: 10px; }
-  body.sales .hero .amount { font-size: 32px; }
+  body.sales .hero .amount { font-size: 40px; }
+  .empty-amount { font-size: 40px; }
 }
 @media (max-width: 560px) {
   #term.seg.wide { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 1fr; }
@@ -462,7 +485,7 @@ body.sales .hero::after { content: ""; position: absolute; right: -60px; top: -6
   background: radial-gradient(circle, rgba(27,142,205,.45), transparent 70%); pointer-events: none; }
 body.sales .hero > * { position: relative; z-index: 1; }
 h2 > .num { background: var(--brand-navy); color: #fff; }
-.disc-val.neg { color: var(--bad); }
+.disc-val.neg { color: var(--bad-text); }
 .pill.review { background: var(--bad); }
 .pill.standard { background: var(--ok-soft); color: var(--ok); }
 .flag.warn { border-left: 3px solid var(--brand-amber); }
@@ -500,7 +523,10 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 
 <main class="page" id="tab-calc">
   <div class="page-head">
-    <div><h1>Pricing calculator</h1></div>
+    <div>
+      <h1>Pricing calculator</h1>
+      <p class="sub">The total updates as you change the quote. A 1-year term and AI Command Center start on.</p>
+    </div>
     <label class="btn small ghost" for="openlocked">Revise a locked request</label><input id="openlocked" type="file" accept=".pdf,application/pdf,.json,application/json" class="hidden">
   </div>
   <div id="revise-banner" class="banner hidden"></div>
@@ -509,50 +535,53 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
       <div class="card step">
         <h2><span class="num">1</span>Customer</h2>
         <div class="row2 band-row">
-          <div class="field"><label class="label" for="band">Employee band</label>
-            <div class="select-wrap"><select id="band" required><option value="" disabled selected>Choose a band</option></select></div></div>
-          <div class="field"><label class="label" for="location">Buyer location</label>
-            <div class="select-wrap"><select id="location" required><option value="" disabled selected>Choose a location</option></select></div></div>
+          <div class="field"><label class="label" for="band">Employee band <span class="req">Required</span></label>
+            <div class="select-wrap"><select id="band" required aria-describedby="band-hint"><option value="" disabled selected>Choose a band</option></select></div>
+            <div class="hint" id="band-hint">Match the band to headcount. Enterprise is 1,000 or more employees.</div></div>
+          <div class="field"><label class="label" for="location">Buyer location <span class="req">Required</span></label>
+            <div class="select-wrap"><select id="location" required aria-describedby="location-hint"><option value="" disabled selected>Choose a location</option></select></div>
+            <div class="hint" id="location-hint">Sets the quote currency. US prices stay in dollars.</div></div>
         </div>
         <div class="field hidden" id="empcount-field">
           <label class="label" for="empcount">Number of employees <span class="label-note">Optional</span></label>
-          <input id="empcount" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 50" style="max-width:240px">
+          <input id="empcount" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 50" style="max-width:240px" aria-describedby="empcount-hint">
           <div class="hint" id="empcount-hint"></div>
         </div>
         <div class="field hidden" id="seats-field">
-          <label class="label" for="seats">Enterprise seat count</label>
-          <input id="seats" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 5,000" style="max-width:240px">
-          <div class="hint">Enterprise is 1,000+ employees.</div>
+          <label class="label" for="seats">Enterprise seat count <span class="req">Required</span></label>
+          <input id="seats" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 5,000" style="max-width:240px" aria-describedby="seats-hint">
+          <div class="hint" id="seats-hint">Enterprise is 1,000+ employees. Enter the seat count to see the price.</div>
         </div>
       </div>
 
       <div class="card step">
         <h2><span class="num">2</span>Pilot <span class="optional">Optional</span></h2>
         <div class="option" style="border-top:0;padding-top:0">
-          <div><b>Offer a pilot</b><div class="hint">Pilots cover the Traffic Light modules being purchased. Command Center isn't piloted.</div></div>
-          <button class="switch" role="switch" id="pilotOn" aria-label="Offer a pilot"></button>
+          <div><b id="pilot-label">Offer a pilot</b><div class="hint" id="pilot-hint">On by default. Pilots cover the Traffic Light modules being purchased. Command Center isn't piloted.</div></div>
+          <button class="switch" role="switch" id="pilotOn" aria-labelledby="pilot-label" aria-describedby="pilot-hint"></button>
         </div>
         <div id="pilot-box" class="hidden">
-          <div class="field"><span class="label">Modules in the pilot <span class="label-note">Choosing a module here also adds it to the purchase</span></span><div class="tiles small" id="pilot"></div>
-            <div class="hint" id="pilot-std-note"></div></div>
+          <fieldset class="field plain"><legend class="label">Modules in the pilot <span class="label-note">Choosing a module here also adds it to the purchase</span></legend><div class="tiles small" id="pilot"></div>
+            <div class="hint" id="pilot-std-note"></div></fieldset>
           <div class="flag info hidden" id="pilot-rule" style="margin:0 0 10px"></div>
           <div class="option">
-            <div><b>Credit the pilot toward the contract (if contract signed after 30 days of pilot)</b><div class="hint">Credit of 50% of pilot applied to implementation cost.</div></div>
-            <button class="switch" role="switch" id="pilotCredit" aria-label="Credit pilot price toward the signed contract"></button>
+            <div><b id="pilot-credit-label">Credit the pilot toward the contract</b><div class="hint" id="pilot-credit-hint">If the contract is signed after 30 days of pilot, 50% of the pilot is credited to implementation.</div></div>
+            <button class="switch" role="switch" id="pilotCredit" aria-labelledby="pilot-credit-label" aria-describedby="pilot-credit-hint"></button>
           </div>
         </div>
       </div>
 
       <div class="card step">
         <h2><span class="num">3</span>Products</h2>
-        <div class="field"><span class="label">Traffic Light modules</span><div class="tiles" id="modules"></div></div>
+        <fieldset class="field plain"><legend class="label">Traffic Light modules</legend><div class="tiles" id="modules"></div>
+          <div class="hint" id="modules-hint">Leave these off for a Command Center only quote. Each selected module shows its yearly list price.</div></fieldset>
         <div class="option">
-          <div><b>AI Command Center</b></div>
-          <button class="switch" role="switch" id="commandCenter" aria-label="Command Center"></button>
+          <div><b id="cc-label">AI Command Center</b><div class="hint" id="cc-hint">On by default.</div></div>
+          <button class="switch" role="switch" id="commandCenter" aria-labelledby="cc-label" aria-describedby="cc-hint"></button>
         </div>
         <div class="option">
-          <div><b>On-prem / dedicated infrastructure</b><div class="hint">Scoped and priced by the team.</div></div>
-          <button class="switch" role="switch" id="onPrem" aria-label="On-prem / dedicated infrastructure"></button>
+          <div><b id="onprem-label">On-prem / dedicated infrastructure</b><div class="hint" id="onprem-hint">Off by default. Scoped and priced by the team.</div></div>
+          <button class="switch" role="switch" id="onPrem" aria-labelledby="onprem-label" aria-describedby="onprem-hint"></button>
         </div>
         <div id="onprem-box" class="hidden sub-panel">
           <div class="flag warn" id="onprem-flag" style="margin-top:0">Action needed: the team must scope on-prem / dedicated infrastructure before this price is final.</div>
@@ -565,30 +594,36 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 
       <div class="card step">
         <h2><span class="num">4</span>Terms and discounts</h2>
-        <div class="field"><span class="label">Contract term</span><div class="seg wide" id="term" role="group" aria-label="Contract term" style="max-width:420px"></div></div>
+        <div class="field"><span class="label" id="term-label">Contract term</span><div class="seg wide" id="term" role="group" aria-labelledby="term-label" style="max-width:420px"></div>
+          <div class="hint">Starts at 1-Year. A longer term applies the multi-year discount.</div></div>
         <div class="option">
-          <div><b>Early Pay</b><div class="hint">Paid annually, within 30 days of contract.</div></div>
-          <button class="switch" role="switch" id="earlyPay" aria-label="Early Pay"></button>
+          <div><b id="early-label">Early Pay</b><div class="hint" id="early-hint">Off by default. Paid annually, within 30 days of contract.</div></div>
+          <button class="switch" role="switch" id="earlyPay" aria-labelledby="early-label" aria-describedby="early-hint"></button>
         </div>
         <div class="field disc-field">
           <div class="disc-already" id="disc-already"></div>
           <label class="label" for="disc-range">Additional discount <b class="disc-val" id="disc-val">0%</b></label>
-          <input id="disc-range" class="range" type="range" min="0" max="20" step="0.5" value="0">
+          <input id="disc-range" class="range" type="range" min="0" max="20" step="0.5" value="0" aria-valuetext="0% additional discount" aria-describedby="disc-hint">
           <div class="range-scale"><span>0%</span><span id="disc-max-label">20%</span></div>
+          <div class="hint" id="disc-hint">Starts at 0%. Move the slider, or use the arrow keys while it is focused.</div>
         </div>
       </div>
     </section>
 
     <aside class="results" id="results">
-      <div class="card summary">
-        <div class="empty" id="empty">Choose an employee band and buyer location to see pricing.</div>
+      <div class="card summary" id="summary">
+        <div class="empty" id="empty">
+          <p class="empty-kicker">Final price · Year 1</p>
+          <p class="empty-amount" aria-hidden="true">$—</p>
+          <p id="empty-msg">Choose an employee band and buyer location to see pricing.</p>
+        </div>
         <div id="out" class="hidden"></div>
       </div>
       <div class="card lock hidden" id="lock">
         <h2>Lock in this request</h2>
         <div class="row2">
-          <div class="field"><label class="label" for="repname">Rep name</label><input id="repname" type="text" maxlength="100" placeholder="Your name"></div>
-          <div class="field"><label class="label" for="cname">Customer or opportunity</label><input id="cname" type="text" maxlength="200" placeholder="Required"></div>
+          <div class="field"><label class="label" for="repname">Rep name <span class="req">Required</span></label><input id="repname" type="text" maxlength="100" placeholder="Your name" autocomplete="name" aria-describedby="lockerr"></div>
+          <div class="field"><label class="label" for="cname">Customer or opportunity <span class="req">Required</span></label><input id="cname" type="text" maxlength="200" placeholder="Customer name" aria-describedby="lockerr"></div>
         </div>
         <div class="row2">
           <div class="field"><label class="label" for="hubspot">HubSpot record</label><input id="hubspot" type="text" maxlength="500" placeholder="Paste the deal link"></div>
@@ -601,7 +636,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
           <button class="btn primary grow" id="lockbtn" type="button">Lock in pricing request</button>
           <button class="btn hidden" id="printbtn" type="button">Download quote PDF again</button>
         </div>
-        <div class="err" id="lockerr"></div>
+        <div class="err" id="lockerr" role="alert"></div>
         <div class="hint">Downloads the quote as a PDF. A Deal Review is approved on the Executive Dashboard. Later changes save as the next version.</div>
       </div>
       <div class="card hidden" id="history-card">
@@ -1687,7 +1722,7 @@ function salesSummaryHtml(c, fxBox, inputs) {
   let h = review ? `<div class="status-row review" role="status">${icon}<div><b>Deal Review</b><span>${esc(c.dealNote)}</span></div></div>` : '';
   h += `<div class="hero">
       <small>Final price · Year 1${shownCur !== fx.currency ? ` · in USD (${esc(fx.currency)} rate not available)` : ` · ${esc(shownCur)}`}</small>
-      <div class="amount">${m(c.finalPrice)}</div>
+      <div class="amount" aria-live="polite">${m(c.finalPrice)}</div>
       <div class="kpis">
         <div><small>Due at signing</small><b>${m(c.year1DueAtSigning)}</b></div>
         <div><small>Recurring / year</small><b>${m(c.annualRecurringPrice)}</b></div>
@@ -2115,6 +2150,7 @@ async function readRequestFile(f) {
     }
     const pct = Number(state.variableDiscountPct || 0);
     $('#disc-range').value = Math.min(pct, repLimitPct());
+    $('#disc-range').setAttribute('aria-valuetext', `${fmtNum(pct)}% additional discount`);
     $('#disc-val').textContent = `${fmtNum(pct)}%`;
     $('#disc-val').classList.toggle('neg', pct > repLimitPct());
     const capNow = bandCap(), before = state.employeeCount;
@@ -2211,7 +2247,7 @@ async function readRequestFile(f) {
     $('#mbar-status').textContent = 'Deal Review';
     $('#mbar-status').className = 'pill review' + (review ? '' : ' hidden');
   }
-  $('#mbar-go').addEventListener('click', () => $('#results').scrollIntoView({ behavior: 'smooth' }));
+  $('#mbar-go').addEventListener('click', () => $('#summary').scrollIntoView({ behavior: 'smooth', block: 'start' }));
 
   // the final price counts to its new value, so a change is easy to notice
   let shownPrice = null, priceAnim = 0;
@@ -2244,7 +2280,13 @@ async function readRequestFile(f) {
     lockedSinceChange = false;
     const out = $('#out'), empty = $('#empty'), lock = $('#lock');
     $('#printbtn').classList.add('hidden');
-    const hide = (msg) => { showChipPrices(null); showDiscountsSoFar(null); updateMobileBar(null); out.classList.add('hidden'); lock.classList.add('hidden'); empty.classList.remove('hidden'); empty.textContent = msg; lastResult = null; };
+    const hide = (msg) => {
+      showChipPrices(null); showDiscountsSoFar(null); updateMobileBar(null);
+      out.classList.add('hidden'); lock.classList.add('hidden'); empty.classList.remove('hidden');
+      const msgEl = $('#empty-msg'); if (msgEl) msgEl.textContent = msg; else empty.textContent = msg;
+      $('#seats').toggleAttribute('aria-invalid', state.band === 'Enterprise' && !(Number(state.seats) > 0));
+      lastResult = null;
+    };
     if (!state.band || !state.location) return hide(`To see the price, choose ${!state.band && !state.location ? 'an employee band and a buyer location' : !state.band ? 'an employee band' : 'a buyer location'} on the left.`);
     if (state.band === 'Enterprise' && !(Number(state.seats) > 0)) return hide('Enter the Enterprise seat count to see pricing.');
     let r;
@@ -2284,8 +2326,10 @@ async function readRequestFile(f) {
     const name = $('#cname').value.trim(), rep = $('#repname').value.trim();
     const hubspot = $('#hubspot').value.trim(), stage = $('#stage').value;
     $('#lockerr').textContent = '';
-    if (!rep) { $('#lockerr').textContent = 'Enter the rep name.'; $('#repname').focus(); return; }
-    if (!name) { $('#lockerr').textContent = 'Enter the customer or opportunity name to lock this request.'; $('#cname').focus(); return; }
+    $('#repname').removeAttribute('aria-invalid');
+    $('#cname').removeAttribute('aria-invalid');
+    if (!rep) { $('#lockerr').textContent = 'Enter the rep name.'; $('#repname').setAttribute('aria-invalid', 'true'); $('#repname').focus(); return; }
+    if (!name) { $('#lockerr').textContent = 'Enter the customer or opportunity name to lock this request.'; $('#cname').setAttribute('aria-invalid', 'true'); $('#cname').focus(); return; }
     if (hubspot && /^[a-z]+:/i.test(hubspot) && !/^https:\/\/([a-z0-9-]+\.)*hubspot\.com\//i.test(hubspot)) { $('#lockerr').textContent = 'The HubSpot record should be a hubspot.com link (or just the record ID).'; $('#hubspot').focus(); return; }
     if (!lastResult) return;
     if (lockedSinceChange) { $('#lockerr').textContent = 'Already locked. Change something to save a new version.'; return; }
