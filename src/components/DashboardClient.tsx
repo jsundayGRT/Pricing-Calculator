@@ -83,8 +83,8 @@ export function DashboardClient({ userName }: { userName: string }) {
     <main className="page">
       <div className="page-head">
         <div>
-          <h1>Your dashboard</h1>
-          <p className="sub">Locked pricing requests for {userName}</p>
+          <h1>Dashboard</h1>
+          <p className="sub">Locked requests for {userName}</p>
         </div>
         <a className="btn primary" href="/calculator">New pricing request</a>
       </div>
@@ -103,12 +103,13 @@ export function DashboardClient({ userName }: { userName: string }) {
 
       <div className="err" role="alert">{error}</div>
 
+      <h2 style={{ marginBottom: 12 }}>Locked requests</h2>
       {!quotes ? (
         <div className="empty">Loading your quotes…</div>
       ) : quotes.length === 0 ? (
         <div className="empty">
-          <p>No locked quotes yet.</p>
-          <p style={{ marginTop: 8 }}>Open the calculator, lock a pricing request, and it will show up here.</p>
+          <p>No locked requests yet.</p>
+          <p style={{ marginTop: 8 }}>Lock a pricing request in the calculator and it will show up here.</p>
           <div style={{ marginTop: 16 }}>
             <a className="btn primary" href="/calculator">Open calculator</a>
           </div>
@@ -117,11 +118,12 @@ export function DashboardClient({ userName }: { userName: string }) {
         <div className="grid">
           {quotes.map((q) => {
             const review = q.status === 'DEAL REVIEW';
+            const approved = q.status === 'APPROVED';
             return (
               <article key={q.id} className="card quote-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                   <span className={`pill ${review ? 'review' : 'standard'}`}>
-                    {review ? 'Deal Review' : 'Standard'}
+                    {review ? 'Deal Review' : approved ? 'Approved' : 'Standard'}
                   </span>
                   <span className="quote-meta">v{q.version}</span>
                 </div>

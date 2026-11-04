@@ -365,7 +365,8 @@ body.sales .empty { padding: 8px 4px 4px; text-align: left; color: var(--text); 
 #empty-msg { margin: 0; color: var(--muted); max-width: 36ch; }
 fieldset.plain { border: 0; padding: 0; margin: 0 0 16px; min-width: 0; }
 fieldset.plain legend.label { padding: 0; }
-.req { margin-left: 6px; color: var(--bad-text); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.req { display: none; margin-left: 6px; color: var(--bad-text); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.field:hover .req, .field:focus-within .req { display: inline; }
 body.sales ::placeholder { color: var(--placeholder); opacity: 1; }
 body.sales input[aria-invalid="true"], body.sales select[aria-invalid="true"] { border-color: var(--bad-text); box-shadow: 0 0 0 3px var(--bad-soft); }
 body.sales { overflow-x: clip; }
@@ -377,7 +378,6 @@ body.sales { overflow-x: clip; }
   .summary { order: 0; }
   .inputs { order: 1; }
   #lock { order: 2; }
-  #history-card { order: 3; }
 }
 body.sales .hero .amount { font-size: 48px; font-weight: 700; line-height: 1; }
 
@@ -536,10 +536,10 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
         <h2><span class="num">1</span>Customer</h2>
         <div class="row2 band-row">
           <div class="field"><label class="label" for="band">Employee band <span class="req">Required</span></label>
-            <div class="select-wrap"><select id="band" required aria-describedby="band-hint"><option value="" disabled selected>Choose a band</option></select></div>
+            <div class="select-wrap"><select id="band" required aria-required="true" aria-describedby="band-hint"><option value="" disabled selected>Choose a band</option></select></div>
             <div class="hint" id="band-hint">Match the band to headcount. Enterprise is 1,000 or more employees.</div></div>
           <div class="field"><label class="label" for="location">Buyer location <span class="req">Required</span></label>
-            <div class="select-wrap"><select id="location" required aria-describedby="location-hint"><option value="" disabled selected>Choose a location</option></select></div>
+            <div class="select-wrap"><select id="location" required aria-required="true" aria-describedby="location-hint"><option value="" disabled selected>Choose a location</option></select></div>
             <div class="hint" id="location-hint">Sets the quote currency. US prices stay in dollars.</div></div>
         </div>
         <div class="field hidden" id="empcount-field">
@@ -549,7 +549,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
         </div>
         <div class="field hidden" id="seats-field">
           <label class="label" for="seats">Enterprise seat count <span class="req">Required</span></label>
-          <input id="seats" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 5,000" style="max-width:240px" aria-describedby="seats-hint">
+          <input id="seats" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 5,000" style="max-width:240px" aria-required="true" aria-describedby="seats-hint">
           <div class="hint" id="seats-hint">Enterprise is 1,000+ employees. Enter the seat count to see the price.</div>
         </div>
       </div>
@@ -622,8 +622,8 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
       <div class="card lock hidden" id="lock">
         <h2>Lock in this request</h2>
         <div class="row2">
-          <div class="field"><label class="label" for="repname">Rep name <span class="req">Required</span></label><input id="repname" type="text" maxlength="100" placeholder="Your name" autocomplete="name" aria-describedby="lockerr"></div>
-          <div class="field"><label class="label" for="cname">Customer or opportunity <span class="req">Required</span></label><input id="cname" type="text" maxlength="200" placeholder="Customer name" aria-describedby="lockerr"></div>
+          <div class="field"><label class="label" for="repname">Rep name <span class="req">Required</span></label><input id="repname" type="text" maxlength="100" placeholder="Your name" autocomplete="name" aria-required="true" aria-describedby="lockerr"></div>
+          <div class="field"><label class="label" for="cname">Customer or opportunity <span class="req">Required</span></label><input id="cname" type="text" maxlength="200" placeholder="Customer name" aria-required="true" aria-describedby="lockerr"></div>
         </div>
         <div class="row2">
           <div class="field"><label class="label" for="hubspot">HubSpot record</label><input id="hubspot" type="text" maxlength="500" placeholder="Paste the deal link"></div>
@@ -637,11 +637,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
           <button class="btn hidden" id="printbtn" type="button">Download quote PDF again</button>
         </div>
         <div class="err" id="lockerr" role="alert"></div>
-        <div class="hint">Downloads the quote as a PDF. A Deal Review is approved on the Executive Dashboard. Later changes save as the next version.</div>
-      </div>
-      <div class="card hidden" id="history-card">
-        <h2>Your locked requests <span class="optional">This browser</span></h2>
-        <div id="history"></div>
+        <div class="hint">Downloads the quote as a PDF. Locked requests are on your dashboard. A Deal Review is approved on the Executive Dashboard. Later changes save as the next version.</div>
       </div>
     </aside>
   </div>
@@ -2399,21 +2395,7 @@ async function readRequestFile(f) {
       body: JSON.stringify({ snapshot: snap }),
     }).catch(() => { /* offline / signed out */ });
   }
-  function renderHistory() {
-    const h = readHistory();
-    $('#history-card').classList.toggle('hidden', !h.length);
-    $('#history').innerHTML = h.map((s, i) => {
-      const review = s.status === 'DEAL REVIEW', apr = review ? approvalFor(s) : null;
-      return `<div class="hist"><div><b>${esc(s.customerName)}</b> · v${s.version}${s.stage ? ` · <span class="stage">${esc(s.stage)}</span>` : ''}<div class="hint">${esc(fmtDate(s.lockedAt))} · ${moneyFor(s.customer.fx)(s.customer.finalPrice)} ${apr ? `<span class="pill standard">Approved by ${esc(apr.by)}</span>${apr.link ? ` <a href="${esc(apr.link)}" target="_blank" rel="noopener noreferrer">link ↗</a>` : ''}` : `<span class="pill ${review ? 'review' : 'standard'}">${review ? 'Deal Review' : 'Standard'}</span>`}</div></div>
-        <div class="acts">${review && !apr ? '' : `<button class="btn small" type="button" data-h="${i}" data-a="pdf">Quote PDF</button>`}<button class="btn small" type="button" data-h="${i}" data-a="revise">Revise</button></div></div>`;
-    }).join('');
-  }
-  $('#history').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-h]'); if (!b) return;
-    const s = readHistory()[Number(b.dataset.h)]; if (!s) return;
-    if (b.dataset.a === 'pdf') { if (s.status === 'DEAL REVIEW' && !approvalFor(s)) return toast('An executive approves this on the Executive Dashboard first.'); downloadQuotePdf(withApproval(s)); }
-    if (b.dataset.a === 'revise') { loadForRevision(s); window.scrollTo(0, 0); }
-  });
+  function renderHistory() { /* Locked requests are listed on the dashboard. */ }
 
   // ---- revise a locked request: open the quote PDF the rep saved
   $('#openlocked').addEventListener('change', async (e) => {
