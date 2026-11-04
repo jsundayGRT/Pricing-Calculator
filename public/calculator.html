@@ -2386,6 +2386,8 @@ async function readRequestFile(f) {
       lockedAt: new Date().toISOString(), assumptionsVersion: store.version, assumptionsNote: store.note, assumptionsHash: configHash(cfg),
       status: lastResult.customer.dealStatus, inputs: lastResult.inputs,
       customer: lastResult.customer,
+      // Executive-only economics (never shown on the sales calculator UI).
+      internal: lastResult.internal,
     };
     deepFreeze(snap);
     reviseOf = { requestId, version, customerName: name, hubspotRecord: hubspot || null };

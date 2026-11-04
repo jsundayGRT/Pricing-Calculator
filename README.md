@@ -9,7 +9,11 @@ React (Next.js) app with **Microsoft Entra ID** sign-in and a **per-user dashboa
 | `/login` | Sign in with Microsoft |
 | `/` | Personal dashboard (only your locked quotes) |
 | `/calculator` | Pricing calculator |
+| `/executive` | Admin-only Executive summary (all locked requests + internal economics) |
 | `/api/quotes` | Save / list quotes for the signed-in user |
+| `/api/admin/quotes` | Admin list/detail of every locked request |
+
+`jared.sunday@guardrail.tech` is an admin by default. Add more with `ADMIN_EMAILS`.
 
 After you lock a pricing request in the calculator, it is saved to **your** dashboard (not shared with other users).
 

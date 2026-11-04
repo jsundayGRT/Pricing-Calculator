@@ -57,6 +57,15 @@ export function listQuotesForUser(ownerId: string) {
     .sort((a, b) => String(b.lockedAt).localeCompare(String(a.lockedAt)));
 }
 
+export function listAllQuotes() {
+  const store = readStore();
+  return [...store.quotes].sort((a, b) => String(b.lockedAt).localeCompare(String(a.lockedAt)));
+}
+
+export function getQuoteById(id: string) {
+  return listAllQuotes().find((q) => q.id === id) || null;
+}
+
 export function getQuoteForUser(ownerId: string, id: string) {
   return listQuotesForUser(ownerId).find((q) => q.id === id) || null;
 }
