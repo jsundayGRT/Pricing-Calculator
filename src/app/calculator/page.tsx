@@ -18,7 +18,7 @@ export default async function CalculatorPage({
       <iframe
         className="calc-frame"
         title="Pricing calculator"
-        src={`/calculator.html${revise}`}
+        src={`/api/calculator${revise}`}
       />
     </>
   );

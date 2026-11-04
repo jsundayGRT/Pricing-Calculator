@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { getBaseUrl } from '@/lib/auth-config';
+import { isAdmin } from '@/lib/admin';
 import {
   assertAllowedUser,
   claimsFromIdToken,
@@ -11,9 +13,14 @@ import {
   SESSION_COOKIE,
   createSessionToken,
   isSecureRequest,
+  oauthCookieOptions,
   readOauthStateToken,
   sessionCookieOptions,
 } from '@/lib/session';
+
+function redirectTo(request: Request, path: string) {
+  return NextResponse.redirect(new URL(path, getBaseUrl(request)));
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -29,7 +36,6 @@ export async function GET(request: Request) {
     const jar = await cookies();
     const oauthToken = jar.get(OAUTH_COOKIE)?.value;
     const oauth = oauthToken ? await readOauthStateToken(oauthToken) : null;
-    jar.delete(OAUTH_COOKIE);
 
     if (!oauth?.state || !oauth?.verifier || oauth.state !== state) {
       throw new Error('Sign-in session expired. Please try again.');
@@ -41,11 +47,15 @@ export async function GET(request: Request) {
     assertAllowedUser(user);
 
     const sessionToken = await createSessionToken(user);
-    jar.set(SESSION_COOKIE, sessionToken, sessionCookieOptions(isSecureRequest(request)));
-
-    return NextResponse.redirect(new URL('/', request.url));
+    const destination = isAdmin(user) ? '/executive' : '/';
+    const response = redirectTo(request, destination);
+    response.cookies.set(SESSION_COOKIE, sessionToken, sessionCookieOptions(isSecureRequest(request)));
+    response.cookies.set(OAUTH_COOKIE, '', { ...oauthCookieOptions(isSecureRequest(request)), maxAge: 0 });
+    return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Microsoft sign-in failed';
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(message)}`, request.url));
+    const response = redirectTo(request, `/login?error=${encodeURIComponent(message)}`);
+    response.cookies.set(OAUTH_COOKIE, '', { ...oauthCookieOptions(isSecureRequest(request)), maxAge: 0 });
+    return response;
   }
 }

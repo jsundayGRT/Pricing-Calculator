@@ -7,7 +7,19 @@ import { readSession } from '@/lib/session';
 export default async function ExecutivePage() {
   const user = await readSession();
   if (!user) redirect('/login');
-  if (!isAdmin(user)) redirect('/');
+  if (!isAdmin(user)) {
+    return (
+      <>
+        <AppHeader user={user} />
+        <main className="page">
+          <h1>Executive summary</h1>
+          <p className="sub">
+            Signed in as {user.email || user.name}. This account does not have admin access.
+          </p>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>

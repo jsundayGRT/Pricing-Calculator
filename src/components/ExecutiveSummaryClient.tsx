@@ -66,9 +66,13 @@ export function ExecutiveSummaryClient() {
   async function load() {
     setError('');
     try {
-      const res = await fetch('/api/admin/quotes', { cache: 'no-store' });
-      if (res.status === 401) { location.href = '/login'; return; }
-      if (res.status === 403) { setError('Admin access required.'); setQuotes([]); return; }
+      const res = await fetch('/api/admin/quotes', { cache: 'no-store', redirect: 'manual' });
+      if (res.status === 401 || res.status === 307 || res.status === 302 || res.type === 'opaqueredirect') {
+        setError('Your session expired. Use Sign out, then sign in again with your Guardrail account.');
+        setQuotes([]);
+        return;
+      }
+      if (res.status === 403) { setError('Admin access required for this account.'); setQuotes([]); return; }
       if (!res.ok) throw new Error('Could not load executive summary');
       const data = await res.json();
       setQuotes(data.quotes || []);

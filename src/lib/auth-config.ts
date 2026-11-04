@@ -43,7 +43,8 @@ export function getBaseUrl(request: Request) {
   const configured = process.env.APP_BASE_URL?.trim().replace(/\/$/, '');
   if (configured) return configured;
 
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  const rawHost = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+  const host = rawHost.split(',')[0]?.trim();
   const protoHeader = request.headers.get('x-forwarded-proto');
   const proto = protoHeader?.split(',')[0]?.trim()
     || (host?.includes('localhost') ? 'http' : 'https');
