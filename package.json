@@ -1,0 +1,13 @@
+{
+  "name": "guardrail-pricing-calculator",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Guardrail Pricing Calculator with Microsoft Entra ID auth",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "jose": "^5.9.6"
+  }
+}

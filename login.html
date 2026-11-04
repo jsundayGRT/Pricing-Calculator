@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Guardrail Pricing Calculator</title>
+<style>
+:root {
+  --brand-black: #060510; --brand-navy: #173C5B; --brand-blue: #1B8ECD; --brand-ice: #EAF6FE; --brand-mist: #A0C4D6; --brand-stone: #EAE8E7;
+  --brand-red: #D24F47;
+  --bg: #F3F8FC;
+  --surface: #ffffff;
+  --border: #E1E3E6;
+  --text: #060510;
+  --muted: #5B6472;
+  --accent: #1B8ECD;
+  --primary: #173C5B;
+  --nav: #173C5B;
+  --nav-muted: #A0C4D6;
+  --hero-a: #173C5B;
+  --hero-b: #1F5F8E;
+  --on-hero: #CFE6F3;
+  --bad: #D24F47;
+  --bad-soft: #FBEDEC;
+  --radius: 16px;
+  --shadow: 0 6px 25px rgba(6, 5, 16, .04);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #060510; --surface: #0F1622; --border: #243243;
+    --text: #EAF6FE; --muted: #9BB0C2; --accent: #4FB0E6; --primary: #1B8ECD;
+    --nav: #12324D; --hero-a: #173C5B; --hero-b: #0B1E30; --on-hero: #CFE6F3;
+    --bad: #EE7A72; --bad-soft: #351816;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(27, 142, 205, .18), transparent 60%),
+    linear-gradient(180deg, #EAF6FE 0%, var(--bg) 42%, var(--bg) 100%);
+  color: var(--text);
+  font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+a { color: var(--accent); }
+.topbar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 max(24px, calc((100vw - 960px) / 2 + 24px)); height: 68px;
+  background: var(--nav); color: #fff;
+}
+.brand { display: flex; align-items: center; gap: 16px; font-weight: 700; }
+.brand img { height: 40px; width: auto; display: block; }
+.brand .brand-sep { width: 1px; height: 30px; background: rgba(160,196,214,.4); }
+.brand .brand-app { color: #fff; font-weight: 600; letter-spacing: -.01em; font-size: 21px; }
+@media (max-width: 560px) {
+  .brand img { height: 32px; }
+  .brand .brand-sep { height: 24px; }
+  .brand .brand-app { font-size: 17px; }
+}
+.shell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px 56px;
+}
+.panel {
+  width: min(420px, 100%);
+}
+.hero {
+  background: linear-gradient(135deg, var(--hero-a), var(--hero-b));
+  border-radius: 13px;
+  padding: 18px 20px;
+  color: #fff;
+  margin-bottom: 16px;
+}
+.hero small { color: var(--on-hero); display: block; }
+.hero h1 {
+  margin: 6px 0 0;
+  font-size: 28px;
+  letter-spacing: -.02em;
+  font-weight: 750;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+.card p {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.btn {
+  font: inherit;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  text-decoration: none;
+}
+.btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.btn.primary:hover { background: var(--accent); border-color: var(--accent); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ms-icon { width: 21px; height: 21px; display: block; flex: none; }
+.err {
+  color: var(--bad);
+  background: var(--bad-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  min-height: 0;
+}
+.err:empty { display: none; }
+.fine {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="/logo.png" alt="Guardrail Technologies" width="135" height="40">
+    <span class="brand-sep" aria-hidden="true"></span>
+    <span class="brand-app">Pricing</span>
+  </div>
+</header>
+
+<div class="shell">
+  <div class="panel">
+    <div class="hero">
+      <small>Guardrail Technologies</small>
+      <h1>Pricing calculator</h1>
+    </div>
+    <div class="card">
+      <div class="err" id="err" role="alert"></div>
+      <p>Sign in with your Guardrail Microsoft account to open the pricing calculator.</p>
+      <a class="btn primary" id="signin" href="/api/auth/login">
+        <svg class="ms-icon" viewBox="0 0 21 21" aria-hidden="true">
+          <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+          <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+          <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+          <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+        </svg>
+        Sign in with Microsoft
+      </a>
+      <div class="fine">Secured with Microsoft Entra ID (OAuth 2.0 / OpenID Connect)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const err = params.get('error');
+  if (err) document.getElementById('err').textContent = err;
+})();
+</script>
+</body>
+</html>
