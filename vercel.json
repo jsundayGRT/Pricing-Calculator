@@ -2,6 +2,9 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "proxy": {
+    "entrypoint": "middleware.js"
+  },
   "rewrites": [
     { "source": "/login", "destination": "/login.html" }
   ]

@@ -15,6 +15,12 @@ function parseCookies(header) {
   return out;
 }
 
+function next() {
+  return new Response(null, {
+    headers: { 'x-middleware-next': '1' },
+  });
+}
+
 async function hasValidSession(request) {
   const secret = process.env.SESSION_SECRET;
   if (!secret) return false;
@@ -31,28 +37,32 @@ async function hasValidSession(request) {
 export default async function middleware(request) {
   const url = new URL(request.url);
   const { pathname } = url;
-  const authed = await hasValidSession(request);
 
-  if (pathname === '/login' || pathname === '/login.html') {
-    if (authed) {
+  // Public auth + static asset paths — never require a session.
+  if (
+    pathname.startsWith('/api/auth/')
+    || pathname === '/login'
+    || pathname === '/login.html'
+    || pathname === '/logo.png'
+    || pathname === '/favicon.ico'
+  ) {
+    if ((pathname === '/login' || pathname === '/login.html') && await hasValidSession(request)) {
       url.pathname = '/';
       url.search = '';
       return Response.redirect(url, 302);
     }
-    if (pathname === '/login.html') {
-      url.pathname = '/login';
-      return Response.redirect(url, 302);
-    }
-    return;
+    return next();
   }
 
-  if (!authed) {
+  if (!(await hasValidSession(request))) {
     url.pathname = '/login';
     url.search = '';
     return Response.redirect(url, 302);
   }
+
+  return next();
 }
 
 export const config = {
-  matcher: ['/', '/index.html', '/login', '/login.html'],
+  matcher: ['/((?!_next/|_vercel/|.*\\..*).*)', '/', '/index.html', '/login', '/login.html'],
 };

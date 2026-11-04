@@ -57,6 +57,9 @@ h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
 h3 { font-size: 15px; margin: 0 0 8px; }
 .hidden { display: none !important; }
+body.sales:not(.authed) > *:not(#auth-boot) { visibility: hidden; }
+#auth-boot { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); color: var(--muted); z-index: 100; font-size: 14px; }
+body.sales.authed #auth-boot { display: none; }
 
 /* ---- top bar */
 .topbar {
@@ -489,6 +492,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 </style>
 </head>
 <body class="sales">
+<div id="auth-boot">Checking sign-in…</div>
 <header class="topbar">
   <div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="135" height="40"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing calculator</span></div>
   <div style="flex:1"></div>
@@ -634,18 +638,19 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 
 <script>
 (function () {
+  function goLogin() { location.replace('/login'); }
   async function loadSession() {
     try {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } });
-      if (res.status === 401) { location.href = '/login'; return; }
-      if (!res.ok) throw new Error('session check failed');
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' }, cache: 'no-store' });
+      if (!res.ok) { goLogin(); return; }
       const me = await res.json();
+      if (!me || !me.email && !me.name && !me.id) { goLogin(); return; }
       const label = document.getElementById('who-label');
-      if (label) label.textContent = me.name ? `${me.name}${me.email ? ' · ' + me.email : ''}` : (me.email || 'Signed in');
+      if (label) label.textContent = me.name ? (me.email ? me.name + ' · ' + me.email : me.name) : (me.email || 'Signed in');
+      document.body.classList.add('authed');
     } catch (err) {
       console.error(err);
-      const label = document.getElementById('who-label');
-      if (label) label.textContent = 'Signed in';
+      goLogin();
     }
   }
   loadSession();
