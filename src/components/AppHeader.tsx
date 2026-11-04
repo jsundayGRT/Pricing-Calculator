@@ -1,4 +1,4 @@
-import Link from 'next/link';
+/* eslint-disable @next/next/no-html-link-for-pages */
 import { isAdmin } from '@/lib/admin';
 import type { SessionUser } from '@/lib/session';
 
@@ -22,12 +22,12 @@ export function AppHeader({
       {user ? (
         <>
           <nav className="nav">
-            <Link href="/" className={active === 'dashboard' ? 'active' : undefined}>Dashboard</Link>
-            <Link href="/calculator" className={active === 'calculator' ? 'active' : undefined}>Calculator</Link>
+            <a href="/" className={active === 'dashboard' ? 'active' : undefined}>Dashboard</a>
+            <a href="/calculator" className={active === 'calculator' ? 'active' : undefined}>Calculator</a>
             {admin ? (
-              <Link href="/executive" className={active === 'executive' ? 'active' : undefined}>
+              <a href="/executive" className={active === 'executive' ? 'active' : undefined}>
                 Executive summary
-              </Link>
+              </a>
             ) : null}
           </nav>
           <div className="who">
@@ -35,7 +35,7 @@ export function AppHeader({
               {user.name}{user.email ? ` · ${user.email}` : ''}
               {admin ? ' · Admin' : ''}
             </span>
-            <Link className="btn small" href="/api/auth/logout">Sign out</Link>
+            <a className="btn small" href="/api/auth/logout">Sign out</a>
           </div>
         </>
       ) : null}

@@ -22,6 +22,11 @@ function redirectTo(request: Request, path: string) {
   return NextResponse.redirect(new URL(path, getBaseUrl(request)));
 }
 
+function signedInHtml(destination: string) {
+  const next = JSON.stringify(destination);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Signing in…</title></head><body><script>location.replace(${next})</script></body></html>`;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   try {
@@ -48,7 +53,14 @@ export async function GET(request: Request) {
 
     const sessionToken = await createSessionToken(user);
     const destination = isAdmin(user) ? '/executive' : '/';
-    const response = redirectTo(request, destination);
+    // 200 page, not a redirect. Browsers often drop a cookie set on the
+    // cross-site bounce back from Microsoft, so the next tab looks signed out.
+    const response = new NextResponse(signedInHtml(destination), {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+    });
     response.cookies.set(SESSION_COOKIE, sessionToken, sessionCookieOptions(isSecureRequest(request)));
     response.cookies.set(OAUTH_COOKIE, '', { ...oauthCookieOptions(isSecureRequest(request)), maxAge: 0 });
     return response;

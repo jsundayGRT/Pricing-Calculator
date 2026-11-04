@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+/* eslint-disable @next/next/no-html-link-for-pages */
 import { useEffect, useMemo, useState } from 'react';
 
 type QuoteSummary = {
@@ -86,7 +86,7 @@ export function DashboardClient({ userName }: { userName: string }) {
           <h1>Your dashboard</h1>
           <p className="sub">Locked pricing requests for {userName}</p>
         </div>
-        <Link className="btn primary" href="/calculator">New pricing request</Link>
+        <a className="btn primary" href="/calculator">New pricing request</a>
       </div>
 
       <div className="hero">
@@ -110,7 +110,7 @@ export function DashboardClient({ userName }: { userName: string }) {
           <p>No locked quotes yet.</p>
           <p style={{ marginTop: 8 }}>Open the calculator, lock a pricing request, and it will show up here.</p>
           <div style={{ marginTop: 16 }}>
-            <Link className="btn primary" href="/calculator">Open calculator</Link>
+            <a className="btn primary" href="/calculator">Open calculator</a>
           </div>
         </div>
       ) : (
@@ -133,9 +133,9 @@ export function DashboardClient({ userName }: { userName: string }) {
                   {q.stage ? <div>Stage: {q.stage}</div> : null}
                 </div>
                 <div className="quote-actions">
-                  <Link className="btn small" href={`/calculator?revise=${encodeURIComponent(q.id)}`}>
+                  <a className="btn small" href={`/calculator?revise=${encodeURIComponent(q.id)}`}>
                     Open / revise
-                  </Link>
+                  </a>
                   <button
                     className="btn small"
                     type="button"
