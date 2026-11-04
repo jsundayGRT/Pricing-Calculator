@@ -64,8 +64,18 @@ export function claimsFromIdToken(idToken: string) {
   return JSON.parse(json) as Record<string, unknown>;
 }
 
+function claimEmails(claims: Record<string, unknown>): string[] {
+  const raw: unknown[] = [claims.email, claims.preferred_username, claims.upn];
+  if (Array.isArray(claims.emails)) raw.push(...claims.emails);
+  return [...new Set(
+    raw.map((v) => String(v || '').trim().toLowerCase()).filter((v) => v.includes('@')),
+  )];
+}
+
 export function userFromClaims(claims: Record<string, unknown>): SessionUser {
-  const email = String(claims.preferred_username || claims.email || '').trim().toLowerCase();
+  const emails = claimEmails(claims);
+  // Prefer the company mailbox over an onmicrosoft.com UPN when both are present.
+  const email = emails.find((e) => e.endsWith('@guardrail.tech')) || emails[0] || '';
   const name = String(claims.name || email || 'Guardrail user').trim();
   const oid = String(claims.oid || claims.sub || '').trim();
   if (!email && !oid) throw new Error('Microsoft account did not return an identity');
