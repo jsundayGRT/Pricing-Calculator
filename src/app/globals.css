@@ -294,3 +294,4 @@ table.exec .reason { color: var(--bad); font-size: 12px; margin-top: 4px; }
 .neg { color: var(--bad); }
 .pos { color: var(--ok); }
 .flag.bad { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+.flag.ok { background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }

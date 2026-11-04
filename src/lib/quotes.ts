@@ -116,6 +116,19 @@ export function upsertQuote(input: {
   return record;
 }
 
+export function approveQuote(id: string, approver: { name: string; email: string }) {
+  const store = readStore();
+  const quote = store.quotes.find((q) => q.id === id);
+  if (!quote) return null;
+  const now = new Date().toISOString();
+  const approval = { by: approver.name || approver.email, email: approver.email, at: now.slice(0, 10) };
+  quote.snapshot = { ...quote.snapshot, approval, status: 'APPROVED' };
+  quote.status = 'APPROVED';
+  quote.updatedAt = now;
+  writeStore(store);
+  return quote;
+}
+
 export function deleteQuoteForUser(ownerId: string, id: string) {
   const store = readStore();
   const before = store.quotes.length;

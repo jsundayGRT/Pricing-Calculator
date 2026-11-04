@@ -601,20 +601,8 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
           <button class="btn primary grow" id="lockbtn" type="button">Lock in pricing request</button>
           <button class="btn hidden" id="printbtn" type="button">Download quote PDF again</button>
         </div>
-        <div id="review-mail" class="review-mail hidden">
-          <div><b>Sent for Deal Review.</b> <span id="review-where"></span> No quote PDF until it's approved.</div>
-          <div class="apr">
-            <div class="label">When it's approved, record it here</div>
-            <div class="row2">
-              <div class="field"><label class="label" for="apr-by">Approved by</label><input id="apr-by" type="text" maxlength="80" placeholder="Executive's name"></div>
-              <div class="field"><label class="label" for="apr-link">Link to the approval</label><input id="apr-link" type="text" placeholder="Optional link" spellcheck="false"></div>
-            </div>
-            <button class="btn primary" type="button" id="apr-unlock">Record approval and download PDF</button>
-            <div class="err" id="apr-err"></div>
-          </div>
-        </div>
         <div class="err" id="lockerr"></div>
-        <div class="hint">Downloads the quote as a PDF to send to the customer and the executive team. A Deal Review is held until an executive approves it. Later changes save as the next version.</div>
+        <div class="hint">Downloads the quote as a PDF. A Deal Review is approved on the Executive Dashboard. Later changes save as the next version.</div>
       </div>
       <div class="card hidden" id="history-card">
         <h2>Your locked requests <span class="optional">This browser</span></h2>
@@ -2256,7 +2244,6 @@ async function readRequestFile(f) {
     lockedSinceChange = false;
     const out = $('#out'), empty = $('#empty'), lock = $('#lock');
     $('#printbtn').classList.add('hidden');
-    $('#review-mail').classList.add('hidden');
     const hide = (msg) => { showChipPrices(null); showDiscountsSoFar(null); updateMobileBar(null); out.classList.add('hidden'); lock.classList.add('hidden'); empty.classList.remove('hidden'); empty.textContent = msg; lastResult = null; };
     if (!state.band || !state.location) return hide(`To see the price, choose ${!state.band && !state.location ? 'an employee band and a buyer location' : !state.band ? 'an employee band' : 'a buyer location'} on the left.`);
     if (state.band === 'Enterprise' && !(Number(state.seats) > 0)) return hide('Enter the Enterprise seat count to see pricing.');
@@ -2288,37 +2275,11 @@ async function readRequestFile(f) {
     const d = new Date(), p = (n) => String(n).padStart(2, '0');
     return `GRT-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   }
-  // A Deal Review stays locked until an executive approval is recorded.
   const APPROVALS_KEY = 'grt-approvals-v2';
   const approvalKey = (s) => `${s.requestId}-v${s.version}`;
   function readApprovals() { try { return JSON.parse(localStorage.getItem(APPROVALS_KEY) || '{}'); } catch { return {}; } }
-  function approvalFor(s) { return readApprovals()[approvalKey(s)] || null; }
-  function saveApproval(s, a) { try { const all = readApprovals(); all[approvalKey(s)] = a; localStorage.setItem(APPROVALS_KEY, JSON.stringify(all)); } catch { /* fine */ } }
+  function approvalFor(s) { return s.approval || readApprovals()[approvalKey(s)] || null; }
   function withApproval(s) { const a = approvalFor(s); return a ? { ...s, approval: a } : s; }
-  function recordApproval(s, by, link) {
-    by = by.trim(); link = link.trim();
-    if (!by) return 'Enter who approved it.';
-    if (link && !/^https:\/\/\S+$/i.test(link)) return 'The approval link must start with https://';
-    const a = { by, at: new Date().toISOString().slice(0, 10), link: link || null, via: link ? 'link' : null };
-    saveApproval(s, a);
-    downloadQuotePdf({ ...s, approval: a });
-    renderHistory();
-    toast(`Approval by ${by} recorded. Quote PDF downloaded.`);
-    return null;
-  }
-  function showReviewMail(s) {
-    const box = $('#review-mail');
-    if (!s || s.status !== 'DEAL REVIEW') { box.classList.add('hidden'); return; }
-    $('#review-where').textContent = 'Held for an executive to approve. No quote PDF until then.';
-    $('#apr-by').value = ''; $('#apr-link').value = ''; $('#apr-err').textContent = '';
-    box.classList.remove('hidden');
-  }
-  $('#apr-unlock').addEventListener('click', () => {
-    if (!lastLocked) return;
-    const err = recordApproval(lastLocked, $('#apr-by').value, $('#apr-link').value);
-    if (err) { $('#apr-err').textContent = err; return; }
-    $('#review-mail').classList.add('hidden'); $('#printbtn').classList.remove('hidden');
-  });
   $('#lockbtn').addEventListener('click', () => {
     const name = $('#cname').value.trim(), rep = $('#repname').value.trim();
     const hubspot = $('#hubspot').value.trim(), stage = $('#stage').value;
@@ -2347,9 +2308,8 @@ async function readRequestFile(f) {
     const review = snap.status === 'DEAL REVIEW';
     showBanner(snap, true);
     saveHistory(snap); renderHistory();
-    showReviewMail(snap);
     if (review) {
-      toast(`Locked ${requestId}, version ${version}. Held for Deal Review.`);
+      toast(`Locked ${requestId}, version ${version}. Sent to the Executive Dashboard for approval.`);
     } else {
       downloadQuotePdf(snap);
       $('#printbtn').classList.remove('hidden');
@@ -2401,14 +2361,13 @@ async function readRequestFile(f) {
     $('#history').innerHTML = h.map((s, i) => {
       const review = s.status === 'DEAL REVIEW', apr = review ? approvalFor(s) : null;
       return `<div class="hist"><div><b>${esc(s.customerName)}</b> · v${s.version}${s.stage ? ` · <span class="stage">${esc(s.stage)}</span>` : ''}<div class="hint">${esc(fmtDate(s.lockedAt))} · ${moneyFor(s.customer.fx)(s.customer.finalPrice)} ${apr ? `<span class="pill standard">Approved by ${esc(apr.by)}</span>${apr.link ? ` <a href="${esc(apr.link)}" target="_blank" rel="noopener noreferrer">link ↗</a>` : ''}` : `<span class="pill ${review ? 'review' : 'standard'}">${review ? 'Deal Review' : 'Standard'}</span>`}</div></div>
-        <div class="acts">${review && !apr ? `<button class="btn small" type="button" data-h="${i}" data-a="code">Record approval</button>` : `<button class="btn small" type="button" data-h="${i}" data-a="pdf">Quote PDF</button>`}<button class="btn small" type="button" data-h="${i}" data-a="revise">Revise</button></div></div>`;
+        <div class="acts">${review && !apr ? '' : `<button class="btn small" type="button" data-h="${i}" data-a="pdf">Quote PDF</button>`}<button class="btn small" type="button" data-h="${i}" data-a="revise">Revise</button></div></div>`;
     }).join('');
   }
   $('#history').addEventListener('click', (e) => {
     const b = e.target.closest('[data-h]'); if (!b) return;
     const s = readHistory()[Number(b.dataset.h)]; if (!s) return;
-    if (b.dataset.a === 'pdf') { if (s.status === 'DEAL REVIEW' && !approvalFor(s)) return toast('Record the approval first.'); downloadQuotePdf(withApproval(s)); }
-    if (b.dataset.a === 'code') { lastLocked = s; showReviewMail(s); $('#review-mail').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#apr-by').focus(); }
+    if (b.dataset.a === 'pdf') { if (s.status === 'DEAL REVIEW' && !approvalFor(s)) return toast('An executive approves this on the Executive Dashboard first.'); downloadQuotePdf(withApproval(s)); }
     if (b.dataset.a === 'revise') { loadForRevision(s); window.scrollTo(0, 0); }
   });
 

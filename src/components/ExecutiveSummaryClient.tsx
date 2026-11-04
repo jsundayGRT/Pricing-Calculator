@@ -62,6 +62,27 @@ export function ExecutiveSummaryClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [approving, setApproving] = useState(false);
+
+  async function approve(id: string) {
+    setApproving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/quotes/${encodeURIComponent(id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve' }),
+      });
+      if (!res.ok) throw new Error('Could not approve this request');
+      const data = await res.json();
+      setDetail(data);
+      setQuotes((prev) => (prev || []).map((q) => (q.id === id ? data.summary : q)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not approve this request');
+    } finally {
+      setApproving(false);
+    }
+  }
 
   async function load() {
     setError('');
@@ -73,11 +94,11 @@ export function ExecutiveSummaryClient() {
         return;
       }
       if (res.status === 403) { setError('Admin access required for this account.'); setQuotes([]); return; }
-      if (!res.ok) throw new Error('Could not load executive summary');
+      if (!res.ok) throw new Error('Could not load the Executive Dashboard');
       const data = await res.json();
       setQuotes(data.quotes || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load executive summary');
+      setError(err instanceof Error ? err.message : 'Could not load the Executive Dashboard');
       setQuotes([]);
     }
   }
@@ -142,7 +163,7 @@ export function ExecutiveSummaryClient() {
     <main className="page">
       <div className="page-head">
         <div>
-          <h1>Executive summary</h1>
+          <h1>Executive Dashboard</h1>
           <p className="sub">All locked pricing requests · Deal Reviews first · internal economics included</p>
         </div>
         <button className="btn small" type="button" onClick={() => void load()}>Refresh</button>
@@ -161,6 +182,7 @@ export function ExecutiveSummaryClient() {
             <select id="f-status" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="ALL">All</option>
               <option value="DEAL REVIEW">Deal Review</option>
+              <option value="APPROVED">Approved</option>
               <option value="STANDARD">Standard</option>
             </select>
           </div>
@@ -209,6 +231,7 @@ export function ExecutiveSummaryClient() {
             <tbody>
               {filtered.map((q) => {
                 const review = q.status === 'DEAL REVIEW';
+                const approved = q.status === 'APPROVED';
                 return (
                   <tr
                     key={q.id}
@@ -236,7 +259,7 @@ export function ExecutiveSummaryClient() {
                     <td className="num">{money(q.year1Due, q.currency)}</td>
                     <td>
                       <span className={`pill ${review ? 'review' : 'standard'}`}>
-                        {review ? 'Deal Review' : 'Standard'}
+                        {review ? 'Deal Review' : approved ? 'Approved' : 'Standard'}
                       </span>
                       {review && q.reviewReason ? <div className="reason">{q.reviewReason}</div> : null}
                     </td>
@@ -270,10 +293,17 @@ export function ExecutiveSummaryClient() {
               <>
                 {detail.summary.status === 'DEAL REVIEW' ? (
                   <div className="flag bad">
-                    Deal Review
-                    {detail.summary.reviewReason ? `: ${detail.summary.reviewReason}` : ''}
-                    {detail.summary.dealNote ? ` — ${detail.summary.dealNote}` : ''}
+                    <div>
+                      Deal Review
+                      {detail.summary.reviewReason ? `: ${detail.summary.reviewReason}` : ''}
+                      {detail.summary.dealNote ? ` — ${detail.summary.dealNote}` : ''}
+                    </div>
+                    <button className="btn primary" type="button" style={{ marginTop: 12 }} disabled={approving} onClick={() => void approve(detail.summary.id)}>
+                      {approving ? 'Approving…' : 'Approve'}
+                    </button>
                   </div>
+                ) : detail.summary.status === 'APPROVED' ? (
+                  <div className="flag ok">Approved{detail.quote.snapshot && (detail.quote.snapshot as { approval?: { by?: string } }).approval?.by ? ` by ${(detail.quote.snapshot as { approval?: { by?: string } }).approval?.by}` : ''}</div>
                 ) : null}
 
                 <div className="card" style={{ marginBottom: 16 }}>

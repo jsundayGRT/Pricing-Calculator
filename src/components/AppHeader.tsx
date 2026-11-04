@@ -26,7 +26,7 @@ export function AppHeader({
             <a href="/calculator" className={active === 'calculator' ? 'active' : undefined}>Calculator</a>
             {admin ? (
               <a href="/executive" className={active === 'executive' ? 'active' : undefined}>
-                Executive summary
+                Executive Dashboard
               </a>
             ) : null}
           </nav>
