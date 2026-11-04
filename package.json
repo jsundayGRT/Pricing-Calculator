@@ -1,13 +1,26 @@
 {
   "name": "guardrail-pricing-calculator",
+  "version": "0.2.0",
   "private": true,
-  "version": "1.0.0",
-  "description": "Guardrail Pricing Calculator with Microsoft Entra ID auth",
-  "type": "module",
-  "engines": {
-    "node": ">=18"
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "jose": "^5.9.6"
+    "jose": "^5.9.6",
+    "next": "15.5.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.6",
+    "typescript": "^5"
   }
 }

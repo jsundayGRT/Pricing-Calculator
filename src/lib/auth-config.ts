@@ -1,10 +1,23 @@
-function required(name) {
+export type AuthConfig = {
+  tenantId: string;
+  clientId: string;
+  clientSecret: string;
+  sessionSecret: string;
+  allowedEmailDomain: string | null;
+  authority: string;
+  authorizeUrl: string;
+  tokenUrl: string;
+  logoutUrl: string;
+  scopes: string;
+};
+
+function required(name: string) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
 }
 
-export function getAuthConfig() {
+export function getAuthConfig(): AuthConfig {
   const tenantId = required('AZURE_AD_TENANT_ID');
   const clientId = required('AZURE_AD_CLIENT_ID');
   const clientSecret = required('AZURE_AD_CLIENT_SECRET');
@@ -26,18 +39,18 @@ export function getAuthConfig() {
   };
 }
 
-export function getBaseUrl(req) {
+export function getBaseUrl(request: Request) {
   const configured = process.env.APP_BASE_URL?.trim().replace(/\/$/, '');
   if (configured) return configured;
 
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
-  const protoHeader = req.headers['x-forwarded-proto'];
-  const proto = (Array.isArray(protoHeader) ? protoHeader[0] : protoHeader)?.split(',')[0]?.trim()
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  const protoHeader = request.headers.get('x-forwarded-proto');
+  const proto = protoHeader?.split(',')[0]?.trim()
     || (host?.includes('localhost') ? 'http' : 'https');
   if (!host) throw new Error('Unable to determine request host for redirect URI');
   return `${proto}://${host}`;
 }
 
-export function getRedirectUri(req) {
-  return `${getBaseUrl(req)}/api/auth/callback`;
+export function getRedirectUri(request: Request) {
+  return `${getBaseUrl(request)}/api/auth/callback`;
 }

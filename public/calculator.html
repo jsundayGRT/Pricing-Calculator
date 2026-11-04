@@ -57,9 +57,7 @@ h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
 h3 { font-size: 15px; margin: 0 0 8px; }
 .hidden { display: none !important; }
-body.sales:not(.authed) > *:not(#auth-boot) { visibility: hidden; }
-#auth-boot { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); color: var(--muted); z-index: 100; font-size: 14px; }
-body.sales.authed #auth-boot { display: none; }
+
 
 /* ---- top bar */
 .topbar {
@@ -490,13 +488,14 @@ a.btn { text-decoration: none; display: inline-block; }
 body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 
 </style>
+<style>html.embedded .topbar, html.embedded #auth-boot { display: none !important; }</style>
+<script>if (window.self !== window.top) document.documentElement.classList.add("embedded");</script>
 </head>
 <body class="sales">
-<div id="auth-boot">Checking sign-in…</div>
 <header class="topbar">
   <div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="135" height="40"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing calculator</span></div>
   <div style="flex:1"></div>
-  <div class="who" id="who"><span id="who-label">Signing in…</span><a class="btn small" id="signout" href="/api/auth/logout">Sign out</a></div>
+  <div class="who" id="who"><a class="btn small" href="/">Dashboard</a><a class="btn small" id="signout" href="/api/auth/logout">Sign out</a></div>
 </header>
 
 <main class="page" id="tab-calc">
@@ -636,26 +635,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 
 <script type="application/json" id="grt-config">{"version":1,"note":"Initial import from GRT_Pricing_Model_OCT 2026 v14 1.xlsx","updatedAt":"2026-11-02T20:11:28.086Z","config":{"source":"GRT_Pricing_Model_OCT 2026 v14 1.xlsx — Assumptions tab","tiers":["Micro","SMB","Mid-Market","Corporate","Enterprise"],"locations":["US","AUS","LATAM"],"terms":["1-Year","2-Year","3+ Year"],"modules":[{"key":"codeAi","name":"Code + AI","billing":"devSeats"},{"key":"shadow","name":"Shadow","billing":"governed"},{"key":"drift","name":"Drift","billing":"governed"},{"key":"content","name":"Content","billing":"governed"},{"key":"creative","name":"Creative","billing":"governed"},{"key":"aiq","name":"AiQ","billing":"governed"}],"tier":{"governedEmployees":{"Micro":20,"SMB":100,"Mid-Market":500,"Corporate":1000,"Enterprise":2500},"workflows":{"Micro":1,"SMB":4,"Mid-Market":6,"Corporate":8,"Enterprise":20},"seatRate":{"codeAi":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"shadow":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"drift":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"content":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"creative":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"aiq":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7}},"pilotFeePerModule":{"Micro":1200,"SMB":1200,"Mid-Market":1200,"Corporate":1200,"Enterprise":1200},"commandCenterMonthly":{"Micro":2000,"SMB":4000,"Mid-Market":7000,"Corporate":13000,"Enterprise":18000},"implementation":{"Micro":12000,"SMB":25000,"Mid-Market":40000,"Corporate":65000,"Enterprise":150000},"premiumSupportPct":{"Micro":0,"SMB":0,"Mid-Market":0,"Corporate":0.1,"Enterprise":0.1},"cac":{"Micro":4000,"SMB":30000,"Mid-Market":70000,"Corporate":110000,"Enterprise":200000},"usageIntensity":{"Micro":0.7,"SMB":0.85,"Mid-Market":1,"Corporate":1.1,"Enterprise":1.25},"csHoursPerMonth":{"Micro":0.5,"SMB":1,"Mid-Market":4,"Corporate":8,"Enterprise":16},"supportTicketsPerMonth":{"Micro":2,"SMB":5,"Mid-Market":15,"Corporate":30,"Enterprise":60},"hostingBaselinePerYear":{"Micro":1200,"SMB":2400,"Mid-Market":6000,"Corporate":9600,"Enterprise":18000},"securityAuditPerYear":{"Micro":500,"SMB":1500,"Mid-Market":4000,"Corporate":7500,"Enterprise":15000},"implementationHours":{"Micro":40,"SMB":100,"Mid-Market":240,"Corporate":400,"Enterprise":600}},"devSeatRatio":0.25,"modulesInSuite":5,"bundleDiscountByModuleCount":[0,0.05,0.1,0.15,0.2,0.25],"unitCosts":{"inferencePerSeatMonth":1.2,"cloudPerSeatMonth":0.6,"dataPerSeatMonth":0.35,"licensesPerSeatMonth":0.25,"commandCenterRuntimePerWorkflowMonth":45,"csCostPerHour":85,"supportCostPerTicket":45,"implementationCostPerHour":110,"rdPctOfRecurring":0.22,"gaPctOfRecurring":0.12,"retainedLifeYears":3},"enterprise":{"commandCenter":{"coefficient":6324.56,"exponent":0.5},"trafficLight":{"coefficient":3794.73,"exponent":-0.5},"inferenceCost":{"coefficient":20112.92,"exponent":0.3},"inferenceCharge":{"coefficient":16760.77,"exponent":0.3},"techSupportCost":{"coefficient":5586.92,"exponent":0.3},"hostingSecurityCost":{"coefficient":13967.31,"exponent":0.3},"implementation":{"coefficient":8812.48,"exponent":0.3},"implementationCap":450000,"csHours":{"coefficient":2.0143,"exponent":0.3}},"policy":{"minimumMargin":0.36,"marginTarget":{"US":0.6,"AUS":0.4,"LATAM":0.4},"earlyPayDiscount":0.05,"multiYearDiscount":{"1-Year":0,"2-Year":0.05,"3+ Year":0.075},"inferencePctOfArr":0.125726,"onPremCostPerSeatYear":0,"termYears":{"1-Year":1,"2-Year":2,"3+ Year":3},"annualUplift":0,"repDiscountLimit":0.2,"quoteValidDays":30,"foldCustomerSuccess":false,"pilotStandardModules":["shadow","drift","codeAi"]},"dealReviewEmail":"","slackWebhookUrl":"","slackChannel":"#deal-review","pilotRules":{"AUS":{"currency":"AUD","thresholdYear1":75000,"flatFee":20000,"percentOfYear1":0.2}},"currencyByLocation":{"US":"USD","AUS":"AUD","LATAM":"MXN"},"fxRates":{"AUD":{"rate":1.42,"asOf":"2026-10-29","source":"FXStreet AUD/USD market rate","url":"https://www.fxstreet.com/news/australian-dollar-edges-higher-above-07050-as-hot-cpi-lifts-rba-rate-hike-odds-202610290240"},"MXN":{"rate":18.6,"asOf":"2026-10-29","source":"Banco de México reported rate","url":"https://world-today-journal.com/banco-de-mexico-reports-usd-mxn-exchange-rate-at-18-66/"}},"permissions":{"scopedOnPremPriceEditors":["exec","admin"]}}}</script>
 
-<script>
-(function () {
-  function goLogin() { location.replace('/login'); }
-  async function loadSession() {
-    try {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' }, cache: 'no-store' });
-      if (!res.ok) { goLogin(); return; }
-      const me = await res.json();
-      if (!me || !me.email && !me.name && !me.id) { goLogin(); return; }
-      const label = document.getElementById('who-label');
-      if (label) label.textContent = me.name ? (me.email ? me.name + ' · ' + me.email : me.name) : (me.email || 'Signed in');
-      document.body.classList.add('authed');
-    } catch (err) {
-      console.error(err);
-      goLogin();
-    }
-  }
-  loadSession();
-})();
-</script>
+
 
 <script>
 const PDF_LOGO = {"w": 317, "h": 94, "rgb": "eNrtnUuSHCEMRA/iO/tmPoy3XhhvJ8bjMqBMIVEvo1cTU9UqmgcF+jBGtn7++v3lZyCETutfeK5+aEmEWqAKwgi1RhV+EeoOLPwi1JRW+EWoNbDAi1BHWuEXodbAAi+C1js+/KYIYIEXIWgFXoQqA1vfEoQIRyw7nvDrI7D1EQG2CFmJwFSESK8bpAQipEYAyxHq0vkjX/rt+49Pn3aPgFAvbOOQznwKPghC25PUKWxzaA3yC7Zvm2WK0/rcn7cfR969VbQm8HvwHQYAX4vtx55cAVsfsBvwNnIuA+N92E724YPY5tC6ym8mL3ijwLYRtqeAnYE3hxTCP8B2D40j2FYA9hleNyYEW4It2PbClhhpsO34kvxmbCV3BluwBds0bK03hEr8tmCbjG28N0LlTdj+TYrwccC2yFmBYFsEW2sILtgmY5u8jxT5ImEVoI2vkBcjmmmWh6sm7dF2P9a2lbGtOa3898L4FvckO3IzlrCdtMfRA8EWbIXYqvxTq4wIzdgYMRKw/dQJwbYCtvn+Gge2Qrdy5HKHsxts8SeCrQM9a0GwCth+5BFswTYH26X16R4mqz0NbMEWbJduuI2tPExFONp86W4DW9yFqlI5Vmzjg5WQPokDLnJziU8HbME2x28befAjYdjaYWTMBTJt5PUUwXZv0XHTGV5g+2xe2irD0VxL8U5g2xrbycvrYysxLy0o0dFcwkUu2IJtnSip67G9ckvqSmxzdpKrYWvyk7bG9tadZLA1bdad2kkGW1O8Xxq2ryW3gus2E1trVFJTbH1BtmBbGVtHHbl8bI/sJIMt2B7EVl5KLhPblzuAfBl5ZbHtTm6FijQObOeDgdv5beXNtVG5oh22N024w1BqtQK2SzH8mdjGyXVsvAtz8fKxfeF78qhxJpcwyHYj9UZonnVzwOcva722feF78vCfR+BLadkbSYSDwHb8pDZv6FZsZ4bf+Cm3r2I24ZGPlG1ZHY7SIrTB9gFbySQy6qXEWuujukeVmuPAiGUrlMK2crjF5AKn+1E1R+x3vwlIikhUiJISRkS/JLgRbN3GW1/dtUzFIR2i3EDtiJGWSjB5UEgatq3JrWC5b6Ed3HOI39CBrcqFkZa4N/P/PmzHv8+dAdsEk7S3velIHWqqJMwXp4ont2AWoS7T1hFsOfcZoeITLlMtQr3IlZuKENhaye2yE4UQE66EWTm2G98VsW0v2vn5jzPH2bsT4ZOL325cLonfTtvDjzsfL2Y2E9tIbMZe39vDKn5KSELiZLD9hSYVibkd/sKz2lGlBbbBS7b73ipWkkwoU7MLh013WtM4EfPjILcms9dj+xDTqD2MRph1GxlbbsL2OLluq+RNpH0hNGXGbZeyWX0uN7bxQUn1++b8svXJTbDnLLaOziDHNminFVs3WZLZdpw7dFUbG38Zs2BbAduZA0C1S37tTledlNKxlWeRbAbYvny2PYhtxzl39VDRssweWdvm9M9t3peWb/G1rcrII2vb4Av8KXLrf3XCbFvWASTM4reuCq1eqsyd5CLYmo7IKRXHmOk3vNtvG8fWEarRHdtI6ZUWX1cT20ihVNWbXk6UVM5mTmVsq9Vd0R64Q8oAQiOx3FmF+yMEuVqyYBahmuQ6jjbgF0Eopziw9j4IoeNH4cAsQleSS/sj1ItcWh6hXuTS5gg1IpemRqgXvLQwQr3IpW0RagQv7YlQI3JpRoTuSz1ACBWBlxZDqBG8tBJCjeClZRDqwi/tgNCq/gBhEf29", "alpha": "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"};
@@ -2455,6 +2435,13 @@ async function readRequestFile(f) {
   function readHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } }
   function saveHistory(snap) {
     try { const h = readHistory().filter((x) => !(x.requestId === snap.requestId && x.version === snap.version)); h.unshift(snap); localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 50))); } catch { /* storage unavailable */ }
+    // Persist to the signed-in user's server dashboard (best-effort).
+    fetch('/api/quotes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ snapshot: snap }),
+    }).catch(() => { /* offline / signed out */ });
   }
   function renderHistory() {
     const h = readHistory();
@@ -2486,6 +2473,19 @@ async function readRequestFile(f) {
 
   // ---------------------------------------------------------------- start
   buildControls(); sync(); renderVer(); recalc(); renderHistory();
+  (async function loadDashboardRevise() {
+    const id = new URLSearchParams(location.search).get('revise');
+    if (!id) return;
+    try {
+      const res = await fetch('/api/quotes/' + encodeURIComponent(id), { credentials: 'same-origin', cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.quote && data.quote.snapshot) {
+        loadForRevision(data.quote.snapshot);
+        toast('Loaded ' + data.quote.requestId + ' from your dashboard.');
+      }
+    } catch { /* ignore */ }
+  })();
   window.GRT = { Engine, get config() { return cfg; } }; // used by the automated parity check
 })();
 

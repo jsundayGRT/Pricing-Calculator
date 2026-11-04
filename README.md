@@ -1,57 +1,47 @@
 # Guardrail Pricing Calculator
 
-Static pricing calculator protected by **Microsoft Entra ID** (OAuth 2.0 / OpenID Connect) on Vercel.
+React (Next.js) app with **Microsoft Entra ID** sign-in and a **per-user dashboard** for locked quotes.
 
-## Auth overview
+## What you get
 
 | Route | Purpose |
 | --- | --- |
-| `/login` | Sign-in screen with **Sign in with Microsoft** |
-| `/api/auth/login` | Starts Entra authorization code + PKCE flow |
-| `/api/auth/callback` | Exchanges code, creates HTTP-only session cookie |
-| `/api/auth/me` | Returns the signed-in user |
-| `/api/auth/logout` | Clears the session and ends the Entra session |
+| `/login` | Sign in with Microsoft |
+| `/` | Personal dashboard (only your locked quotes) |
+| `/calculator` | Pricing calculator |
+| `/api/quotes` | Save / list quotes for the signed-in user |
 
-Unauthenticated visits to `/` are redirected to `/login` by Vercel Edge Middleware.
-
-Secrets stay server-side in environment variables. The browser only receives an opaque signed session cookie.
-
-## Entra ID app registration
-
-1. In [Microsoft Entra admin center](https://entra.microsoft.com/) → **App registrations** → **New registration**
-2. Supported account types: **Accounts in this organizational directory only** (single tenant)
-3. Platform: **Web**
-4. Redirect URIs:
-   - Production: `https://YOUR_VERCEL_DOMAIN/api/auth/callback`
-   - Local: `http://localhost:3000/api/auth/callback`
-5. Certificates & secrets → create a **Client secret**
-6. Copy **Application (client) ID**, **Directory (tenant) ID**, and the secret value
-
-Optional: set `AZURE_AD_ALLOWED_EMAIL_DOMAIN` (for example `guardrail.ai`) to reject other domains even inside the tenant.
+After you lock a pricing request in the calculator, it is saved to **your** dashboard (not shared with other users).
 
 ## Environment variables
-
-Copy `.env.example` to `.env.local` for local use, and set the same values in the Vercel project:
 
 | Variable | Required | Description |
 | --- | --- | --- |
 | `AZURE_AD_TENANT_ID` | Yes | Directory (tenant) ID |
 | `AZURE_AD_CLIENT_ID` | Yes | Application (client) ID |
 | `AZURE_AD_CLIENT_SECRET` | Yes | Client secret value |
-| `SESSION_SECRET` | Yes | Long random string used to sign cookies (`openssl rand -base64 48`) |
-| `AZURE_AD_ALLOWED_EMAIL_DOMAIN` | No | Restrict sign-in to one email domain |
-| `APP_BASE_URL` | No | Public origin if proxy headers are unavailable |
+| `SESSION_SECRET` | Yes | Long random string (`openssl rand -base64 48`) |
+| `AZURE_AD_ALLOWED_EMAIL_DOMAIN` | No | Restrict to one email domain |
+| `APP_BASE_URL` | No | Public origin override |
 
-## Local preview
+Entra redirect URI:
+
+`https://YOUR_DOMAIN/api/auth/callback`
+
+## Local development
 
 ```bash
 npm install
-npx vercel env pull .env.local   # or copy .env.example → .env.local
-npx vercel dev
+cp .env.example .env.local   # fill in Entra + SESSION_SECRET
+npm run dev
 ```
 
-Open `http://localhost:3000`. You should land on `/login`, then the calculator after Microsoft sign-in.
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Deploy
 
-Push to `main` with the GitHub repo connected to Vercel, then add the environment variables in the Vercel project settings and redeploy.
+Push to `main` with the GitHub repo connected to Vercel. Set the env vars in the Vercel project and redeploy.
+
+### Quote storage note
+
+Quotes are stored in a JSON file (`data/quotes.json` locally, `/tmp/grt-quotes.json` on Vercel). That is fine for an internal MVP; for durable multi-instance production later, swap the store in `src/lib/quotes.ts` for Postgres/Redis.
