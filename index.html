@@ -1,0 +1,2467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guardrail Pricing Calculator</title>
+<style>
+:root {
+  /* Guardrail brand book 2026: primary #060510 black, #173C5B navy, #1B8ECD logo blue, #EAF6FE ice,
+     #A0C4D6 mist, #EAE8E7 stone; secondary #D24F47 (negative only), #72BB6F (positive only), #E6A444 (neutral highlight) */
+  --brand-black: #060510; --brand-navy: #173C5B; --brand-blue: #1B8ECD; --brand-ice: #EAF6FE; --brand-mist: #A0C4D6; --brand-stone: #EAE8E7;
+  --brand-red: #D24F47; --brand-green: #72BB6F; --brand-amber: #E6A444;
+  --bg: #F3F8FC;
+  --surface: #ffffff;
+  --surface-2: #F4F8FB;
+  --border: #E1E3E6;
+  --text: #060510;
+  --muted: #5B6472;
+  --accent: #1B8ECD;
+  --accent-ink: #ffffff;
+  --accent-soft: #EAF6FE;
+  --primary: #173C5B;
+  --nav: #173C5B;
+  --nav-muted: #A0C4D6;
+  --hero-a: #173C5B;
+  --hero-b: #1F5F8E;
+  --on-hero: #CFE6F3;
+  --ok: #3D7F3A;
+  --ok-soft: #EDF7EC;
+  --bad: #D24F47;
+  --bad-soft: #FBEDEC;
+  --warn: #8F5C12;
+  --warn-soft: #FCF3E3;
+  --radius: 16px;
+  --shadow: 0 6px 25px rgba(6, 5, 16, .04);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #060510; --surface: #0F1622; --surface-2: #15202E; --border: #243243;
+    --text: #EAF6FE; --muted: #9BB0C2; --accent: #4FB0E6; --accent-ink: #060510; --accent-soft: #10283B; --primary: #1B8ECD;
+    --nav: #12324D; --nav-muted: #A0C4D6; --hero-a: #173C5B; --hero-b: #0B1E30; --on-hero: #CFE6F3;
+    --ok: #8ED18B; --ok-soft: #13261A; --bad: #EE7A72; --bad-soft: #351816; --warn: #F0C27A; --warn-soft: #2E2310;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.num, td.num, .money { font-variant-numeric: tabular-nums; }
+a { color: var(--accent); }
+h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+h3 { font-size: 15px; margin: 0 0 8px; }
+.hidden { display: none !important; }
+
+/* ---- top bar */
+.topbar {
+  display: flex; align-items: center; gap: 20px; padding: 0 max(24px, calc((100vw - 1240px) / 2 + 24px)); height: 68px;
+  background: var(--nav); color: #fff; position: sticky; top: 0; z-index: 5;
+}
+.brand { font-weight: 700; letter-spacing: .02em; white-space: nowrap; font-size: 17px; }
+.brand span { color: var(--nav-muted); font-weight: 400; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand { gap: 16px; }
+.brand img { height: 40px; width: auto; display: block; }
+.brand .brand-sep { width: 1px; height: 30px; background: rgba(160,196,214,.4); }
+.brand .brand-app { color: #fff; font-weight: 600; letter-spacing: -.01em; font-size: 21px; }
+@media (max-width: 560px) { .brand img { height: 32px; } .brand .brand-sep { height: 24px; } .brand .brand-app { font-size: 17px; } }
+.nav { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
+.nav a { color: var(--nav-muted); text-decoration: none; padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
+.nav a:hover { background: rgba(255,255,255,.08); color: #fff; }
+.nav a.active { color: #fff; background: rgba(255,255,255,.12); font-weight: 600; }
+.who { color: var(--nav-muted); font-size: 13px; white-space: nowrap; display: flex; gap: 10px; align-items: center; }
+.who .btn { background: transparent; color: #fff; border-color: rgba(255,255,255,.25); }
+@media (max-width: 700px) { .topbar { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 8px; } .nav { order: 3; flex-basis: 100%; } }
+
+.hero { background: linear-gradient(135deg, var(--hero-a), var(--hero-b)); border-radius: 13px; padding: 18px 20px; color: #fff; margin-bottom: 16px; }
+.hero small { color: var(--on-hero); display: block; }
+.hero .amount { font-size: 34px; font-weight: 750; letter-spacing: -1px; margin: 4px 0; font-variant-numeric: tabular-nums; }
+.hero .usd { color: var(--on-hero); font-size: 13px; }
+.fxbox { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; }
+.fxbox .rowx { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+.fxbox .muted { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.fxbox input { width: 140px; padding: 6px 8px; }
+
+.page { max-width: 1240px; margin: 0 auto; padding: 24px; }
+.page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.sub { color: var(--muted); margin: 0; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+.card + .card { margin-top: 16px; }
+
+/* ---- calculator layout */
+.calc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 440px); gap: 20px; align-items: start; }
+.results { position: sticky; top: 76px; }
+@media (max-width: 960px) { .calc { grid-template-columns: 1fr; } .results { position: static; } }
+
+.field { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+.label { display: block; font-weight: 600; margin-bottom: 6px; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 560px) { .row2 { grid-template-columns: 1fr; } }
+
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px; }
+.seg button {
+  border: 0; background: transparent; color: var(--muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit;
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 7px 12px; border-radius: 999px;
+  cursor: pointer; font: inherit; display: inline-flex; align-items: center; gap: 6px;
+}
+.chip::before { content: ""; width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--border); box-sizing: border-box; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.chip[aria-pressed="true"]::before { background: var(--accent); border-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3 7.5l2.5 2.5L11 4.5' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"); }
+
+.toggle-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.toggle-row:first-of-type { border-top: 0; padding-top: 0; }
+.switch { position: relative; width: 40px; height: 22px; border-radius: 999px; border: 0; background: var(--border); cursor: pointer; flex: none; padding: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(18px); }
+
+input[type=text], input[type=number], input[type=password], input[type=date], select, textarea {
+  font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%;
+}
+input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input:disabled { background: var(--surface-2); color: var(--muted); }
+.input-affix { position: relative; }
+.input-affix span { position: absolute; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.input-affix.pre input { padding-left: 22px; } .input-affix.pre span { left: 10px; }
+.input-affix.post input { padding-right: 26px; } .input-affix.post span { right: 10px; }
+
+.btn { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn.primary:hover { background: var(--accent); border-color: var(--accent); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn.small { padding: 5px 10px; font-weight: 500; font-size: 13px; }
+.btn.link { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 500; }
+
+.flag { border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-top: 10px; }
+.flag.warn { background: var(--warn-soft); color: var(--warn); }
+.flag.bad { background: var(--bad-soft); color: var(--bad); }
+.flag.ok { background: var(--ok-soft); color: var(--ok); }
+.flag.info { background: var(--accent-soft); color: var(--text); }
+
+/* ---- results */
+.status { border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+.status b { display: block; letter-spacing: .04em; font-size: 13px; }
+.status.standard { background: var(--ok-soft); color: var(--ok); }
+.status.review { background: var(--bad-soft); color: var(--bad); }
+.status p { margin: 2px 0 0; color: var(--text); font-size: 13px; }
+
+.included { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.included div { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+.included b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+.included span { color: var(--muted); font-size: 12px; }
+
+.lines { width: 100%; border-collapse: collapse; }
+.lines td { padding: 5px 0; vertical-align: top; }
+.lines td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 12px; }
+.lines tr.sub td { color: var(--muted); font-size: 13px; }
+.lines tr.sub td:first-child { padding-left: 12px; }
+.lines tr.total td { font-weight: 700; border-top: 1px solid var(--border); padding-top: 8px; }
+.lines tr.discount td:last-child { color: var(--ok); }
+.lines tr.section td { padding-top: 14px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.lines tr.grand td { font-size: 17px; font-weight: 700; padding-top: 10px; border-top: 2px solid var(--text); }
+.lines tr.due td { font-weight: 700; background: var(--accent-soft); padding: 8px; }
+.lines tr.due td:first-child { border-radius: 6px 0 0 6px; }
+.lines tr.due td:last-child { border-radius: 0 6px 6px 0; }
+
+.lock { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.lock .inline { display: flex; gap: 8px; }
+.lock .inline input { flex: 1; }
+
+.banner { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+/* ---- tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.grid th { text-align: left; font-weight: 600; color: var(--muted); background: var(--surface-2); padding: 9px 10px; white-space: nowrap; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+table.grid td { padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.grid td.wrap { white-space: normal; min-width: 160px; }
+table.grid tr:last-child td { border-bottom: 0; }
+table.grid tbody tr { cursor: pointer; }
+table.grid tbody tr:hover td { background: var(--surface-2); }
+table.grid tr.review td { background: var(--bad-soft); }
+table.grid tr.review:hover td { background: var(--bad-soft); filter: brightness(.98); }
+table.grid tr.review td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+table.grid th.num, table.grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pill.review { background: var(--bad); color: #fff; }
+.pill.standard { background: var(--ok-soft); color: var(--ok); }
+.pill.placeholder { background: var(--warn-soft); color: var(--warn); }
+.neg { color: var(--bad); }
+.pos { color: var(--ok); }
+.reason { color: var(--bad); font-size: 12px; display: block; }
+
+.filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+.filters .field { margin: 0; }
+.filters select, .filters input { width: auto; min-width: 140px; }
+.counts { display: flex; gap: 16px; color: var(--muted); font-size: 13px; margin-bottom: 10px; flex-wrap: wrap; }
+.counts b { color: var(--text); }
+
+/* ---- drawer */
+.drawer-bg { position: fixed; inset: 0; background: rgba(10, 14, 22, .35); z-index: 20; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100vw); background: var(--bg); z-index: 21; overflow-y: auto; box-shadow: -8px 0 24px rgba(0,0,0,.15); }
+.drawer-head { position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 20px; display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; z-index: 1; }
+.drawer-body { padding: 20px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .two { grid-template-columns: 1fr; } }
+.kv { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kv td { padding: 4px 0; vertical-align: top; }
+.kv td:last-child { text-align: right; font-variant-numeric: tabular-nums; padding-left: 10px; }
+.kv tr.total td { font-weight: 700; border-top: 1px solid var(--border); padding-top: 6px; }
+.internal { border-color: var(--bad); }
+.internal h2 { color: var(--bad); }
+.versions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---- settings */
+.settings-table td, .settings-table th { white-space: nowrap; }
+.settings-table td input { width: 100px; text-align: right; padding: 5px 7px; }
+.settings-table td.lab { white-space: normal; min-width: 240px; }
+.settings-table tbody tr { cursor: default; }
+.settings-table tbody tr:hover td { background: transparent; }
+.settings-table tr.ph td.lab::after { content: "placeholder"; margin-left: 8px; font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+.settings-table .note { display: block; color: var(--muted); font-size: 12px; white-space: normal; }
+.settings-table td.unused input { opacity: .45; }
+.savebar { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 12px 24px; display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.savebar input { max-width: 420px; }
+
+/* ---- login */
+.login { max-width: 360px; margin: 12vh auto; }
+.login .card { padding: 28px; }
+.err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 8px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px; z-index: 40; font-size: 13px; }
+.empty { padding: 32px; text-align: center; color: var(--muted); }
+
+table.grid td.status-col { white-space: normal; min-width: 150px; max-width: 190px; }
+@media (max-width: 560px) { .lock .inline { flex-direction: column; } }
+
+.chip .chip-price { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chip .chip-price:empty { display: none; }
+.chip[aria-pressed="true"] .chip-price { color: var(--accent); }
+#wb-result code { white-space: normal; word-break: break-all; font-size: 12px; }
+#wb-result td.wrap { min-width: 280px; }
+.filters input#wb-note { width: 100%; }
+
+.lines tr.parent td { font-weight: 600; }
+.hint.warn-text{color:var(--warn);font-weight:500}
+
+/* single-file additions */
+.internal-banner { background: var(--warn-soft); color: var(--warn); border-bottom: 1px solid rgba(230, 164, 68, .45); padding: 10px max(24px, calc((100vw - 1240px) / 2 + 24px)); font-size: 13px; }
+.internal-banner b { color: inherit; }
+.internal-peek { margin-top: 16px; }
+.internal-peek summary { cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: baseline; }
+.internal-peek summary::-webkit-details-marker { display: none; }
+.internal-peek summary::before { content: "▸"; color: var(--muted); }
+.internal-peek[open] summary::before { content: "▾"; }
+.internal-peek .internal-inner { margin-top: 14px; }
+.internal-peek .internal-inner h2 { color: var(--bad); }
+.internal-peek .two { grid-template-columns: 1fr; }
+label.btn { user-select: none; }
+#print-area { display: none; }
+@media print {
+  body.printing > *:not(#print-area) { display: none !important; }
+  body.printing #print-area { display: block; }
+  body.printing { background: #fff; }
+  .sheet { box-shadow: none; margin: 0; max-width: none; padding: 0; }
+  @page { margin: 16mm; }
+}
+.sheet { background: #fff; color: #060510; }
+.sheet .qhead { display: flex; justify-content: space-between; gap: 20px; border-bottom: 3px solid #060510; padding-bottom: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+.sheet .logo { font-size: 22px; font-weight: 800; letter-spacing: .04em; color: #060510; }
+.sheet .logo span { font-weight: 400; color: #1B8ECD; }
+.sheet .meta { text-align: right; font-size: 13px; color: #5B6472; line-height: 1.6; }
+.sheet h2 { color: #173C5B; margin-top: 22px; }
+.sheet .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px; }
+.sheet .facts div { background: #EAF6FE; border-radius: 8px; padding: 10px 12px; }
+.sheet .facts b { display: block; font-size: 15px; }
+.sheet .lines td { padding: 7px 0; border-bottom: 1px solid #edf0f5; }
+.sheet .lines tr.section td { border-bottom: 0; }
+.sheet .fine { font-size: 11.5px; color: #64748b; line-height: 1.6; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+.sheet .included div { background: #EAF6FE; }
+
+/* ===================== sales page design ===================== */
+body.sales { background: radial-gradient(1200px 400px at 70% -100px, rgba(27,142,205,.09), transparent 70%), var(--bg); }
+body.sales .page { max-width: 1220px; padding-top: 28px; }
+body.sales h1 { font-size: 24px; letter-spacing: -.02em; }
+body.sales .card { border-radius: 16px; padding: 22px 24px; box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(20,39,76,.05); }
+body.sales .card + .card { margin-top: 14px; }
+body.sales .card h2 { font-size: 16px; text-transform: none; letter-spacing: -.01em; color: var(--text); display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+h2 > .num { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+.optional { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); padding: 1px 8px; border-radius: 999px; }
+.label-note { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; }
+body.sales .label { font-size: 13px; }
+
+.seg.wide { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; width: 100%; }
+.seg.wide button { padding: 8px 6px; white-space: nowrap; }
+@media (max-width: 560px) { .seg.wide { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } }
+
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 560px) { .tiles { grid-template-columns: 1fr 1fr; } }
+.tiles .chip { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border-radius: 12px; padding: 12px 34px 12px 14px;
+  text-align: left; transition: border-color .12s, background .12s, box-shadow .12s; min-height: 58px; justify-content: center; }
+.tiles .chip::before { position: absolute; top: 12px; right: 12px; }
+.tiles .chip > span:first-child { font-weight: 600; }
+.tiles .chip .chip-price { font-size: 12.5px; }
+.tiles .chip:hover { border-color: var(--brand-mist); }
+.tiles .chip[aria-pressed="true"] { box-shadow: 0 0 0 1px var(--accent) inset; }
+
+.option { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid var(--border); }
+.option:first-of-type { margin-top: 4px; }
+.option b { font-weight: 600; }
+.sub-panel { background: var(--surface-2); border-radius: 12px; padding: 14px; margin-bottom: 6px; }
+body.sales .row2 { gap: 14px; }
+
+/* summary */
+.results { max-height: calc(100vh - 88px); overflow: auto; scrollbar-width: thin; padding-bottom: 4px; }
+@media (max-width: 960px) { .results { max-height: none; overflow: visible; } }
+.summary { padding: 18px !important; }
+.status-row { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; padding: 10px 12px; border-radius: 10px; margin-bottom: 14px; line-height: 1.4; }
+.status-row .pill { flex: none; }
+.status-row.standard { background: var(--ok-soft); }
+.status-row.review { background: var(--bad-soft); }
+body.sales .hero { border-radius: 14px; padding: 18px 20px 14px; margin-bottom: 12px; }
+body.sales .hero .amount { font-size: 38px; margin: 2px 0 12px; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; border-top: 1px solid rgba(255,255,255,.18); padding-top: 12px; }
+.kpis small { display: block; color: var(--on-hero); font-size: 11.5px; }
+.kpis b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.kpis em { display: block; font-style: normal; font-weight: 500; color: var(--on-hero); font-size: 11.5px; }
+@media (max-width: 420px) { .kpis { grid-template-columns: 1fr 1fr; } }
+.incl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; font-size: 12.5px; color: var(--muted); padding: 2px 2px 10px; }
+.incl b { color: var(--text); font-variant-numeric: tabular-nums; }
+details.grp { border-top: 1px solid var(--border); }
+details.grp > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 2px; font-weight: 600; }
+details.grp > summary::-webkit-details-marker { display: none; }
+details.grp > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; margin-right: 4px; flex: none; }
+details.grp[open] > summary::before { transform: rotate(45deg); }
+details.grp > summary > span:first-of-type { flex: 1; }
+.grp-right { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+details.grp .lines { margin: -4px 0 10px; }
+details.grp .lines td { padding: 4px 0; font-size: 13.5px; }
+.muted { color: var(--muted); }
+body.sales .lock h2 { margin-bottom: 12px; }
+.btn.grow { flex: 1; }
+.btn.ghost { background: transparent; }
+body.sales .btn.primary { box-shadow: 0 1px 2px rgba(16,24,40,.12); }
+body.sales .btn.primary:hover { filter: brightness(1.06); }
+body.sales .empty { padding: 40px 16px; }
+
+/* phone: price bar pinned to the bottom */
+.mbar { display: none; }
+@media (max-width: 960px) {
+  .mbar:not(.hidden) { display: flex; align-items: center; gap: 10px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: var(--nav); color: #fff; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px rgba(0,0,0,.18); }
+  .mbar > div { flex: 1; } .mbar small { display: block; color: var(--nav-muted); font-size: 11px; } .mbar b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .mbar .btn { background: transparent; color: #fff; border-color: rgba(255,255,255,.3); }
+  body.sales { padding-bottom: 70px; }
+}
+@media print { .mbar { display: none !important; } }
+
+.fx-source { font-size: 12px; margin-top: 6px; color: var(--text); }
+.fx-source a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.fx-source a:hover { text-decoration: underline; }
+body.sales .hero .conv { margin-top: 10px; font-size: 11.5px; color: var(--on-hero); }
+.fx-rate { font-size: 13px; margin-top: 4px; }
+
+.valid-note { font-size: 12px; color: var(--muted); margin: 10px 2px 0; }
+.sheet .facts .sub { display: block; }
+
+.range { width: 100%; accent-color: var(--accent); margin: 6px 0 0; }
+.range-scale { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }
+.disc-val { float: right; color: var(--accent); font-variant-numeric: tabular-nums; }
+.hist { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.hist:first-child { border-top: 0; padding-top: 0; }
+.hist .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.chip[disabled] { opacity: .5; cursor: not-allowed; }
+
+#band button small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 1px; }
+#band button { line-height: 1.25; }
+
+.hint.warn-text{color:var(--warn);font-weight:500}
+
+/* ===================== polish pass ===================== */
+/* band dropdown */
+.band-row { align-items: start; }
+.select-wrap { position: relative; }
+.select-wrap select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; font-weight: 600; }
+.select-wrap select:invalid, .select-wrap select option[value=""] { color: var(--muted); font-weight: 400; }
+.select-wrap::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; margin-top: -6px; pointer-events: none;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); }
+body.sales input[type=text], body.sales input[type=number], body.sales select { height: 42px; border-radius: 10px; }
+
+/* status banner */
+.status-row { align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid transparent; }
+.status-row svg { width: 22px; height: 22px; flex: none; }
+.status-row > div { display: flex; flex-direction: column; gap: 1px; }
+.status-row b { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+.status-row span { font-size: 12.5px; }
+.status-row.standard { background: var(--ok-soft); color: var(--ok); border-color: rgba(114,187,111,.45); }
+.status-row.standard svg { color: var(--brand-green); }
+.status-row.standard span { color: var(--text); }
+.status-row.review { background: var(--bad); color: #fff; border-color: var(--bad); box-shadow: 0 6px 18px rgba(210,79,71,.28); }
+.status-row.review span { color: #fff; opacity: .92; }
+
+/* final price change */
+.hero .amount { font-variant-numeric: tabular-nums; }
+.hero .amount.bump { animation: bump .45s ease-out; }
+@keyframes bump { 0% { transform: translateY(2px); opacity: .7; } 100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .hero .amount.bump { animation: none; } }
+
+/* tiles: calmer when not chosen */
+.tiles .chip .chip-price:empty { display: none; }
+.tiles .chip { min-height: 52px; }
+.tiles .chip[aria-pressed="true"] .chip-price { color: var(--accent); font-weight: 600; }
+
+/* spacing */
+body.sales .card { padding: 24px; }
+body.sales .card .field:last-child, body.sales .card .option:last-child { margin-bottom: 0; padding-bottom: 0; }
+body.sales .lock .hint { margin-top: 10px; }
+body.sales .lock .err:empty { display: none; }
+body.sales .summary { padding: 20px !important; }
+details.grp:last-of-type { border-bottom: 1px solid var(--border); }
+details.grp > summary { padding: 13px 2px; }
+details.grp > summary:hover { color: var(--accent); }
+.valid-note { margin-top: 12px; }
+
+/* keyboard focus: visible everywhere, never on mouse click */
+body.sales :focus { outline: none; }
+body.sales :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+body.sales input:focus-visible, body.sales select:focus-visible { outline-offset: 0; }
+body.sales input:focus, body.sales select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.switch:focus-visible { border-radius: 999px; }
+details.grp > summary:focus-visible { border-radius: 6px; }
+
+@media (max-width: 560px) {
+  body.sales .page { padding-left: 16px; padding-right: 16px; }
+  body.sales .card { padding: 18px 16px; }
+  body.sales h1 { font-size: 21px; }
+  .page-head { flex-wrap: wrap; gap: 10px; }
+  body.sales .hero .amount { font-size: 32px; }
+}
+@media (max-width: 560px) {
+  #term.seg.wide { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 1fr; }
+}
+
+/* brand touches */
+.tiles .chip[aria-pressed="true"] { background: var(--accent-soft); }
+body.sales .hero { background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 100%); position: relative; overflow: hidden; }
+body.sales .hero::after { content: ""; position: absolute; right: -60px; top: -60px; width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(27,142,205,.45), transparent 70%); pointer-events: none; }
+body.sales .hero > * { position: relative; z-index: 1; }
+h2 > .num { background: var(--brand-navy); color: #fff; }
+.disc-val.neg { color: var(--bad); }
+.pill.review { background: var(--bad); }
+.pill.standard { background: var(--ok-soft); color: var(--ok); }
+.flag.warn { border-left: 3px solid var(--brand-amber); }
+.hint:empty { display: none; }
+/* pilot tags + discounts already applied */
+.tiles .chip .chip-tag { font-size: 11px; font-weight: 600; color: var(--warn); background: var(--warn-soft); border-radius: 999px; padding: 1px 8px; margin-top: 4px; }
+.disc-field { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 2px; }
+.disc-already { font-size: 12.5px; background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; }
+.hist .stage { color: var(--accent); font-weight: 600; }
+.review-mail { display: grid; gap: 10px; margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--bad-soft); border: 1px solid rgba(210,79,71,.35); font-size: 13px; }
+.review-mail b { color: var(--bad); }
+.review-mail .mail-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+a.btn { text-decoration: none; display: inline-block; }
+.review-mail .apr { border-top: 1px solid rgba(210,79,71,.25); padding-top: 10px; }
+.apr-row { display: flex; gap: 8px; }
+.apr-row input { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+.apr-row .btn { white-space: nowrap; }
+.approve-card { margin: 0 0 16px; max-width: 860px; }
+.approve-card .apr-out { margin-top: 12px; }
+.approve-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.approve-card .row3 { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .approve-card .row3 { grid-template-columns: 1fr; } }
+body.sales .approve-card { margin-bottom: 14px; max-width: none; }
+
+</style>
+</head>
+<body class="sales">
+<header class="topbar">
+  <div class="brand"><img src="data:image/png;base64,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" alt="Guardrail Technologies" width="135" height="40"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing calculator</span></div>
+  <div style="flex:1"></div>
+</header>
+
+<main class="page" id="tab-calc">
+  <div class="page-head">
+    <div><h1>Pricing calculator</h1></div>
+    <label class="btn small ghost" for="openlocked">Revise a locked request</label><input id="openlocked" type="file" accept=".pdf,application/pdf,.json,application/json" class="hidden">
+  </div>
+  <div id="revise-banner" class="banner hidden"></div>
+  <div class="calc">
+    <section class="inputs">
+      <div class="card step">
+        <h2><span class="num">1</span>Customer</h2>
+        <div class="row2 band-row">
+          <div class="field"><label class="label" for="band">Employee band</label>
+            <div class="select-wrap"><select id="band" required><option value="" disabled selected>Choose a band</option></select></div></div>
+          <div class="field"><label class="label" for="location">Buyer location</label>
+            <div class="select-wrap"><select id="location" required><option value="" disabled selected>Choose a location</option></select></div></div>
+        </div>
+        <div class="field hidden" id="empcount-field">
+          <label class="label" for="empcount">Number of employees <span class="label-note">Optional</span></label>
+          <input id="empcount" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 50" style="max-width:240px">
+          <div class="hint" id="empcount-hint"></div>
+        </div>
+        <div class="field hidden" id="seats-field">
+          <label class="label" for="seats">Enterprise seat count</label>
+          <input id="seats" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 5,000" style="max-width:240px">
+          <div class="hint">Enterprise is 1,000+ employees.</div>
+        </div>
+      </div>
+
+      <div class="card step">
+        <h2><span class="num">2</span>Pilot <span class="optional">Optional</span></h2>
+        <div class="option" style="border-top:0;padding-top:0">
+          <div><b>Offer a pilot</b><div class="hint">Pilots cover the Traffic Light modules being purchased. Command Center isn't piloted.</div></div>
+          <button class="switch" role="switch" id="pilotOn" aria-label="Offer a pilot"></button>
+        </div>
+        <div id="pilot-box" class="hidden">
+          <div class="field"><span class="label">Modules in the pilot <span class="label-note">Choosing a module here also adds it to the purchase</span></span><div class="tiles small" id="pilot"></div>
+            <div class="hint" id="pilot-std-note"></div></div>
+          <div class="flag info hidden" id="pilot-rule" style="margin:0 0 10px"></div>
+          <div class="option">
+            <div><b>Credit the pilot toward the contract (if contract signed after 30 days of pilot)</b><div class="hint">Credit of 50% of pilot applied to implementation cost.</div></div>
+            <button class="switch" role="switch" id="pilotCredit" aria-label="Credit pilot price toward the signed contract"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card step">
+        <h2><span class="num">3</span>Products</h2>
+        <div class="field"><span class="label">Traffic Light modules</span><div class="tiles" id="modules"></div></div>
+        <div class="option">
+          <div><b>AI Command Center</b></div>
+          <button class="switch" role="switch" id="commandCenter" aria-label="Command Center"></button>
+        </div>
+        <div class="option">
+          <div><b>On-prem / dedicated infrastructure</b><div class="hint">Scoped and priced by the team.</div></div>
+          <button class="switch" role="switch" id="onPrem" aria-label="On-prem / dedicated infrastructure"></button>
+        </div>
+        <div id="onprem-box" class="hidden sub-panel">
+          <div class="flag warn" id="onprem-flag" style="margin-top:0">Action needed: the team must scope on-prem / dedicated infrastructure before this price is final.</div>
+          <div class="field" style="margin-top:12px">
+            <label class="label" for="scoped">Scoped price (per year, USD)</label>
+            <div class="input-affix pre" style="max-width:220px"><span>$</span><input id="scoped" type="number" min="0" step="100" inputmode="decimal" placeholder="0"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card step">
+        <h2><span class="num">4</span>Terms and discounts</h2>
+        <div class="field"><span class="label">Contract term</span><div class="seg wide" id="term" role="group" aria-label="Contract term" style="max-width:420px"></div></div>
+        <div class="option">
+          <div><b>Early Pay</b><div class="hint">Paid annually, within 30 days of contract.</div></div>
+          <button class="switch" role="switch" id="earlyPay" aria-label="Early Pay"></button>
+        </div>
+        <div class="field disc-field">
+          <div class="disc-already" id="disc-already"></div>
+          <label class="label" for="disc-range">Additional discount <b class="disc-val" id="disc-val">0%</b></label>
+          <input id="disc-range" class="range" type="range" min="0" max="20" step="0.5" value="0">
+          <div class="range-scale"><span>0%</span><span id="disc-max-label">20%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="results" id="results">
+      <div class="card summary">
+        <div class="empty" id="empty">Choose an employee band and buyer location to see pricing.</div>
+        <div id="out" class="hidden"></div>
+      </div>
+      <div class="card lock hidden" id="lock">
+        <h2>Lock in this request</h2>
+        <div class="row2">
+          <div class="field"><label class="label" for="repname">Rep name</label><input id="repname" type="text" maxlength="100" placeholder="Your name"></div>
+          <div class="field"><label class="label" for="cname">Customer or opportunity</label><input id="cname" type="text" maxlength="200" placeholder="Required"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label class="label" for="hubspot">HubSpot record</label><input id="hubspot" type="text" maxlength="500" placeholder="Paste the deal link"></div>
+          <div class="field"><label class="label" for="stage">Stage</label>
+            <div class="select-wrap"><select id="stage">
+              <option>Confirmed</option><option>Revised</option><option>Final (Pilot)</option><option>Final (Contract)</option>
+            </select></div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary grow" id="lockbtn" type="button">Lock in pricing request</button>
+          <button class="btn hidden" id="printbtn" type="button">Download quote PDF again</button>
+        </div>
+        <div id="review-mail" class="review-mail hidden">
+          <div><b>Sent for Deal Review.</b> <span id="review-where"></span> No quote PDF until it's approved.</div>
+          <div class="apr">
+            <div class="label">When it's approved, record it here</div>
+            <div class="row2">
+              <div class="field"><label class="label" for="apr-by">Approved by</label><input id="apr-by" type="text" maxlength="80" placeholder="Executive's name"></div>
+              <div class="field"><label class="label" for="apr-link">Link to the approval</label><input id="apr-link" type="text" placeholder="Slack message link" spellcheck="false"></div>
+            </div>
+            <button class="btn primary" type="button" id="apr-unlock">Record approval and download PDF</button>
+            <div class="err" id="apr-err"></div>
+          </div>
+          <button class="btn small hidden" type="button" id="slack-retry">Post to Slack again</button>
+        </div>
+        <div class="err" id="lockerr"></div>
+        <div class="hint">Downloads the quote as a PDF to send to the customer and the executive team. A Deal Review is sent to an executive for approval first. Later changes save as the next version.</div>
+      </div>
+      <div class="card hidden" id="history-card">
+        <h2>Your locked requests <span class="optional">This browser</span></h2>
+        <div id="history"></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="mbar hidden" id="mbar">
+  <div><small>Final price · Year 1</small><b id="mbar-price"></b></div>
+  <span class="pill" id="mbar-status"></span>
+  <button class="btn small" type="button" id="mbar-go">View summary</button>
+</div>
+
+<div id="print-area"></div>
+
+<script type="application/json" id="grt-config">{"version":1,"note":"Initial import from GRT_Pricing_Model_OCT 2026 v14 1.xlsx","updatedAt":"2026-11-02T20:11:28.086Z","config":{"source":"GRT_Pricing_Model_OCT 2026 v14 1.xlsx — Assumptions tab","tiers":["Micro","SMB","Mid-Market","Corporate","Enterprise"],"locations":["US","AUS","LATAM"],"terms":["1-Year","2-Year","3+ Year"],"modules":[{"key":"codeAi","name":"Code + AI","billing":"devSeats"},{"key":"shadow","name":"Shadow","billing":"governed"},{"key":"drift","name":"Drift","billing":"governed"},{"key":"content","name":"Content","billing":"governed"},{"key":"creative","name":"Creative","billing":"governed"},{"key":"aiq","name":"AiQ","billing":"governed"}],"tier":{"governedEmployees":{"Micro":20,"SMB":100,"Mid-Market":500,"Corporate":1000,"Enterprise":2500},"workflows":{"Micro":1,"SMB":4,"Mid-Market":6,"Corporate":8,"Enterprise":20},"seatRate":{"codeAi":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"shadow":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"drift":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"content":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"creative":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7},"aiq":{"Micro":25,"SMB":15,"Mid-Market":12,"Corporate":10,"Enterprise":7}},"pilotFeePerModule":{"Micro":1200,"SMB":1200,"Mid-Market":1200,"Corporate":1200,"Enterprise":1200},"commandCenterMonthly":{"Micro":2000,"SMB":4000,"Mid-Market":7000,"Corporate":13000,"Enterprise":18000},"implementation":{"Micro":12000,"SMB":25000,"Mid-Market":40000,"Corporate":65000,"Enterprise":150000},"premiumSupportPct":{"Micro":0,"SMB":0,"Mid-Market":0,"Corporate":0.1,"Enterprise":0.1},"cac":{"Micro":4000,"SMB":30000,"Mid-Market":70000,"Corporate":110000,"Enterprise":200000},"usageIntensity":{"Micro":0.7,"SMB":0.85,"Mid-Market":1,"Corporate":1.1,"Enterprise":1.25},"csHoursPerMonth":{"Micro":0.5,"SMB":1,"Mid-Market":4,"Corporate":8,"Enterprise":16},"supportTicketsPerMonth":{"Micro":2,"SMB":5,"Mid-Market":15,"Corporate":30,"Enterprise":60},"hostingBaselinePerYear":{"Micro":1200,"SMB":2400,"Mid-Market":6000,"Corporate":9600,"Enterprise":18000},"securityAuditPerYear":{"Micro":500,"SMB":1500,"Mid-Market":4000,"Corporate":7500,"Enterprise":15000},"implementationHours":{"Micro":40,"SMB":100,"Mid-Market":240,"Corporate":400,"Enterprise":600}},"devSeatRatio":0.25,"modulesInSuite":5,"bundleDiscountByModuleCount":[0,0.05,0.1,0.15,0.2,0.25],"unitCosts":{"inferencePerSeatMonth":1.2,"cloudPerSeatMonth":0.6,"dataPerSeatMonth":0.35,"licensesPerSeatMonth":0.25,"commandCenterRuntimePerWorkflowMonth":45,"csCostPerHour":85,"supportCostPerTicket":45,"implementationCostPerHour":110,"rdPctOfRecurring":0.22,"gaPctOfRecurring":0.12,"retainedLifeYears":3},"enterprise":{"commandCenter":{"coefficient":6324.56,"exponent":0.5},"trafficLight":{"coefficient":3794.73,"exponent":-0.5},"inferenceCost":{"coefficient":20112.92,"exponent":0.3},"inferenceCharge":{"coefficient":16760.77,"exponent":0.3},"techSupportCost":{"coefficient":5586.92,"exponent":0.3},"hostingSecurityCost":{"coefficient":13967.31,"exponent":0.3},"implementation":{"coefficient":8812.48,"exponent":0.3},"implementationCap":450000,"csHours":{"coefficient":2.0143,"exponent":0.3}},"policy":{"minimumMargin":0.36,"marginTarget":{"US":0.6,"AUS":0.4,"LATAM":0.4},"earlyPayDiscount":0.05,"multiYearDiscount":{"1-Year":0,"2-Year":0.05,"3+ Year":0.075},"inferencePctOfArr":0.125726,"onPremCostPerSeatYear":0,"termYears":{"1-Year":1,"2-Year":2,"3+ Year":3},"annualUplift":0,"repDiscountLimit":0.2,"quoteValidDays":30,"foldCustomerSuccess":false,"pilotStandardModules":["shadow","drift","codeAi"]},"dealReviewEmail":"","slackWebhookUrl":"","slackChannel":"#deal-review","pilotRules":{"AUS":{"currency":"AUD","thresholdYear1":75000,"flatFee":20000,"percentOfYear1":0.2}},"currencyByLocation":{"US":"USD","AUS":"AUD","LATAM":"MXN"},"fxRates":{"AUD":{"rate":1.42,"asOf":"2026-10-29","source":"FXStreet AUD/USD market rate","url":"https://www.fxstreet.com/news/australian-dollar-edges-higher-above-07050-as-hot-cpi-lifts-rba-rate-hike-odds-202610290240"},"MXN":{"rate":18.6,"asOf":"2026-10-29","source":"Banco de México reported rate","url":"https://world-today-journal.com/banco-de-mexico-reports-usd-mxn-exchange-rate-at-18-66/"}},"permissions":{"scopedOnPremPriceEditors":["exec","admin"]}}}</script>
+<script>
+const PDF_LOGO = {"w": 317, "h": 94, "rgb": "eNrtnUuSHCEMRA/iO/tmPoy3XhhvJ8bjMqBMIVEvo1cTU9UqmgcF+jBGtn7++v3lZyCETutfeK5+aEmEWqAKwgi1RhV+EeoOLPwi1JRW+EWoNbDAi1BHWuEXodbAAi+C1js+/KYIYIEXIWgFXoQqA1vfEoQIRyw7nvDrI7D1EQG2CFmJwFSESK8bpAQipEYAyxHq0vkjX/rt+49Pn3aPgFAvbOOQznwKPghC25PUKWxzaA3yC7Zvm2WK0/rcn7cfR969VbQm8HvwHQYAX4vtx55cAVsfsBvwNnIuA+N92E724YPY5tC6ym8mL3ijwLYRtqeAnYE3hxTCP8B2D40j2FYA9hleNyYEW4It2PbClhhpsO34kvxmbCV3BluwBds0bK03hEr8tmCbjG28N0LlTdj+TYrwccC2yFmBYFsEW2sILtgmY5u8jxT5ImEVoI2vkBcjmmmWh6sm7dF2P9a2lbGtOa3898L4FvckO3IzlrCdtMfRA8EWbIXYqvxTq4wIzdgYMRKw/dQJwbYCtvn+Gge2Qrdy5HKHsxts8SeCrQM9a0GwCth+5BFswTYH26X16R4mqz0NbMEWbJduuI2tPExFONp86W4DW9yFqlI5Vmzjg5WQPokDLnJziU8HbME2x28befAjYdjaYWTMBTJt5PUUwXZv0XHTGV5g+2xe2irD0VxL8U5g2xrbycvrYysxLy0o0dFcwkUu2IJtnSip67G9ckvqSmxzdpKrYWvyk7bG9tadZLA1bdad2kkGW1O8Xxq2ryW3gus2E1trVFJTbH1BtmBbGVtHHbl8bI/sJIMt2B7EVl5KLhPblzuAfBl5ZbHtTm6FijQObOeDgdv5beXNtVG5oh22N024w1BqtQK2SzH8mdjGyXVsvAtz8fKxfeF78qhxJpcwyHYj9UZonnVzwOcva722feF78vCfR+BLadkbSYSDwHb8pDZv6FZsZ4bf+Cm3r2I24ZGPlG1ZHY7SIrTB9gFbySQy6qXEWuujukeVmuPAiGUrlMK2crjF5AKn+1E1R+x3vwlIikhUiJISRkS/JLgRbN3GW1/dtUzFIR2i3EDtiJGWSjB5UEgatq3JrWC5b6Ed3HOI39CBrcqFkZa4N/P/PmzHv8+dAdsEk7S3velIHWqqJMwXp4ont2AWoS7T1hFsOfcZoeITLlMtQr3IlZuKENhaye2yE4UQE66EWTm2G98VsW0v2vn5jzPH2bsT4ZOL325cLonfTtvDjzsfL2Y2E9tIbMZe39vDKn5KSELiZLD9hSYVibkd/sKz2lGlBbbBS7b73ipWkkwoU7MLh013WtM4EfPjILcms9dj+xDTqD2MRph1GxlbbsL2OLluq+RNpH0hNGXGbZeyWX0uN7bxQUn1++b8svXJTbDnLLaOziDHNminFVs3WZLZdpw7dFUbG38Zs2BbAduZA0C1S37tTledlNKxlWeRbAbYvny2PYhtxzl39VDRssweWdvm9M9t3peWb/G1rcrII2vb4Av8KXLrf3XCbFvWASTM4reuCq1eqsyd5CLYmo7IKRXHmOk3vNtvG8fWEarRHdtI6ZUWX1cT20ihVNWbXk6UVM5mTmVsq9Vd0R64Q8oAQiOx3FmF+yMEuVqyYBahmuQ6jjbgF0Eopziw9j4IoeNH4cAsQleSS/sj1ItcWh6hXuTS5gg1IpemRqgXvLQwQr3IpW0RagQv7YlQI3JpRoTuSz1ACBWBlxZDqBG8tBJCjeClZRDqwi/tgNCq/gBhEf29", "alpha": "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"};
+
+const Engine = (function () { const module = { exports: {} }; 'use strict';
+// Pricing engine — a direct port of the Calculator tab of
+// "GRT_Pricing_Model_OCT 2026 v14 1.xlsx". Cell references in comments
+// point at the Calculator tab unless marked "A!" (Assumptions tab).
+// Every rate comes from the config object (the Assumptions tab), never
+// from a literal in this file.
+
+const EPS = 1e-9; // matches the 0.000000001 tolerance in C99 / D99
+
+// Excel ROUND(x, -3): round half away from zero to the nearest 1,000.
+function excelRoundThousands(x) {
+  const s = x < 0 ? -1 : 1;
+  const a = Math.abs(x) / 1000;
+  // guard against binary noise like 12499.999999 / 12500.0000001
+  const r = Math.floor(a + 0.5 + 1e-9);
+  return s * r * 1000;
+}
+
+const fmtPctPlain = (x) => `${Math.round(x * 1000) / 10}%`;
+const yn = (v) => v === true || v === 'Y' || v === 'y';
+
+class InputError extends Error {}
+
+function normalizeInputs(raw, cfg) {
+  const r = raw || {};
+  const band = String(r.band || '');
+  if (!cfg.tiers.includes(band)) throw new InputError('Choose an employee band.');
+  const location = String(r.location || '');
+  if (!cfg.locations.includes(location)) throw new InputError('Choose a buyer location.');
+  const term = String(r.term || '1-Year');
+  if (!cfg.terms.includes(term)) throw new InputError('Choose a contract term.');
+
+  let seats = 0;
+  if (band === 'Enterprise') {
+    seats = Number(r.seats);
+    if (!Number.isFinite(seats) || seats <= 0 || !Number.isInteger(seats)) {
+      throw new InputError('Enter a whole-number seat count for Enterprise.');
+    }
+    if (seats > 10000000) throw new InputError('Seat count looks too large.');
+  }
+
+  const modules = {}, pilot = {};
+  for (const m of cfg.modules) {
+    modules[m.key] = yn(r.modules && r.modules[m.key]);
+    pilot[m.key] = yn(r.pilot && r.pilot[m.key]);
+  }
+
+  let variableDiscountPct = Number(r.variableDiscountPct || 0);
+  if (!Number.isFinite(variableDiscountPct) || variableDiscountPct < 0 || variableDiscountPct > 100) {
+    throw new InputError('Additional discount must be between 0% and 100%.');
+  }
+
+  const onPrem = yn(r.onPrem);
+  let scopedOnPremPrice = Number(r.scopedOnPremPrice || 0);
+  if (!Number.isFinite(scopedOnPremPrice) || scopedOnPremPrice < 0) {
+    throw new InputError('Scoped on-prem price must be zero or more.');
+  }
+  // The web form only accepts a scoped price while On-Prem = Y. (The workbook
+  // warns, rather than blocks, when a price is left in with On-Prem = N.)
+  if (!onPrem) scopedOnPremPrice = 0;
+
+  return {
+    band, location, term, seats,
+    modules,
+    commandCenter: yn(r.commandCenter),
+    onPrem,
+    scopedOnPremPrice,
+    earlyPay: yn(r.earlyPay),
+    variableDiscountPct,
+    pilot,
+    pilotCredit: r.pilotCredit === undefined ? true : yn(r.pilotCredit), // C126 defaults to Y
+    // Shown on the quote only; never changes the price (pricing follows the employee band).
+    employeeCount: Number.isInteger(Number(r.employeeCount)) && Number(r.employeeCount) > 0 ? Number(r.employeeCount) : null,
+  };
+}
+
+function calculate(rawInputs, cfg) {
+  const inp = normalizeInputs(rawInputs, cfg);
+  const T = cfg.tier, E = cfg.enterprise, P = cfg.policy, U = cfg.unitCosts;
+  const band = inp.band;
+  const isEnt = band === 'Enterprise';
+  const curve = (c, seats) => c.coefficient * Math.pow(seats, c.exponent);
+
+  // ---- Section 1: the customer
+  const C9 = isEnt ? inp.seats : T.governedEmployees[band];          // governed employees
+  const C10 = C9 * cfg.devSeatRatio;                                  // developer workseats
+  const C11 = T.workflows[band];                                       // workflows included
+
+  // ---- Section 2: what they pay
+  const moduleLines = {};
+  let C21 = 0, E21 = 0;
+  const moduleListPrices = {}; // each module's annual list price for this band, selected or not
+  for (const m of cfg.modules) {                                       // C15:C20
+    const basis = m.billing === 'devSeats' ? C10 : C9;
+    moduleListPrices[m.key] = isEnt
+      ? basis * curve(E.trafficLight, C9)
+      : basis * T.seatRate[m.key][band] * 12;
+    let v = 0;
+    if (inp.modules[m.key]) {
+      v = moduleListPrices[m.key];
+      E21 += 1;
+    }
+    moduleLines[m.key] = v;
+    C21 += v;
+  }
+  const bundlePct = E21 === 0 ? 0 : cfg.bundleDiscountByModuleCount[E21 - 1];
+  const C22 = E21 === 0 ? 0 : C21 * (1 - bundlePct);
+
+  const C24 = !inp.commandCenter ? 0
+    : isEnt ? curve(E.commandCenter, C9) : T.commandCenterMonthly[band] * 12;
+  const premiumPct = T.premiumSupportPct[band];
+  const C25 = (C22 + C24) * premiumPct;
+  const csHours = isEnt ? curve(E.csHours, C9) : T.csHoursPerMonth[band];
+  const C26 = csHours * U.csCostPerHour * 12 / (1 - P.minimumMargin);
+  const C29 = inp.scopedOnPremPrice;
+  const C27 = isEnt
+    ? curve(E.inferenceCharge, C9)
+    : excelRoundThousands((C22 + C24 + C25 + C26 + C29) * P.inferencePctOfArr);
+  const C30 = C22 + C24 + C25 + C26 + C27 + C29;                     // ANNUAL RECURRING PRICE
+  const C31 = !inp.commandCenter ? 0
+    : isEnt ? Math.min(curve(E.implementation, C9), E.implementationCap) : T.implementation[band];
+
+  // ---- Section 3: what it costs us
+  const varCostPerModule = (U.inferencePerSeatMonth + U.cloudPerSeatMonth + U.dataPerSeatMonth + U.licensesPerSeatMonth) / cfg.modulesInSuite; // A!C47
+  const C38 = isEnt ? curve(E.inferenceCost, C9)
+    : C9 * varCostPerModule * E21 * T.usageIntensity[band] * 12;
+  const C39 = !inp.commandCenter ? 0 : C11 * U.commandCenterRuntimePerWorkflowMonth * 12;
+  const C40 = csHours * U.csCostPerHour * 12;
+  const C41 = isEnt ? curve(E.techSupportCost, C9) : T.supportTicketsPerMonth[band] * U.supportCostPerTicket * 12;
+  const C42 = isEnt ? curve(E.hostingSecurityCost, C9) : T.hostingBaselinePerYear[band] + T.securityAuditPerYear[band];
+  const C43 = inp.onPrem ? C9 * P.onPremCostPerSeatYear : 0;
+  const C44 = C38 + C39 + C40 + C41 + C42 + C43;                      // ANNUAL COST TO SERVE
+  const C45 = C31 === 0 ? 0 : T.implementationHours[band] * U.implementationCostPerHour;
+  const E47 = P.minimumMargin;
+  const C47 = C44 / (1 - E47);
+  const C35 = C27 - C38;                                               // inference charge vs cost
+
+  // ---- Section 5: deal summary
+  const C69 = C24, C70 = C21, C71 = C31;
+  const C72 = C69 + C70 + C71 + C25 + C26 + C27 + C29;                 // TOTAL MSRP
+  const C75 = C70 - C22;                                               // bundle discount $
+  const C76 = C69 + C22 + C71 + C25 + C26 + C27 + C29;
+  const C79 = C76 * (inp.earlyPay ? P.earlyPayDiscount : 0);
+  const C80 = C76 - C79;
+  const multiYearPct = P.multiYearDiscount[inp.term] || 0;
+  const C82 = C80 * multiYearPct;
+  const C83 = C80 - C82;
+  const C85 = C44 + C45;
+  const C86 = E47;
+  const C87 = C85 / (1 - C86);
+  const C89 = Math.max(0, 1 - C87 / C83);                              // max variable discount
+  const C90 = inp.variableDiscountPct / 100;                           // requested
+  const C91 = Math.max(0, Math.min(C90, C89));                         // applied
+  const C92 = C83 * C91;
+  const C93 = C83 - C92;                                               // FINAL PRICE
+  const C94 = C93 === 0 ? 0 : (C93 - C85) / C93;                       // FINAL MARGIN (IFERROR → 0)
+  const C95 = P.marginTarget[inp.location];
+  const C96 = C94 - C95;
+  const C97 = C83 === 0 ? 0 : Math.max(0, 1 - (C85 / (1 - C95)) / C83);
+
+  // Section 6: pilot
+  const pilotLines = {};
+  let C128 = 0;
+  for (const m of cfg.modules) {
+    const v = inp.pilot[m.key] ? T.pilotFeePerModule[band] : 0;
+    pilotLines[m.key] = v;
+    C128 += v;
+  }
+  const C127 = inp.pilotCredit ? Math.min(C128, C93) : 0;
+  const C98 = C93 - C127;                                              // YEAR 1 DUE AT SIGNING
+
+  const requestAboveMax = C90 > C89;
+  const atFloor = C90 >= C89 || C94 <= C86 + EPS;
+  const C99 = atFloor ? 'DEAL REVIEW' : 'STANDARD';
+  const D99 = requestAboveMax
+    ? 'The requested discount is above what the margin floor allows. It is held at the maximum and the deal is escalated for Deal Review.'
+    : atFloor
+      ? 'The discount is at the margin floor. The deal is escalated for Deal Review.'
+      : 'Within guidelines. No escalation needed.';
+  // Rep approval limit (not in the workbook): a requested additional discount above it
+  // needs executive approval, so the deal goes to Deal Review even when the margin allows it.
+  const repLimit = P.repDiscountLimit == null ? null : P.repDiscountLimit;
+  const aboveRepLimit = repLimit != null && C90 > repLimit + EPS;
+  // Pilot policy (not in the workbook): only the standard pilot modules are offered without
+  // approval; piloting any other module sends the deal to Deal Review.
+  const stdPilot = Array.isArray(P.pilotStandardModules) ? P.pilotStandardModules : null;
+  const pilotNeedsApproval = stdPilot ? cfg.modules.filter((m) => inp.pilot[m.key] && !stdPilot.includes(m.key)).map((m) => m.name) : [];
+  const pilotNote = pilotNeedsApproval.length ? ` A pilot of ${pilotNeedsApproval.join(', ')} needs approval.` : '';
+  const dealStatus = C99 === 'DEAL REVIEW' || aboveRepLimit || pilotNeedsApproval.length ? 'DEAL REVIEW' : 'STANDARD';
+  const dealNote = (C99 === 'DEAL REVIEW'
+    ? D99 + (aboveRepLimit ? ` It is also above the ${Math.round(repLimit * 100)}% limit reps can give without approval.` : '') + pilotNote
+    : aboveRepLimit
+      ? `An additional discount above ${Math.round(repLimit * 100)}% needs approval.${pilotNote} The deal is escalated for Deal Review.`
+      : pilotNeedsApproval.length ? `${pilotNote.trim()} The deal is escalated for Deal Review.` : D99);
+  // Internal-only reason code for the executive view.
+  let reviewReason = null;
+  if (C99 === 'DEAL REVIEW') {
+    if (requestAboveMax) reviewReason = 'Requested discount above what the floor allows (held at maximum)';
+    else if (C89 <= EPS) reviewReason = 'Price is at or below the margin floor before any variable discount';
+    else reviewReason = 'Discount at the margin floor';
+  }
+  if (aboveRepLimit) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(repLimit)} rep limit (needs approval)`;
+  if (pilotNeedsApproval.length) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Non-standard pilot: ${pilotNeedsApproval.join(', ')} (needs approval)`;
+
+  const C101 = C72 - C93;
+  const C102 = C72 === 0 ? 0 : 1 - C93 / C72;
+  const C110 = C76 === 0 ? 0 : (C76 - C71) * (C93 / C76);
+  const C111 = C76 === 0 ? 0 : C71 * (C93 / C76);
+
+  // ---- Multi-year contract schedule (not in the workbook, which stops at Year 1).
+  // Rule: Year 1 is the workbook's FINAL PRICE (C93), split into its recurring part (C110)
+  // and implementation (C111). Each later year renews the recurring part at the same
+  // discounted rate (bundle, Early Pay, multi-year and variable discounts all carry over),
+  // grown by the optional annual uplift. The pilot credit applies to Year 1 only.
+  const termYears = (P.termYears && P.termYears[inp.term]) || { '1-Year': 1, '2-Year': 2, '3+ Year': 3 }[inp.term] || 1;
+  const uplift = P.annualUplift || 0;
+  const scheduleRows = [];
+  for (let y = 1; y <= termYears; y++) {
+    const recurring = y === 1 ? C110 : C110 * Math.pow(1 + uplift, y - 1);
+    const implementation = y === 1 ? C111 : 0;
+    const amount = recurring + implementation;
+    const credit = y === 1 ? C127 : 0;
+    scheduleRows.push({ year: y, recurring, implementation, amount, pilotCredit: credit, due: amount - credit });
+  }
+  const totalContractValue = scheduleRows.reduce((s, r) => s + r.amount, 0);
+  const contractCost = C44 * termYears + C45;
+
+  // Section 4: what is left (uses the Enterprise CAC cell A!G38 for every tier, as the workbook does)
+  const CAC = T.cac.Enterprise;
+  const C51 = C110 - C44;
+  const C53 = C93 - C44 - C45;
+  const C54 = C53 - CAC - C30 * U.rdPctOfRecurring - C30 * U.gaPctOfRecurring;
+  const C55 = C51 - C30 * U.rdPctOfRecurring - C30 * U.gaPctOfRecurring;
+  const div = (a, b) => (b === 0 ? 0 : a / b);
+
+  const moduleNames = Object.fromEntries(cfg.modules.map((m) => [m.key, m.name]));
+
+  // ---- Customer-facing display: Customer Success is folded into the product prices, so
+  // quotes show product lines only (Dena, Oct 2026). It goes into the Command Center line when
+  // Command Center is selected, so module prices stay at their published list price. Without
+  // Command Center it is spread over the selected modules in proportion to their price.
+  // Totals are unchanged: shown Traffic Light + Command Center = C22 + C24 + C26.
+  const allowFold = P.foldCustomerSuccess === true; // off by default: Customer Success shows as its own line
+  const foldInto = !allowFold ? null : C24 > 0 ? 'commandCenter' : C21 > 0 ? 'modules' : null;
+  const u = foldInto === 'modules' ? C26 / C21 : 0;
+  const display = {
+    customerSuccessFolded: !!foldInto,
+    customerSuccessFoldedInto: foldInto,
+    modules: cfg.modules.map((m) => ({ key: m.key, name: `Traffic Light for ${m.name}`, selected: inp.modules[m.key], price: moduleLines[m.key] * (1 + u) })),
+    moduleListPrices: Object.fromEntries(cfg.modules.map((m) => [m.key, moduleListPrices[m.key] * (1 + u)])),
+    trafficLightAfterBundle: C21 * (1 + u) - C75,
+    commandCenter: C24 + (foldInto === 'commandCenter' ? C26 : 0),
+    customerSuccess: foldInto ? 0 : C26,
+  };
+
+  // ---------------- customer-facing view (the ONLY thing a rep receives) -------------
+  const customer = {
+    band, location: inp.location, term: inp.term,
+    seats: isEnt ? C9 : null,
+    included: { governedEmployees: C9, developerWorkseats: C10, workflows: C11, customerEmployees: isEnt ? null : (inp.employeeCount || null) },
+    lines: {
+      modules: cfg.modules.map((m) => ({ key: m.key, name: `Traffic Light for ${m.name}`, selected: inp.modules[m.key], price: moduleLines[m.key] })),
+      trafficLightAlaCarte: C21,
+      modulesSelected: E21,
+      bundleDiscountPct: bundlePct,
+      trafficLightAfterBundle: C22,
+      commandCenter: C24,
+      premiumSupport: C25,
+      customerSuccess: C26,
+      inference: C27,
+      dedicatedTenant: C29,
+    },
+    annualRecurringPrice: C30,
+    implementation: C31,
+    totalMSRP: C72,
+    discounts: {
+      bundle: C75,
+      earlyPay: C79,
+      multiYear: C82,
+      additional: C92,
+      additionalRequestedPct: inp.variableDiscountPct,
+      additionalHeld: requestAboveMax,
+      total: C101,
+      totalPctOfMSRP: C102,
+    },
+    finalPrice: C93,
+    moduleListPrices,
+    pilotFeePerModule: T.pilotFeePerModule[band],
+    pilot: {
+      lines: cfg.modules.map((m) => ({ key: m.key, name: `Traffic Light for ${m.name}`, selected: inp.pilot[m.key], price: pilotLines[m.key] })),
+      total: C128,
+      credited: inp.pilotCredit,
+      creditApplied: C127,
+    },
+    year1DueAtSigning: C98,
+    onPremActionRequired: inp.onPrem && C29 === 0,
+    onPremNote: inp.onPrem
+      ? (C29 === 0
+        ? 'ACTION: On-prem / dedicated infrastructure selected. The team needs to scope it and enter the price.'
+        : 'Scoped on-prem price entered.')
+      : null,
+    display,
+    dealStatus,
+    dealNote,
+    pilotNeedsApproval,
+    pilotStandardModules: stdPilot,
+    rates: {
+      bundle: bundlePct,
+      earlyPay: inp.earlyPay ? P.earlyPayDiscount : 0,
+      multiYear: multiYearPct,
+      // the applied additional rate is shown only when it wasn't held at the limit (it would reveal the cap)
+      additional: requestAboveMax ? null : C91,
+      repDiscountLimit: repLimit,
+    },
+    quoteValidDays: P.quoteValidDays || 30,
+    schedule: {
+      years: termYears,
+      annualUplift: uplift,
+      rows: scheduleRows,
+      totalContractValue,
+      totalDueOverTerm: totalContractValue - C127,
+    },
+  };
+
+  // ---------------- internal view (executives only) ----------------
+  const internal = {
+    costs: {
+      inferenceCloudDataLicenses: C38,
+      commandCenterRuntime: C39,
+      customerSuccess: C40,
+      technicalSupport: C41,
+      hostingSecurityCompliance: C42,
+      onPremInfrastructure: C43,
+      annualCostToServe: C44,
+      implementationDelivery: C45,
+      totalCostToServe: C85,
+      costPerEmployeeYear: div(C44, C9),
+    },
+    inferenceChargeVsCost: C35,
+    marginFloorRecurring: C47,
+    marginFloorTotal: C87,
+    minimumMargin: C86,
+    profit: {
+      grossProfitRecurring: C51,
+      recurringMarginPct: div(C51, C110),
+      grossProfitYear1: C53,
+      year1MarginPct: div(C53, C93),
+      operatingProfitYear1: C54,
+      operatingMarginYear1Pct: div(C54, C93),
+      operatingProfitOngoing: C55,
+      operatingMarginOngoingPct: div(C55, C30),
+      paybackMonths: C51 === 0 ? 0 : CAC / (C51 / 12),
+      ltvToCac: CAC === 0 ? 0 : C51 * U.retainedLifeYears / CAC,
+      cacUsed: CAC,
+    },
+    subtotalAfterBundle: C76,
+    subtotalAfterEarlyPay: C80,
+    subtotalAfterMultiYear: C83,
+    maxVariableDiscountPct: C89,
+    requestedVariableDiscountPct: C90,
+    appliedVariableDiscountPct: C91,
+    maxDiscountMeetingTargetPct: C97,
+    finalMarginPct: C94,
+    regionalTargetPct: C95,
+    gapToTargetPts: C96,
+    meetsTarget: C96 >= 0,
+    recurringNet: C110,
+    implementationNet: C111,
+    finalPricePerEmployeeYear: div(C93, C9),
+    finalPricePerEmployeeMonth: div(C93, C9 * 12),
+    perEmployeeMonthCommandCenter: div(C24, C9 * 12),
+    perEmployeeMonthTrafficLight: div(C22, C9 * 12),
+    reviewReason,
+    workbookDealStatus: C99,
+    workbookDealNote: D99,
+    aboveRepLimit,
+    contract: {
+      years: termYears,
+      totalContractValue,
+      totalCostToServe: contractCost,
+      marginOverTermPct: totalContractValue === 0 ? 0 : (totalContractValue - contractCost) / totalContractValue,
+    },
+  };
+
+  return { inputs: inp, customer, internal, moduleNames };
+}
+
+// Regional pilot pricing (Dena, Oct 2026): e.g. Australia — if the Year 1 price is over a
+// threshold, the pilot is a flat deposit toward Year 1; otherwise a percentage of Year 1.
+// Amounts are in the rule's currency, so it runs after the exchange rate is known.
+// Mutates and returns the customer view; the USD pilot fields are recalculated.
+function applyPilotRules(customer, cfg, fx) {
+  const rule = cfg.pilotRules && cfg.pilotRules[customer.location];
+  const piloted = customer.pilot.lines.filter((l) => l.selected);
+  if (!rule || !piloted.length) return customer;
+  const rate = fx && fx.currency === rule.currency && fx.rate > 0 ? fx.rate : (rule.currency === 'USD' ? 1 : null);
+  if (!rate) return customer; // no rate for the rule's currency: keep the standard per-module pilot
+  const year1Local = customer.finalPrice * rate;
+  const feeLocal = year1Local > rule.thresholdYear1 ? rule.flatFee : year1Local * rule.percentOfYear1;
+  const total = feeLocal / rate;
+  const credit = customer.pilot.credited ? Math.min(total, customer.finalPrice) : 0;
+  customer.pilot = {
+    ...customer.pilot,
+    lines: customer.pilot.lines.map((l) => ({ ...l, price: null })),
+    total,
+    creditApplied: credit,
+    rule: { currency: rule.currency, thresholdYear1: rule.thresholdYear1, flatFee: rule.flatFee, percentOfYear1: rule.percentOfYear1,
+      applied: year1Local > rule.thresholdYear1 ? 'flat' : 'percent' },
+  };
+  customer.year1DueAtSigning = customer.finalPrice - credit;
+  if (customer.schedule && customer.schedule.rows.length) {
+    const r0 = customer.schedule.rows[0];
+    customer.schedule.rows[0] = { ...r0, pilotCredit: credit, due: r0.amount - credit };
+    customer.schedule.totalDueOverTerm = customer.schedule.totalContractValue - credit;
+  }
+  return customer;
+}
+
+module.exports = { calculate, normalizeInputs, InputError, excelRoundThousands, applyPilotRules };
+
+; return module.exports; })();
+
+const Schema = (function () { const module = { exports: {} }; 'use strict';
+// Describes every editable assumption: where it lives in the config, how to
+// show it, and the workbook's own note. "placeholder: true" marks the yellow
+// (not-yet-measured) cells from the Assumptions tab.
+
+const pct = 'pct', money = 'money', num = 'num';
+
+const tierRows = [
+  { path: 'tier.governedEmployees', label: 'Governed employees (seat basis)', fmt: num, note: 'Micro to Corporate are the published tier headcounts. The Enterprise column is not used (Enterprise uses the seat count the rep enters).' },
+  { path: 'tier.workflows', label: 'Governed workflows included', fmt: num },
+  { path: 'tier.seatRate.codeAi', label: 'Seat rate / month, Code + AI', fmt: money, placeholder: true, note: 'OPEN QUESTION in the workbook: defaulted to the same ladder as the other modules. Enterprise column not used (seat curve).' },
+  { path: 'tier.seatRate.shadow', label: 'Seat rate / month, Shadow', fmt: money, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.seatRate.drift', label: 'Seat rate / month, Drift', fmt: money, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.seatRate.content', label: 'Seat rate / month, Content', fmt: money, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.seatRate.creative', label: 'Seat rate / month, Creative', fmt: money, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.seatRate.aiq', label: 'Seat rate / month, AiQ', fmt: money, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.pilotFeePerModule', label: 'Pilot fee per module, 30 days', fmt: money },
+  { path: 'tier.commandCenterMonthly', label: 'Command Center platform fee / month', fmt: money, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.implementation', label: 'Command Center implementation, one-time', fmt: money, note: 'Enterprise column not used (seat curve, capped).' },
+  { path: 'tier.premiumSupportPct', label: 'Premium support, % of platform revenue', fmt: pct },
+  { path: 'tier.cac', label: 'Customer acquisition cost', fmt: money, placeholder: true, note: 'As in the workbook, payback, LTV/CAC and Year 1 operating profit use the Enterprise CAC for every tier.' },
+  { path: 'tier.usageIntensity', label: 'Usage intensity index (Mid-Market = 1.00)', fmt: num },
+  { path: 'tier.csHoursPerMonth', label: 'Customer success hours / month', fmt: num, placeholder: true, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.supportTicketsPerMonth', label: 'Support tickets / month', fmt: num, placeholder: true, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.hostingBaselinePerYear', label: 'Tenant hosting baseline / year', fmt: money, placeholder: true, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.securityAuditPerYear', label: 'Security, compliance and audit / year', fmt: money, placeholder: true, note: 'Enterprise column not used (seat curve).' },
+  { path: 'tier.implementationHours', label: 'Implementation delivery hours', fmt: num, placeholder: true },
+];
+
+const singles = [
+  { group: 'Packaging', path: 'devSeatRatio', label: 'Developer workseats, % of governed employees', fmt: pct },
+  { group: 'Packaging', path: 'modulesInSuite', label: 'Modules the unit costs were measured against', fmt: num },
+  { group: 'Unit costs', path: 'unitCosts.inferencePerSeatMonth', label: 'AI inference and tokens / seat / month', fmt: money, placeholder: true, note: 'Flagged in the workbook as one of the two highest-priority placeholders.' },
+  { group: 'Unit costs', path: 'unitCosts.cloudPerSeatMonth', label: 'Cloud compute and storage / seat / month', fmt: money, placeholder: true },
+  { group: 'Unit costs', path: 'unitCosts.dataPerSeatMonth', label: 'Data ingestion and telemetry / seat / month', fmt: money, placeholder: true },
+  { group: 'Unit costs', path: 'unitCosts.licensesPerSeatMonth', label: 'Third-party licenses and feeds / seat / month', fmt: money, placeholder: true },
+  { group: 'Unit costs', path: 'unitCosts.commandCenterRuntimePerWorkflowMonth', label: 'Command Center runtime / workflow / month', fmt: money, placeholder: true },
+  { group: 'Unit costs', path: 'unitCosts.csCostPerHour', label: 'Customer success cost / hour', fmt: money, placeholder: true },
+  { group: 'Unit costs', path: 'unitCosts.supportCostPerTicket', label: 'Support cost / ticket', fmt: money, placeholder: true },
+  { group: 'Unit costs', path: 'unitCosts.implementationCostPerHour', label: 'Implementation delivery cost / hour', fmt: money, placeholder: true },
+  { group: 'Unit costs', path: 'unitCosts.rdPctOfRecurring', label: 'R&D allocated, % of recurring price', fmt: pct },
+  { group: 'Unit costs', path: 'unitCosts.gaPctOfRecurring', label: 'G&A allocated, % of recurring price', fmt: pct },
+  { group: 'Unit costs', path: 'unitCosts.retainedLifeYears', label: 'Expected retained life, years', fmt: num },
+  { group: 'Policy', path: 'policy.minimumMargin', label: 'Minimum margin policy (the floor)', fmt: pct, max: 0.99 },
+  { group: 'Policy', path: 'policy.marginTarget.US', label: 'Margin target, US', fmt: pct, max: 0.99 },
+  { group: 'Policy', path: 'policy.marginTarget.AUS', label: 'Margin target, AUS', fmt: pct, max: 0.99 },
+  { group: 'Policy', path: 'policy.marginTarget.LATAM', label: 'Margin target, LATAM', fmt: pct, max: 0.99 },
+  { group: 'Policy', path: 'policy.earlyPayDiscount', label: 'Early Pay discount', fmt: pct, max: 1 },
+  { group: 'Policy', path: 'policy.multiYearDiscount.1-Year', label: 'Multi-year discount, 1-Year', fmt: pct, max: 1 },
+  { group: 'Policy', path: 'policy.multiYearDiscount.2-Year', label: 'Multi-year discount, 2-Year', fmt: pct, max: 1 },
+  { group: 'Policy', path: 'policy.multiYearDiscount.3+ Year', label: 'Multi-year discount, 3+ Year', fmt: pct, max: 1 },
+  { group: 'Policy', path: 'policy.inferencePctOfArr', label: 'Inference charge, % of ARR excl. Inference (Micro-Corporate)', fmt: pct, note: 'Rounded to the nearest $1,000 in the calculation.' },
+  { group: 'Policy', path: 'policy.repDiscountLimit', label: 'Additional discount reps can give without approval', fmt: pct, max: 1, note: 'Not in the workbook. Requests above this go to Deal Review. The margin floor still applies.' },
+  { group: 'Policy', path: 'policy.quoteValidDays', label: 'Quote valid for (days)', fmt: num, int: true, min: 1, max: 365, note: 'Shown on quotes, since converted prices follow the exchange rate.' },
+  { group: 'Multi-year', path: 'policy.termYears.1-Year', label: 'Years in a 1-Year contract', fmt: num, int: true, min: 1, max: 10 },
+  { group: 'Multi-year', path: 'policy.termYears.2-Year', label: 'Years in a 2-Year contract', fmt: num, int: true, min: 1, max: 10 },
+  { group: 'Multi-year', path: 'policy.termYears.3+ Year', label: 'Years shown for a 3+ Year contract', fmt: num, int: true, min: 1, max: 10, note: 'The schedule and total contract value use this many years.' },
+  { group: 'Multi-year', path: 'policy.annualUplift', label: 'Annual price uplift from Year 2', fmt: pct, max: 1, note: 'Not in the workbook. 0% = later years renew at the Year 1 recurring price.' },
+  { group: 'Policy', path: 'policy.onPremCostPerSeatYear', label: 'On-prem / dedicated infrastructure cost ($/seat/yr)', fmt: money, placeholder: true, note: '$0 until the team scopes it.' },
+];
+
+const curves = [
+  ['enterprise.commandCenter', 'Command Center fee'],
+  ['enterprise.trafficLight', 'Traffic Light rate ($/seat/yr, per module)'],
+  ['enterprise.inferenceCharge', 'Inference charge (to the customer)'],
+  ['enterprise.implementation', 'Implementation (customer price)'],
+  ['enterprise.csHours', 'Customer Success hours / month'],
+  ['enterprise.inferenceCost', 'Inference cost (to Guardrail)'],
+  ['enterprise.techSupportCost', 'Technical support cost'],
+  ['enterprise.hostingSecurityCost', 'Hosting + security cost'],
+].map(([p, label]) => ({ path: p, label, placeholder: true }));
+
+const schema = {
+  tierRows,
+  bundle: { path: 'bundleDiscountByModuleCount', label: 'Bundle discount by modules purchased', fmt: pct },
+  singles,
+  curves,
+  curveExtras: [{ path: 'enterprise.implementationCap', label: 'Implementation cap, Enterprise', fmt: money }],
+  roles: ['rep', 'exec', 'admin'],
+  locationNames: { US: 'United States', AUS: 'Australia', LATAM: 'Mexico' },
+};
+
+// Settings added after the first version; older saved versions get these defaults.
+const DEFAULTS = {
+  'policy.termYears': { '1-Year': 1, '2-Year': 2, '3+ Year': 3 },
+  'policy.annualUplift': 0,
+  'policy.repDiscountLimit': 0.2,
+  'policy.quoteValidDays': 30,
+  'policy.pilotStandardModules': ['shadow', 'drift', 'codeAi'],
+  dealReviewEmail: '',
+  slackWebhookUrl: '',
+  slackChannel: '#deal-review',
+  pilotRules: { AUS: { currency: 'AUD', thresholdYear1: 75000, flatFee: 20000, percentOfYear1: 0.2 } },
+  currencyByLocation: { US: 'USD', AUS: 'AUD', LATAM: 'MXN' },
+  // Company exchange rates (1 USD = rate), used whenever a live rate isn't available.
+  fxRates: {
+    AUD: { rate: 1.42, asOf: '2026-10-29', source: 'FXStreet AUD/USD market rate', url: 'https://www.fxstreet.com/news/australian-dollar-edges-higher-above-07050-as-hot-cpi-lifts-rba-rate-hike-odds-202610290240' },
+    MXN: { rate: 18.6, asOf: '2026-10-29', source: 'Banco de México reported rate', url: 'https://world-today-journal.com/banco-de-mexico-reports-usd-mxn-exchange-rate-at-18-66/' },
+  },
+  permissions: { scopedOnPremPriceEditors: ['exec', 'admin'] },
+};
+function withDefaults(cfg) {
+  const out = JSON.parse(JSON.stringify(cfg || {}));
+  for (const [p, v] of Object.entries(DEFAULTS)) {
+    if (get(out, p) === undefined) { const ks = p.split('.'); let o = out; for (let i = 0; i < ks.length - 1; i++) o = o[ks[i]] = o[ks[i]] || {}; o[ks[ks.length - 1]] = JSON.parse(JSON.stringify(v)); }
+  }
+  return out;
+}
+
+// ---------- helpers
+function get(obj, p) {
+  return splitPath(p).reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+function set(obj, p, v) {
+  const ks = splitPath(p); let o = obj;
+  for (let i = 0; i < ks.length - 1; i++) o = o[ks[i]];
+  o[ks[ks.length - 1]] = v;
+}
+// keys like "1-Year" and "3+ Year" are fine; only "." separates
+function splitPath(p) { return p.split('.'); }
+
+// Validate an edited config against the current one. Structural lists
+// (tiers, locations, terms, modules) are not editable here; numbers must be
+// finite and non-negative (exponents may be negative); percentages bounded.
+function validate(next, current) {
+  const errors = [];
+  const out = withDefaults(current);
+  next = withDefaults(next);
+  const num = (v) => (typeof v === 'number' ? v : Number(v));
+
+  for (const row of tierRows) {
+    for (const t of current.tiers) {
+      const v = num(get(next, row.path)?.[t]);
+      if (!Number.isFinite(v) || v < 0) errors.push(`${row.label} (${t}) must be a number ≥ 0`);
+      else if (row.fmt === 'pct' && v > 1) errors.push(`${row.label} (${t}) must be ≤ 100%`);
+      else get(out, row.path)[t] = v;
+    }
+  }
+  const b = get(next, schema.bundle.path);
+  if (!Array.isArray(b) || b.length !== current.bundleDiscountByModuleCount.length) errors.push('Bundle discount table must have one value per module count');
+  else b.forEach((v, i) => {
+    v = num(v);
+    if (!Number.isFinite(v) || v < 0 || v >= 1) errors.push(`Bundle discount for ${i + 1} module(s) must be between 0% and 99%`);
+    else out.bundleDiscountByModuleCount[i] = v;
+  });
+  for (const f of singles) {
+    const v = num(get(next, f.path));
+    const max = f.max ?? (f.fmt === 'pct' ? 1 : Infinity);
+    if (!Number.isFinite(v) || v < (f.min ?? 0) || v > max || (f.int && !Number.isInteger(v))) errors.push(`${f.label} is out of range`);
+    else set(out, f.path, v);
+  }
+  if (out.modulesInSuite <= 0) errors.push('Modules the unit costs were measured against must be above 0');
+  for (const c of curves) {
+    const n = get(next, c.path) || {};
+    const co = num(n.coefficient), ex = num(n.exponent);
+    if (!Number.isFinite(co) || co < 0) errors.push(`${c.label}: coefficient must be ≥ 0`);
+    if (!Number.isFinite(ex) || Math.abs(ex) > 5) errors.push(`${c.label}: exponent must be between -5 and 5`);
+    if (!errors.length) set(out, c.path, { coefficient: co, exponent: ex });
+  }
+  for (const f of schema.curveExtras) {
+    const v = num(get(next, f.path));
+    if (!Number.isFinite(v) || v < 0) errors.push(`${f.label} must be ≥ 0`); else set(out, f.path, v);
+  }
+  out.currencyByLocation = { ...(current.currencyByLocation || {}) };
+  for (const loc of current.locations) {
+    const c = String(next?.currencyByLocation?.[loc] || '').trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(c)) errors.push(`Display currency for ${loc} must be a 3-letter code (e.g. USD)`);
+    else out.currencyByLocation[loc] = c;
+  }
+  out.fxRates = {};
+  for (const cur of new Set(Object.values(out.currencyByLocation))) {
+    if (cur === 'USD') continue;
+    const r = next?.fxRates?.[cur] || current.fxRates?.[cur] || {};
+    const rate = Number(r.rate), asOf = String(r.asOf || '');
+    if (!(rate > 0)) errors.push(`Exchange rate for ${cur} must be a number above 0`);
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) errors.push(`Exchange rate date for ${cur} must be a date`);
+    else {
+      const source = String(r.source || '').trim().slice(0, 120), url = String(r.url || '').trim();
+      if (url && !/^https:\/\/\S+$/.test(url)) errors.push(`Exchange rate source link for ${cur} must start with https://`);
+      else out.fxRates[cur] = { rate, asOf, ...(source ? { source } : {}), ...(url ? { url } : {}) };
+    }
+  }
+  out.pilotRules = {};
+  for (const [loc, r0] of Object.entries(next?.pilotRules || current.pilotRules || {})) {
+    if (!current.locations.includes(loc)) { errors.push(`Pilot rule for unknown location ${loc}`); continue; }
+    const r = { currency: String(r0.currency || '').toUpperCase(), thresholdYear1: Number(r0.thresholdYear1), flatFee: Number(r0.flatFee), percentOfYear1: Number(r0.percentOfYear1) };
+    if (!/^[A-Z]{3}$/.test(r.currency) || !(r.thresholdYear1 >= 0) || !(r.flatFee >= 0) || !(r.percentOfYear1 >= 0 && r.percentOfYear1 <= 1)) errors.push(`Pilot rule for ${loc} has an invalid value`);
+    else out.pilotRules[loc] = r;
+  }
+  // where Deal Review emails go: one or more addresses, comma separated (blank = the rep chooses)
+  const dre = String(next?.dealReviewEmail ?? current.dealReviewEmail ?? '').split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+  if (dre.some((a) => !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(a))) errors.push('Deal Review email must be one or more email addresses, separated by commas');
+  else out.dealReviewEmail = dre.join(', ');
+  const hook = String(next?.slackWebhookUrl ?? current.slackWebhookUrl ?? '').trim();
+  if (hook && !/^https:\/\/hooks\.slack\.com\/services\/\S+$/.test(hook)) errors.push('Slack webhook must be a https://hooks.slack.com/services/… link');
+  else out.slackWebhookUrl = hook;
+  out.slackChannel = String(next?.slackChannel ?? current.slackChannel ?? '').trim().slice(0, 80);
+  const editors = next?.permissions?.scopedOnPremPriceEditors;
+  if (!Array.isArray(editors) || editors.some((r) => !schema.roles.includes(r))) errors.push('On-prem price editors must be a list of roles');
+  else out.permissions.scopedOnPremPriceEditors = [...new Set(editors)];
+
+  return { errors, config: out };
+}
+
+module.exports = { schema, validate, get, withDefaults };
+
+; return module.exports; })();
+
+'use strict';
+// Shared helpers for every page.
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    method: opts.method || 'GET',
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    credentials: 'same-origin',
+  });
+  if (res.status === 401 && !path.endsWith('/login')) { location.href = '/login'; throw new Error('signed out'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
+const fmtMoney = (v, cents = false) => (v == null ? '—' : (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 }));
+const CUR_PREFIX = { USD: '$', AUD: 'A$', MXN: 'MX$', CAD: 'C$', NZD: 'NZ$', BRL: 'R$', EUR: '€', GBP: '£' };
+// Formatter for a quote's display currency. Pricing is computed in USD; amounts are converted at the quote's rate.
+function moneyFor(fx) {
+  const rate = fx && fx.rate;
+  // No exchange rate yet: show US dollars rather than hiding the price.
+  const cur = rate > 0 ? ((fx && fx.currency) || 'USD') : 'USD';
+  const pre = CUR_PREFIX[cur] || cur + ' ';
+  return (v) => {
+    if (v == null) return '—';
+    if (!(rate > 0)) return fmtMoney(v);
+    const x = v * rate;
+    return (x < 0 ? '-' : '') + pre + Math.abs(x).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  };
+}
+const fmtPct = (v, d = 1) => (v == null ? '—' : (v * 100).toFixed(d) + '%');
+const fmtPts = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + ' pts');
+const fmtNum = (v) => (v == null ? '—' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }));
+const fmtDate = (iso) => new Date(iso).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
+}
+
+async function renderTopbar(active) {
+  const me = await api('/api/me');
+  const exec = me.role === 'exec' || me.role === 'admin';
+  const links = [
+    ['/', 'Calculator', 'calc'],
+    ...(exec ? [['/exec', 'Executive summary', 'exec'], ['/settings', 'Assumptions', 'settings']] : [['/requests', 'My requests', 'requests']]),
+  ];
+  const bar = document.createElement('header');
+  bar.className = 'topbar';
+  bar.innerHTML = `<div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="135" height="40"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing</span></div>
+    <nav class="nav">${links.map(([h, t, k]) => `<a href="${h}" class="${k === active ? 'active' : ''}">${t}</a>`).join('')}</nav>
+    <div class="who">${esc(me.name)} · ${esc(me.role)} <button class="btn small" id="signout">Sign out</button></div>`;
+  document.body.prepend(bar);
+  $('#signout').onclick = async () => { await api('/api/logout', { method: 'POST' }); location.href = '/login'; };
+  return me;
+}
+
+// Customer-facing price breakdown, shared by the calculator and request detail views.
+// ---- What a customer sees: product lines only (Customer Success folded into product prices),
+// modules listed under AI Traffic Light, each discount with its rate. Older saved requests
+// (before these changes) have no `display`, so fall back to the raw lines.
+function viewOf(c) {
+  return c.display || { customerSuccessFolded: false, modules: c.lines.modules, trafficLightAfterBundle: c.lines.trafficLightAfterBundle,
+    commandCenter: c.lines.commandCenter, customerSuccess: c.lines.customerSuccess, moduleListPrices: c.moduleListPrices };
+}
+const ratePct = (x) => (x ? ` (${fmtPct(x, Number.isInteger(Math.round(x * 10000) / 100) ? 0 : 1)})` : '');
+function discountLabel(c, key, label) {
+  const R = c.rates || {};
+  if (key === 'additional') {
+    const D = c.discounts;
+    if (!D.additional) return label;
+    return D.additionalHeld ? `${label} (held at limit)` : `${label}${ratePct(R.additional != null ? R.additional : null)}`;
+  }
+  return label + ratePct(R[key]);
+}
+function moneyIn(cur) { const pre = CUR_PREFIX[cur] || cur + ' '; return (v) => pre + Math.round(v).toLocaleString('en-US'); }
+function pilotRuleText(c) {
+  const r = c.pilot && c.pilot.rule; if (!r) return '';
+  const mm = moneyIn(r.currency);
+  return r.applied === 'flat'
+    ? `Year 1 is over ${mm(r.thresholdYear1)}, so the pilot is a deposit of ${mm(r.flatFee)} toward Year 1.`
+    : `Year 1 is under ${mm(r.thresholdYear1)}, so the pilot is ${fmtPct(r.percentOfYear1, 0)} of the Year 1 price.`;
+}
+function validUntil(c, lockedAt) {
+  const days = c.quoteValidDays || 30;
+  const d = new Date(lockedAt || Date.now()); d.setDate(d.getDate() + days);
+  return { days, date: d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) };
+}
+
+function customerLinesHtml(c, { forCustomer = false } = {}) {
+  const m = moneyFor(c.fx), V = viewOf(c);
+  const r = (label, v, cls = '') => `<tr class="${cls}"><td>${label}</td><td>${v}</td></tr>`;
+  const L = c.lines, D = c.discounts;
+  let h = '<table class="lines"><tbody>';
+  h += r('Price lines', '', 'section');
+  const sel = V.modules.filter((x) => x.selected);
+  h += r('AI Traffic Light', sel.length ? m(V.trafficLightAfterBundle) : '<span class="sub">none selected</span>', sel.length ? 'parent' : '');
+  for (const x of sel) h += r(esc(x.name.replace('Traffic Light for ', '')), m(x.price), 'sub');
+  if (L.modulesSelected > 1) h += r(`Bundle discount (${L.modulesSelected} modules, ${fmtPct(L.bundleDiscountPct, 0)}${V.customerSuccessFoldedInto === 'modules' ? ' of list price' : ''})`, '−' + m(D.bundle), 'sub discount');
+  h += r('AI Command Center', L.commandCenter ? m(V.commandCenter) : '—');
+  if (L.premiumSupport) h += r('Premium support and named Customer Success', m(L.premiumSupport));
+  if (V.customerSuccess) h += r('Customer Success', m(V.customerSuccess));
+  h += r('Inference', m(L.inference));
+  if (L.dedicatedTenant || c.onPremNote) h += r('Dedicated SaaS tenant / Security (scoped)', L.dedicatedTenant ? m(L.dedicatedTenant) : 'To be scoped');
+  h += r('Annual recurring price', m(c.annualRecurringPrice), 'total');
+  h += r('Implementation (Year 1 only)', c.implementation ? m(c.implementation) : '—');
+  h += r('Total list price', m(c.totalMSRP), 'total');
+
+  h += r('Discounts', '', 'section');
+  h += r(discountLabel(c, 'bundle', 'Bundle'), D.bundle ? '−' + m(D.bundle) : '—', 'discount');
+  h += r(discountLabel(c, 'earlyPay', 'Early Pay'), D.earlyPay ? '−' + m(D.earlyPay) : '—', 'discount');
+  h += r(discountLabel(c, 'multiYear', 'Multi-year'), D.multiYear ? '−' + m(D.multiYear) : '—', 'discount');
+  h += r(discountLabel(c, 'additional', 'Additional'), D.additional ? '−' + m(D.additional) : '—', 'discount');
+  h += r(`Total discount${D.total ? ` (${fmtPct(D.totalPctOfMSRP)})` : ''}`, D.total ? '−' + m(D.total) : '—', 'total discount');
+
+  h += r('Final price (all discounts)', m(c.finalPrice), 'grand');
+  if (c.pilot.creditApplied) h += r('Pilot credit', '−' + m(c.pilot.creditApplied), 'sub discount');
+  h += r('Year 1 due at signing', m(c.year1DueAtSigning), 'due');
+
+  const sc = c.schedule;
+  if (sc && sc.years > 1) {
+    h += r(`Contract schedule (${sc.years} years)`, '', 'section');
+    for (const y of sc.rows) {
+      const parts = y.year === 1 && y.implementation ? ` <span class="hint">incl. ${m(y.implementation)} implementation</span>` : '';
+      h += r(`Year ${y.year}${parts}`, m(y.amount));
+    }
+    h += r('Total contract value', m(sc.totalContractValue), 'total');
+    if (sc.annualUplift) h += r(`Includes ${fmtPct(sc.annualUplift)} annual uplift from Year 2`, '', 'sub');
+  }
+
+  const pil = c.pilot.lines.filter((x) => x.selected);
+  if (pil.length) {
+    h += r('Pilot', '', 'section');
+    if (c.pilot.rule) h += r(`Modules: ${esc(pil.map((x) => x.name.replace('Traffic Light for ', '')).join(', '))}`, '', 'sub') + r(esc(pilotRuleText(c)), '', 'sub');
+    else for (const x of pil) h += r(esc(x.name.replace('Traffic Light for ', '')), m(x.price), 'sub');
+    h += r(`Pilot price${c.pilot.credited ? ' (credited toward Year 1)' : ' (stand-alone)'}`, m(c.pilot.total), 'total');
+  }
+  h += '</tbody></table>';
+  return h;
+}
+
+function heroHtml(c) {
+  const fx = c.fx || { currency: 'USD', rate: 1 };
+  const m = moneyFor(fx);
+  const shown = fx.rate > 0 ? fx.currency : 'USD';
+  return `<div class="hero"><small>Final price, Year 1 (${esc(shown)})${shown !== fx.currency ? ` · ${esc(fx.currency)} rate not available yet` : ''}</small>
+    <div class="amount">${m(c.finalPrice)}</div>
+    <small>After all discounts · before pilot credit${fx.currency !== 'USD' && fx.rate ? ` · ${fmtMoney(c.finalPrice)} USD` : ''}</small></div>`;
+}
+// Where an exchange rate came from, as a link when the source has a web address.
+function fxSourceHtml(fx) {
+  if (!fx || fx.currency === 'USD') return '';
+  const name = esc(fx.source || 'unknown source');
+  const safe = fx.sourceUrl && /^https:\/\//.test(fx.sourceUrl) ? fx.sourceUrl : null;
+  const date = fx.rateDate ? ` · rate date ${esc(String(fx.rateDate).slice(0, 16))}` : '';
+  return (safe ? `<a href="${esc(safe)}" target="_blank" rel="noopener noreferrer">${name} ↗</a>` : `<b>${name}</b>`) + date;
+}
+function fxNote(fx) {
+  if (!fx || fx.currency === 'USD') return 'Prices in US dollars.';
+  if (!fx.rate) return `No live ${fx.currency} rate available.`;
+  return `1 USD = ${Number(fx.rate).toLocaleString('en-US', { maximumFractionDigits: 6 })} ${fx.currency} · ${fx.source}${fx.rateDate ? ', rate date ' + String(fx.rateDate).slice(0, 16) : ''}${fx.stale ? ' (last good rate; live check failed)' : ''}`;
+}
+
+function statusHtml(c) {
+  const review = c.dealStatus === 'DEAL REVIEW';
+  return `<div class="status ${review ? 'review' : 'standard'}"><b>${esc(c.dealStatus)}</b><p>${esc(c.dealNote)}</p></div>`;
+}
+
+// Employees on the quote: the rep's headcount when entered (display only), else the band's included count.
+function employeesView(c, inputs) {
+  const i = c.included, n = i.customerEmployees || (inputs && inputs.band !== 'Enterprise' && inputs.employeeCount) || null;
+  const band = inputs && inputs.band;
+  return n ? { n, label: 'Employees', note: `Priced for up to ${fmtNum(i.governedEmployees)}${band ? ` (${band} band)` : ''}` }
+           : { n: i.governedEmployees, label: 'Governed employees', note: '' };
+}
+function includedHtml(c, inputs) {
+  const i = c.included, ev = employeesView(c, inputs);
+  return `<div class="included">
+    <div><b>${fmtNum(ev.n)}</b><span>${ev.label}${ev.note ? ` · ${esc(ev.note.charAt(0).toLowerCase() + ev.note.slice(1))}` : ''}</span></div>
+    <div><b>${fmtNum(i.developerWorkseats)}</b><span>Developer workseats</span></div>
+    <div><b>${fmtNum(i.workflows)}</b><span>Governed workflows</span></div></div>`;
+}
+
+// ---- request detail drawer (rep: customer view only; exec: adds the internal panel)
+function inputsHtml(i, moduleNames) {
+  const sel = (o) => Object.entries(o).filter(([, v]) => v).map(([k]) => moduleNames[k] || k).join(', ') || 'None';
+  const yn = (b) => (b ? 'Yes' : 'No');
+  const rows = [
+    ['Employee band', i.band + (i.band === 'Enterprise' ? ` · ${fmtNum(i.seats)} seats` : '')],
+    ['Buyer location', i.location],
+    ['Traffic Light modules', sel(i.modules)],
+    ['Command Center', yn(i.commandCenter)],
+    ['On-prem / dedicated', yn(i.onPrem) + (i.onPrem ? ` · scoped price ${i.scopedOnPremPrice ? fmtMoney(i.scopedOnPremPrice) : 'not yet entered'}` : '')],
+    ['Early Pay', yn(i.earlyPay)],
+    ['Contract term', i.term],
+    ['Additional discount requested', fmtNum(i.variableDiscountPct) + '%'],
+    ['Pilot modules', sel(i.pilot)],
+    ['Pilot credited toward contract', yn(i.pilotCredit)],
+  ];
+  return `<table class="kv"><tbody>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function internalHtml(n, c) {
+  const r = (k, v, cls = '') => `<tr class="${cls}"><td>${k}</td><td>${v}</td></tr>`;
+  const C = n.costs, P = n.profit;
+  const signed = (v, f) => `<span class="${v < 0 ? 'neg' : ''}">${f(v)}</span>`;
+  return `<div class="card internal"><h2>Internal only, never shared with reps or customers (USD)</h2>
+    ${n.reviewReason ? `<div class="flag bad" style="margin:0 0 12px">Deal Review reason: ${esc(n.reviewReason)}</div>` : ''}
+    <div class="two">
+      <div><h3>Margin and discount</h3><table class="kv"><tbody>
+        ${r('Final margin', signed(n.finalMarginPct, fmtPct))}
+        ${r('Regional margin target', fmtPct(n.regionalTargetPct))}
+        ${r('Gap to target', `<span class="${n.gapToTargetPts < 0 ? 'neg' : 'pos'}">${fmtPts(n.gapToTargetPts)}</span>`)}
+        ${r('Minimum margin (floor)', fmtPct(n.minimumMargin))}
+        ${r('Margin floor price', fmtMoney(n.marginFloorTotal))}
+        ${r('Requested variable discount', fmtPct(n.requestedVariableDiscountPct, 2))}
+        ${r('Applied variable discount', fmtPct(n.appliedVariableDiscountPct, 2))}
+        ${r('Maximum allowed (floor)', fmtPct(n.maxVariableDiscountPct, 2))}
+        ${r('Maximum that still meets target', fmtPct(n.maxDiscountMeetingTargetPct, 2))}
+        ${r('Inference charge vs. cost', signed(n.inferenceChargeVsCost, fmtMoney))}
+      </tbody></table></div>
+      <div><h3>Cost to serve (per year)</h3><table class="kv"><tbody>
+        ${r('Inference, cloud, data and licenses', fmtMoney(C.inferenceCloudDataLicenses))}
+        ${r('Command Center runtime', fmtMoney(C.commandCenterRuntime))}
+        ${r('Customer success', fmtMoney(C.customerSuccess))}
+        ${r('Technical support', fmtMoney(C.technicalSupport))}
+        ${r('Hosting, security and compliance', fmtMoney(C.hostingSecurityCompliance))}
+        ${r('On-prem / dedicated infrastructure', fmtMoney(C.onPremInfrastructure))}
+        ${r('Annual cost to serve', fmtMoney(C.annualCostToServe), 'total')}
+        ${r('Implementation delivery (one-time)', fmtMoney(C.implementationDelivery))}
+        ${r('Total cost to serve', fmtMoney(C.totalCostToServe), 'total')}
+      </tbody></table></div>
+    </div>
+    <h3 style="margin-top:16px">Profit</h3>
+    <div class="two"><table class="kv"><tbody>
+        ${r('Gross profit, recurring', signed(P.grossProfitRecurring, fmtMoney) + ` · ${fmtPct(P.recurringMarginPct)}`)}
+        ${r('Gross profit, Year 1', signed(P.grossProfitYear1, fmtMoney) + ` · ${fmtPct(P.year1MarginPct)}`)}
+        ${r('Operating profit, Year 1', signed(P.operatingProfitYear1, fmtMoney) + ` · ${fmtPct(P.operatingMarginYear1Pct)}`)}
+        ${r('Operating profit, ongoing', signed(P.operatingProfitOngoing, fmtMoney) + ` · ${fmtPct(P.operatingMarginOngoingPct)}`)}
+      </tbody></table><table class="kv"><tbody>
+        ${r('Payback on CAC', fmtNum(P.paybackMonths) + ' months')}
+        ${r('LTV to CAC', fmtNum(P.ltvToCac) + '×')}
+        ${r('CAC used', fmtMoney(P.cacUsed))}
+        ${r('Recurring, net of discounts', fmtMoney(n.recurringNet))}
+        ${r('Implementation, net of discounts', fmtMoney(n.implementationNet))}
+        ${n.contract && n.contract.years > 1 ? r(`Contract value (${n.contract.years} yrs)`, fmtMoney(n.contract.totalContractValue)) + r('Cost to serve over term', fmtMoney(n.contract.totalCostToServe)) + r('Margin over term', signed(n.contract.marginOverTermPct, fmtPct)) : ''}
+      </tbody></table></div>
+  </div>`;
+}
+
+function openDrawer(d, { exec, me, moduleNames, pick = 0 }) {
+  closeDrawer();
+  const bg = document.createElement('div'); bg.className = 'drawer-bg'; bg.onclick = closeDrawer;
+  const dr = document.createElement('aside'); dr.className = 'drawer'; dr.setAttribute('role', 'dialog');
+  document.body.append(bg, dr);
+  const latest = d.versions[0];
+  function render(idx) {
+    const v = d.versions[idx];
+    dr.innerHTML = `<div class="drawer-head"><div>
+        <h1>${esc(latest.customerName)}</h1>
+        <p class="sub">Request #${d.requestId} · version ${v.version} of ${latest.version} · locked ${fmtDate(v.lockedAt)} by ${esc(v.rep)} · assumptions v${v.assumptionsVersion}</p>
+        ${d.versions.length > 1 ? `<div class="versions" style="margin-top:8px">${d.versions.map((x, j) => `<button class="btn small" data-j="${j}" ${j === idx ? 'aria-pressed="true" style="border-color:var(--accent)"' : ''}>v${x.version}${x.status === 'DEAL REVIEW' ? ' ●' : ''}</button>`).join('')}</div>` : ''}
+      </div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><a class="btn small" href="/quote?id=${d.requestId}&v=${v.version}" target="_blank" rel="noopener">Quote PDF</a><a class="btn small" href="/?revise=${d.requestId}">Revise</a><button class="btn small" id="dclose">Close</button></div></div>
+      <div class="drawer-body">
+        ${exec && v.internal ? internalHtml(v.internal, v.customer) : ''}
+        <div class="two" style="margin-top:${exec ? 16 : 0}px">
+          <div class="card"><h2>Customer view</h2>${statusHtml(v.customer)}${includedHtml(v.customer, v.inputs)}${customerLinesHtml(v.customer)}</div>
+          <div class="card"><h2>Inputs</h2>${inputsHtml(v.inputs, moduleNames)}${v.customer.onPremNote ? `<div class="flag warn">${esc(v.customer.onPremNote)}</div>` : ''}<div class="hint" style="margin-top:10px">${esc(fxNote(v.customer.fx))}${v.customer.fx && v.customer.fx.currency !== 'USD' ? `<br>Converted using: ${fxSourceHtml(v.customer.fx)}` : ''}</div></div>
+        </div>
+      </div>`;
+    $('#dclose', dr).onclick = closeDrawer;
+    $$('[data-j]', dr).forEach((b) => (b.onclick = () => render(Number(b.dataset.j))));
+  }
+  render(pick);
+  document.addEventListener('keydown', escClose);
+}
+function escClose(e) { if (e.key === 'Escape') closeDrawer(); }
+function closeDrawer() {
+  $$('.drawer, .drawer-bg').forEach((x) => x.remove());
+  document.removeEventListener('keydown', escClose);
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+}
+
+
+
+// ===== Shared by the sales and executive files
+function downloadFile(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+// ---- the fine print on a customer quote
+function quoteNotes(v) {
+  const c = v.customer, i = v.inputs, fx = c.fx || { currency: 'USD', rate: 1 }, out = [];
+  if (fx.currency !== 'USD' && fx.rate > 0) {
+    const host = fx.sourceUrl ? ` (${String(fx.sourceUrl).replace(/^https:\/\/(www\.)?/, '').split('/')[0]})` : '';
+    out.push(`Amounts converted from US dollars at 1 USD = ${Number(fx.rate).toLocaleString('en-US', { maximumFractionDigits: 6 })} ${fx.currency}${fx.source ? `, source: ${fx.source}${host}` : ''}${fx.rateDate ? `, rate date ${String(fx.rateDate).slice(0, 16)}` : ''}. Prices follow the exchange rate, so this quote is valid for ${c.quoteValidDays || 30} days.`);
+  }
+  out.push(`Year 1 includes one-time implementation.${c.schedule && c.schedule.years > 1 ? ` Years 2 to ${c.schedule.years} renew at the Year 1 recurring price${c.schedule.annualUplift ? `, plus ${(c.schedule.annualUplift * 100).toFixed(1)}% per year` : ''}.` : ''} Governed workflows must be defined within 30 days of contract execution and set up within 3 months.`);
+  if (c.pilot.total) out.push(c.pilot.credited ? 'The pilot is paid up front and credited toward the Year 1 amount due at signing.' : 'The pilot is a stand-alone fee, paid separately.');
+  if (i.earlyPay) out.push('Early Pay pricing applies when paid annually within 30 days of contract.');
+  return out;
+}
+
+function deepFreeze(o) { Object.values(o).forEach((v) => v && typeof v === 'object' && deepFreeze(v)); return Object.freeze(o); }
+
+// ---- SHA-256 (pure JS; works on file:// pages where crypto.subtle may be missing)
+function sha256Hex(str) {
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const bytes = new TextEncoder().encode(str);
+  const l = bytes.length, withPad = ((l + 9 + 63) >> 6) << 6;
+  const m = new Uint8Array(withPad); m.set(bytes); m[l] = 0x80;
+  const dv = new DataView(m.buffer); dv.setUint32(withPad - 4, l * 8); dv.setUint32(withPad - 8, Math.floor(l / 0x20000000));
+  const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const w = new Uint32Array(64), r = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let o = 0; o < withPad; o += 64) {
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(o + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = r(w[i - 15], 7) ^ r(w[i - 15], 18) ^ (w[i - 15] >>> 3), s1 = r(w[i - 2], 17) ^ r(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) >>> 0;
+      const t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+      h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+  }
+  return H.map((x) => x.toString(16).padStart(8, '0')).join('');
+}
+
+// Fingerprint of a set of assumptions, so the executive file can match a request to the
+// exact numbers it was priced on, whichever file the workbook was imported into.
+function canonical(o) {
+  if (Array.isArray(o)) return '[' + o.map(canonical).join(',') + ']';
+  if (o && typeof o === 'object') return '{' + Object.keys(o).sort().map((k) => JSON.stringify(k) + ':' + canonical(o[k])).join(',') + '}';
+  return JSON.stringify(o);
+}
+function configHash(cfg) { return sha256Hex(canonical(cfg)).slice(0, 16); }
+
+// ---- "Import pricing workbook" panel, shared by the calculator's Admin tab and the executive file.
+// opts: { fileInput, nameEl, resultEl, baseline, current: () => ({ version, config }), onImport: ({ config, filename, bytes, note }) => void, afterImportHtml }
+function setupWorkbookImport(opts) {
+  const S = Schema.schema;
+  const fmtFor = (p) => {
+    const f = [...S.tierRows.map((x) => [x.path, x.fmt]), ...S.singles.map((x) => [x.path, x.fmt]), [S.bundle.path, 'pct']].find(([b]) => p === b || p.startsWith(b + '.'));
+    return f ? f[1] : 'num';
+  };
+  const showVal = (v, p) => (v == null ? '—' : fmtFor(p) === 'pct' ? fmtPct(v, 2) : fmtFor(p) === 'money' ? '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 4 }) : fmtNum(v));
+  const smoke = (config) => {
+    for (const band of config.tiers) {
+      const all = Object.fromEntries(config.modules.map((x) => [x.key, 'Y']));
+      const res = Engine.calculate({ band, location: config.locations[0], seats: 5000, modules: all, commandCenter: 'Y', term: config.terms[0] }, config);
+      if (!Number.isFinite(res.customer.finalPrice) || !Number.isFinite(res.internal.finalMarginPct)) throw new Error(`These values produce an invalid price for ${band}.`);
+    }
+  };
+  let pending = null;
+  opts.fileInput.addEventListener('change', async (ev) => {
+    const f = ev.target.files[0]; ev.target.value = '';
+    if (!f) return;
+    opts.nameEl.textContent = `${f.name} · checking…`; opts.resultEl.innerHTML = '';
+    const cur = opts.current();
+    let r;
+    try {
+      if (!/\.xlsx$/i.test(f.name)) throw new Error('Choose the workbook as an .xlsx file.');
+      if (typeof DecompressionStream === 'undefined') throw new Error('This browser is too old to read Excel files. Use a current version of Chrome, Edge, Safari or Firefox.');
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      r = WorkbookImport.analyzeSheets(await Xlsx.readWorkbookAsync(bytes), cur.config, opts.baseline);
+      if (r.ok) {
+        const v = Schema.validate(r.config, cur.config);
+        if (v.errors.length) { r.ok = false; r.errors.push(...v.errors); } else {
+          try { smoke(v.config); r.config = v.config; } catch (err) { r.ok = false; r.errors.push(err.message); }
+        }
+      }
+      pending = { filename: f.name, bytes, config: r.config, baseVersion: cur.version };
+    } catch (err) { r = { ok: false, errors: [err.message], warnings: [], changes: [], formulaChanges: [] }; }
+    opts.nameEl.textContent = f.name;
+    render(r, cur.version);
+  });
+  function render(r, version) {
+    let h = '';
+    if (r.errors.length) h += `<div class="flag bad"><b>Can't import this workbook.</b><ul style="margin:6px 0 0;padding-left:18px">${r.errors.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    if (r.formulaChanges.length) {
+      h += `<h3 style="margin-top:16px">Formulas that changed (${r.formulaChanges.length})</h3><div class="table-wrap"><table class="grid settings-table"><thead><tr><th>Cell</th><th>Built from</th><th>In this workbook</th></tr></thead><tbody>${r.formulaChanges.slice(0, 50).map((x) => `<tr><td>${esc(x.cell)}</td><td class="wrap"><code>${esc(x.before || '(none)')}</code></td><td class="wrap"><code>${esc(x.after || '(removed)')}</code></td></tr>`).join('')}</tbody></table></div>
+        <p class="hint">Send this workbook to whoever maintains the calculator. Once the app is updated and re-checked against it, it can be imported.</p>`;
+    }
+    if (r.warnings.length) h += `<div class="flag warn">${r.warnings.map(esc).join('<br>')}</div>`;
+    if (r.ok && !r.changes.length) h += '<div class="flag info">No changes. This workbook has the same numbers as the current prices.</div>';
+    if (r.ok && r.changes.length) {
+      h += `<h3 style="margin-top:16px">${r.changes.length} change${r.changes.length === 1 ? '' : 's'} to import</h3>
+        <div class="table-wrap"><table class="grid settings-table"><thead><tr><th>Item</th><th class="num">Now (v${version})</th><th class="num">From workbook</th></tr></thead>
+        <tbody>${r.changes.map((c) => `<tr><td class="lab">${esc(c.label)}</td><td class="num">${showVal(c.from, c.path)}</td><td class="num"><b>${showVal(c.to, c.path)}</b></td></tr>`).join('')}</tbody></table></div>
+        <div class="filters" style="margin-top:12px"><div class="field" style="flex:1;min-width:240px"><label class="label" for="wb-note">What changed and why</label><input id="wb-note" type="text" maxlength="250" placeholder="e.g. Q1 measured inference and hosting costs"></div>
+        <button class="btn primary" id="wb-import" type="button">Import as version ${version + 1}</button></div><div class="err" id="wb-err"></div>`;
+    }
+    opts.resultEl.innerHTML = h;
+    const btn = opts.resultEl.querySelector('#wb-import');
+    if (btn) btn.onclick = () => {
+      const note = opts.resultEl.querySelector('#wb-note').value.trim();
+      const err = opts.resultEl.querySelector('#wb-err');
+      if (!note) { err.textContent = 'Add a short note describing the change.'; return; }
+      if (!pending || pending.baseVersion !== opts.current().version) { err.textContent = 'The prices changed since this preview. Choose the workbook again.'; return; }
+      const done = opts.onImport({ ...pending, note });
+      pending = null; opts.nameEl.textContent = '';
+      opts.resultEl.innerHTML = `<div class="flag ok">${done}</div>`;
+    };
+  }
+}
+function bytesToB64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function b64ToBytes(s) { return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); }
+
+// ---- Sales page summary: status, headline numbers, then grouped details.
+const summaryOpen = { lines: false, discounts: false, schedule: false, pilot: false };
+function salesSummaryHtml(c, fxBox, inputs) {
+  const m = moneyFor(c.fx), L = c.lines, D = c.discounts, sc = c.schedule;
+  const fx = c.fx || { currency: 'USD', rate: 1 }, shownCur = fx.rate > 0 ? fx.currency : 'USD';
+  const review = c.dealStatus === 'DEAL REVIEW';
+  const row = (label, v, cls = '') => `<tr class="${cls}"><td>${label}</td><td>${v}</td></tr>`;
+  const neg = (v) => (v ? '−' + m(v) : '—');
+  const group = (key, title, right, body) => `<details class="grp" data-k="${key}" ${summaryOpen[key] ? 'open' : ''}>
+      <summary><span>${title}</span><span class="grp-right">${right}</span></summary><table class="lines"><tbody>${body}</tbody></table></details>`;
+
+  const icon = review
+    ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 18.5 17h-17L10 2.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+    : '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m6.5 10.2 2.3 2.3 4.7-4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  // only Deal Review gets a banner; a standard deal needs no message
+  let h = review ? `<div class="status-row review" role="status">${icon}<div><b>Deal Review</b><span>${esc(c.dealNote)}</span></div></div>` : '';
+  h += `<div class="hero">
+      <small>Final price · Year 1${shownCur !== fx.currency ? ` · in USD (${esc(fx.currency)} rate not available)` : ` · ${esc(shownCur)}`}</small>
+      <div class="amount">${m(c.finalPrice)}</div>
+      <div class="kpis">
+        <div><small>Due at signing</small><b>${m(c.year1DueAtSigning)}</b></div>
+        <div><small>Recurring / year</small><b>${m(c.annualRecurringPrice)}</b></div>
+        <div><small>Total discount</small><b>${D.total ? `${m(D.total)} <em>${fmtPct(D.totalPctOfMSRP, 1)}</em>` : '—'}</b></div>
+      </div>
+      ${fx.currency !== 'USD' && fx.rate > 0 ? `<div class="conv">Converted from USD at 1 USD = ${esc(Number(fx.rate).toLocaleString('en-US', { maximumFractionDigits: 6 }))} ${esc(fx.currency)} · ${esc(fx.source || '')}</div>` : ''}
+    </div>`;
+  h += fxBox || '';
+  const i = c.included;
+  const ev = employeesView(c, inputs);
+  h += `<div class="incl"><span><b>${fmtNum(ev.n)}</b> ${ev.label.toLowerCase()}${ev.note ? ` <span class="muted">· ${esc(ev.note.charAt(0).toLowerCase() + ev.note.slice(1))}</span>` : ''}</span><span><b>${fmtNum(i.developerWorkseats)}</b> developer workseats</span><span><b>${fmtNum(i.workflows)}</b> workflows</span></div>`;
+
+  // price lines: product prices only (Customer Success folded in), modules under AI Traffic Light
+  const V = viewOf(c);
+  let b = '';
+  const sel = V.modules.filter((x) => x.selected);
+  b += row('AI Traffic Light', sel.length ? m(V.trafficLightAfterBundle) : '<span class="muted">none selected</span>', sel.length ? 'parent' : '');
+  for (const x of sel) b += row(esc(x.name.replace('Traffic Light for ', '')), m(x.price), 'sub');
+  if (L.modulesSelected > 1) b += row(`Bundle discount · ${L.modulesSelected} modules, ${fmtPct(L.bundleDiscountPct, 0)}${V.customerSuccessFoldedInto === 'modules' ? ' of list price' : ''}`, neg(D.bundle), 'sub discount');
+  b += row('AI Command Center', L.commandCenter ? m(V.commandCenter) : '—');
+  if (L.premiumSupport) b += row('Premium support and named CS', m(L.premiumSupport));
+  if (V.customerSuccess) b += row('Customer Success', m(V.customerSuccess));
+  b += row('Inference', m(L.inference));
+  if (L.dedicatedTenant || c.onPremNote) b += row('Dedicated tenant / security', L.dedicatedTenant ? m(L.dedicatedTenant) : '<span class="muted">to be scoped</span>');
+  b += row('Annual recurring price', m(c.annualRecurringPrice), 'total');
+  b += row('Implementation · Year 1 only', c.implementation ? m(c.implementation) : '—');
+  b += row('Total list price', m(c.totalMSRP), 'total');
+  h += group('lines', 'Price lines', m(c.totalMSRP), b);
+
+  // discounts, each with its rate
+  b = row(discountLabel(c, 'bundle', 'Bundle'), neg(D.bundle), 'discount') + row(discountLabel(c, 'earlyPay', 'Early Pay'), neg(D.earlyPay), 'discount')
+    + row(discountLabel(c, 'multiYear', 'Multi-year'), neg(D.multiYear), 'discount')
+    + row(discountLabel(c, 'additional', 'Additional'), neg(D.additional), 'discount')
+    + row(`Total discount${D.total ? ` (${fmtPct(D.totalPctOfMSRP, 1)})` : ''}`, neg(D.total), 'total discount')
+    + row('Final price', m(c.finalPrice), 'total')
+    + (c.pilot.creditApplied ? row('Pilot credit', neg(c.pilot.creditApplied), 'sub discount') : '')
+    + row('Year 1 due at signing', m(c.year1DueAtSigning), 'due');
+  h += group('discounts', 'Discounts and amount due', D.total ? `−${m(D.total)} (${fmtPct(D.totalPctOfMSRP, 1)})` : 'none', b);
+
+  if (sc && sc.years > 1) {
+    b = sc.rows.map((y) => row(`Year ${y.year}${y.year === 1 && y.implementation ? ' <span class="muted">incl. implementation</span>' : ''}`, m(y.amount))).join('')
+      + row('Total contract value', m(sc.totalContractValue), 'total')
+      + (sc.annualUplift ? row(`Includes ${fmtPct(sc.annualUplift)} annual uplift from Year 2`, '', 'sub') : '');
+    h += group('schedule', `Contract schedule · ${sc.years} years`, m(sc.totalContractValue), b);
+  }
+  const pil = c.pilot.lines.filter((x) => x.selected);
+  if (pil.length) {
+    b = c.pilot.rule
+      ? row(esc(pil.map((x) => x.name.replace('Traffic Light for ', '')).join(', ')), '', 'sub') + row(`<span class="muted">${esc(pilotRuleText(c))}</span>`, '', 'sub')
+      : pil.map((x) => row(esc(x.name.replace('Traffic Light for ', '')), m(x.price), 'sub')).join('');
+    b += row(`Pilot price${c.pilot.credited ? ' · credited toward Year 1' : ' · stand-alone'}`, m(c.pilot.total), 'total');
+    h += group('pilot', 'Pilot', m(c.pilot.total), b);
+  }
+  const vu = validUntil(c);
+  h += `<p class="valid-note">Prices are valid for ${vu.days} days from when the request is locked${fx.currency !== 'USD' ? ', because converted prices follow the exchange rate' : ''}.</p>`;
+  return h;
+}
+document.addEventListener('toggle', (e) => {
+  const d = e.target;
+  if (d.matches && d.matches('details.grp')) summaryOpen[d.dataset.k] = d.open;
+}, true);
+
+function bandRangeText(band, governed) {
+  return band === 'Enterprise' ? `${fmtNum(governed)} seats` : `Up to ${fmtNum(governed)} employees`;
+}
+
+
+// ===== Quote PDF (no libraries): draws the customer quote and carries the locked
+// request inside the PDF as an attached file, so the executive file can load it.
+const PDF_W = { r: [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,350,556,350,222,556,333,1000,556,556,333,1000,667,333,1000,350,611,350,350,222,222,333,333,350,556,1000,333,1000,500,333,944,350,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500], b: [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,350,556,350,278,556,500,1000,556,556,333,1000,667,333,1000,350,611,350,350,278,278,500,500,350,556,1000,333,1000,556,333,944,350,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,333,400,584,333,333,333,611,556,278,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,584,611,611,611,611,611,556,611,556] }; // Helvetica / Helvetica-Bold widths, WinAnsi codes 32-255
+const PDF_SPECIAL = { 0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02c6: 0x88, 0x2030: 0x89, 0x0160: 0x8a, 0x2039: 0x8b, 0x0152: 0x8c, 0x017d: 0x8e, 0x2018: 0x91, 0x2019: 0x92, 0x201c: 0x93, 0x201d: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x02dc: 0x98, 0x2122: 0x99, 0x0161: 0x9a, 0x203a: 0x9b, 0x0153: 0x9c, 0x017e: 0x9e, 0x0178: 0x9f, 0x2212: 0x96, 0x00a0: 0x20, 0x202f: 0x20, 0x2009: 0x20 };
+function pdfCodes(str) {
+  const out = [];
+  for (const ch of String(str)) {
+    const u = ch.codePointAt(0);
+    if (u === 0x2197) continue; // ↗
+    if (u >= 32 && u < 127) out.push(u);
+    else if (PDF_SPECIAL[u] != null) out.push(PDF_SPECIAL[u]);
+    else if (u >= 0xa0 && u <= 0xff) out.push(u);
+    else if (u === 10 || u === 9) out.push(32);
+    else out.push(63);
+  }
+  return out;
+}
+function pdfWidth(str, bold, size) { const t = bold ? PDF_W.b : PDF_W.r; return pdfCodes(str).reduce((s, c) => s + (t[c - 32] || 556), 0) * size / 1000; }
+function pdfWrap(str, maxW, bold, size) {
+  const lines = []; let cur = '';
+  for (const word of String(str).split(/\s+/).filter(Boolean)) {
+    const next = cur ? cur + ' ' + word : word;
+    if (cur && pdfWidth(next, bold, size) > maxW) { lines.push(cur); cur = word; } else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+const pdfBytes = (s) => new TextEncoder().encode(s);
+function pdfConcat(parts) {
+  const n = parts.reduce((s, p) => s + p.length, 0), out = new Uint8Array(n); let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+const pdfStr = (s) => '<' + pdfCodes(s).map((c) => c.toString(16).padStart(2, '0')).join('') + '>';
+const pdfRgb = (hex) => [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) / 255).toFixed(3)).join(' ');
+
+// The fields a locked request carries; nothing internal is ever written into the PDF.
+const PDF_REQUEST_FIELDS = ['schema', 'requestId', 'version', 'stage', 'hubspotRecord', 'approval', 'customerName', 'rep', 'lockedAt', 'assumptionsVersion', 'assumptionsNote', 'assumptionsHash', 'status', 'inputs', 'customer'];
+function quoteFileName(v) { return `Guardrail Quote - ${String(v.customerName).replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60)} - ${v.requestId}-v${v.version}.pdf`; }
+
+function buildQuotePdf(v, { attachRequest = true } = {}) {
+  const c = v.customer, i = v.inputs, fx = c.fx || { currency: 'USD', rate: 1 };
+  const PW = 612, PH = 792, ML = 54, MR = 54, CW = PW - ML - MR, TOP = 54, BOTTOM = 64;
+  // Guardrail brand book colors
+  const C = { ink: '#060510', muted: '#5B6472', rule: '#E1E3E6', accent: '#1B8ECD', ok: '#3D7F3A', bad: '#D24F47', badSoft: '#FBEDEC', soft: '#EAF6FE', nav: '#173C5B', black: '#060510', mist: '#A0C4D6' };
+  const pages = []; let ops = null, y = 0;
+  const newPage = () => { ops = []; pages.push(ops); y = TOP; };
+  const ensure = (h) => { if (y + h > PH - BOTTOM) newPage(); };
+  const text = (s, x, yy, { size = 10, bold = false, color = C.ink, align = 'left' } = {}) => {
+    const w = pdfWidth(s, bold, size), xx = align === 'right' ? x - w : x;
+    ops.push(`BT /${bold ? 'F2' : 'F1'} ${size} Tf ${pdfRgb(color)} rg 1 0 0 1 ${xx.toFixed(2)} ${(PH - yy).toFixed(2)} Tm ${pdfStr(s)} Tj ET`);
+  };
+  const rect = (x, yy, w, h, color) => ops.push(`${pdfRgb(color)} rg ${x.toFixed(2)} ${(PH - yy - h).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`);
+  const line = (x1, yy, x2, color = C.rule, wd = 0.75) => ops.push(`${pdfRgb(color)} RG ${wd} w ${x1.toFixed(2)} ${(PH - yy).toFixed(2)} m ${x2.toFixed(2)} ${(PH - yy).toFixed(2)} l S`);
+  const para = (s, { size = 10, bold = false, color = C.ink, gap = 4, indent = 0 } = {}) => {
+    for (const ln of pdfWrap(s, CW - indent, bold, size)) { ensure(size + gap); y += size + gap / 2; text(ln, ML + indent, y, { size, bold, color }); y += gap / 2; }
+  };
+  const heading = (s) => { ensure(40); y += 18; rect(ML, y - 10, 3, 12, C.accent); text(s, ML + 9, y, { size: 12.5, bold: true, color: C.nav }); y += 8; };
+
+  newPage();
+  // header band: brand black with the Guardrail logo
+  const logo = typeof PDF_LOGO !== 'undefined' ? PDF_LOGO : null, BAND = 78;
+  rect(0, 0, PW, BAND, C.nav);
+  rect(0, BAND, PW, 3, C.accent);
+  if (logo) {
+    const lh = 36, lw = lh * logo.w / logo.h;
+    ops.push(`q ${lw.toFixed(2)} 0 0 ${lh} ${ML} ${(PH - (BAND + lh) / 2).toFixed(2)} cm /Im1 Do Q`);
+  } else text('GUARDRAIL', ML, 46, { size: 18, bold: true, color: '#FFFFFF' });
+  const locked = new Date(v.lockedAt);
+  text('PRICING QUOTE', PW - MR, 32, { size: 10, bold: true, color: '#FFFFFF', align: 'right' });
+  text(`${v.requestId}-${v.version}${v.stage ? ` · ${v.stage}` : ''}`, PW - MR, 46, { size: 8.5, color: C.mist, align: 'right' });
+  text(locked.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }), PW - MR, 58, { size: 8.5, color: C.mist, align: 'right' });
+  y = BAND + 34;
+  text(v.customerName, ML, y, { size: 17, bold: true, color: C.ink });
+  y += 16;
+  text(`Prepared by ${v.rep}${v.rep ? ', ' : ''}Guardrail Technologies Inc.`, ML, y, { size: 9.5, color: C.muted });
+  y += 24;
+  if (v.status === 'DEAL REVIEW' && !v.approval) {
+    rect(ML, y - 4, CW, 24, C.badSoft);
+    text('Pending Deal Review.', ML + 10, y + 11, { size: 9.5, bold: true, color: C.bad });
+    text('This pricing is subject to executive approval and is not final.', ML + 10 + pdfWidth('Pending Deal Review. ', true, 9.5), y + 11, { size: 9.5, color: C.bad });
+    y += 32;
+  }
+  // facts
+  line(ML, y, PW - MR); y += 16;
+  const facts = [['Employee band', i.band, bandRangeText(i.band, c.included.governedEmployees)], ['Contract term', i.term, ''], ['Currency', fx.rate > 0 ? fx.currency : 'USD', '']];
+  facts.forEach(([l, val, sub], k) => {
+    const x = ML + k * (CW / 3);
+    text(l, x, y, { size: 8.5, color: C.muted }); text(val, x, y + 15, { size: 12, bold: true, color: C.nav }); if (sub) text(sub, x, y + 28, { size: 8.5, color: C.muted });
+  });
+  y += 38; line(ML, y, PW - MR); y += 6;
+  const vu = validUntil(c, v.lockedAt);
+  para(`Valid until ${vu.date} (${vu.days} days).`, { size: 9.5, bold: true });
+
+  heading('What is included');
+  ensure(40); y += 6;
+  const ev = employeesView(c, i);
+  [[ev.n, ev.label, ev.note], [c.included.developerWorkseats, 'Developer workseats', ''], [c.included.workflows, 'Governed workflows', '']].forEach(([n, l, note], k) => {
+    const x = ML + k * (CW / 3); text(fmtNum(n), x, y + 12, { size: 15, bold: true }); text(l, x, y + 26, { size: 8.5, color: C.muted });
+    if (note) text(note, x, y + 37, { size: 8.5, color: C.muted });
+  });
+  y += ev.note ? 44 : 34;
+  const names = Object.fromEntries(c.lines.modules.map((m) => [m.key, m.name.replace('Traffic Light for ', '')]));
+  const mods = Object.entries(i.modules || {}).filter(([, x]) => x).map(([k]) => names[k]).join(', ') || 'None';
+  para(`Traffic Light modules: ${mods}${i.commandCenter ? ' · AI Command Center' : ''}${i.earlyPay ? ' · Early Pay' : ''}`, { size: 9.5 });
+
+  heading('Pricing');
+  // the same price lines the calculator shows, read from its table
+  const doc = new DOMParser().parseFromString(customerLinesHtml(c, { forCustomer: true }), 'text/html');
+  for (const tr of doc.querySelectorAll('tr')) {
+    const cls = tr.className || '', tds = tr.querySelectorAll('td');
+    const label = (tds[0] ? tds[0].textContent : '').replace(/\s+/g, ' ').trim(), val = (tds[1] ? tds[1].textContent : '').replace(/\s+/g, ' ').trim();
+    const has = (k) => cls.split(/\s+/).includes(k);
+    if (has('section')) { ensure(34); y += 14; text(label, ML, y + 6, { size: 9, bold: true, color: C.muted }); y += 12; line(ML, y, PW - MR); continue; }
+    const sub = has('sub'), bold = has('total') || has('grand') || has('due') || has('parent');
+    const size = has('grand') ? 11 : 9.5, indent = sub ? 14 : 0;
+    const vColor = has('discount') && val && val !== '—' ? C.ok : C.ink;
+    const labLines = pdfWrap(label, CW - indent - 110, bold, size);
+    const h = labLines.length * (size + 3) + 6;
+    ensure(h);
+    if (has('total') || has('grand')) line(ML, y, PW - MR, has('grand') ? C.ink : C.rule, has('grand') ? 1 : 0.75);
+    if (has('due')) rect(ML - 4, y, CW + 8, h, C.soft);
+    labLines.forEach((ln, k) => text(ln, ML + indent, y + size + 3 + k * (size + 3), { size, bold, color: sub ? C.muted : C.ink }));
+    if (val) text(val, PW - MR, y + size + 3, { size, bold, color: vColor, align: 'right' });
+    y += h;
+  }
+  if (c.onPremNote) { y += 6; para(`Dedicated infrastructure: ${c.lines.dedicatedTenant ? 'priced as scoped.' : 'to be scoped and quoted separately.'}`, { size: 9 }); }
+
+  // next steps
+  const steps = [
+    `Review the modules, term and pricing above with ${v.rep || 'your Guardrail representative'}.`,
+    c.pilot.total ? `Start the pilot (${moneyFor(fx)(c.pilot.total)}${c.pilot.credited ? ', credited toward Year 1' : ''}).` : 'Confirm any changes before signing; a revised quote replaces this one.',
+    `Sign the order form by ${vu.date}. Year 1 due at signing: ${moneyFor(fx)(c.year1DueAtSigning)}.`,
+    'Define governed workflows within 30 days of signing; setup completes within 3 months.',
+  ];
+  const boxH = 30 + steps.reduce((h, st) => h + pdfWrap(st, CW - 48, false, 9.5).length * 13 + 4, 0);
+  y += 16; ensure(boxH + 10);
+  rect(ML, y, CW, boxH, C.soft); rect(ML, y, 3, boxH, C.accent);
+  text('Next steps', ML + 16, y + 19, { size: 11, bold: true, color: C.nav });
+  let sy = y + 30;
+  steps.forEach((st, k) => {
+    text(String(k + 1), ML + 18, sy + 10, { size: 9.5, bold: true, color: C.accent });
+    pdfWrap(st, CW - 48, false, 9.5).forEach((ln) => { text(ln, ML + 32, sy + 10, { size: 9.5 }); sy += 13; });
+    sy += 4;
+  });
+  y += boxH;
+
+  y += 14; ensure(30); line(ML, y, PW - MR); y += 4;
+  for (const n of quoteNotes(v)) para(n, { size: 8.5, color: C.muted, gap: 3 });
+  y += 8; ensure(20);
+  para(`Questions about this quote? Contact ${v.rep || 'your Guardrail representative'} at Guardrail Technologies Inc. and mention quote ${v.requestId}-${v.version}.`, { size: 9, bold: true, color: C.ink });
+
+  // footers
+  pages.forEach((p, k) => {
+    ops = p;
+    line(ML, PH - 40, PW - MR);
+    text(`Guardrail Technologies Inc. · Quote ${v.requestId}-${v.version} · ${v.customerName}`, ML, PH - 28, { size: 7.5, color: C.muted });
+    text(`Page ${k + 1} of ${pages.length}`, PW - MR, PH - 28, { size: 7.5, color: C.muted, align: 'right' });
+  });
+
+  // ---- assemble the file
+  const objs = []; // index = object number - 1
+  const add = (body) => { objs.push(body); return objs.length; };
+  const stream = (dict, data) => pdfConcat([pdfBytes(`<< ${dict} /Length ${data.length} >>\nstream\n`), data, pdfBytes('\nendstream')]);
+  const catalogN = add(null), pagesN = add(null);
+  const f1 = add(pdfBytes('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'));
+  const f2 = add(pdfBytes('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'));
+  let xobj = '';
+  if (logo) {
+    const b64 = (t) => Uint8Array.from(atob(t), (ch) => ch.charCodeAt(0));
+    const sm = add(stream(`/Type /XObject /Subtype /Image /Width ${logo.w} /Height ${logo.h} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode`, b64(logo.alpha)));
+    const im = add(stream(`/Type /XObject /Subtype /Image /Width ${logo.w} /Height ${logo.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /SMask ${sm} 0 R`, b64(logo.rgb)));
+    xobj = ` /XObject << /Im1 ${im} 0 R >>`;
+  }
+  const kids = pages.map((p) => {
+    const cs = add(stream('', pdfBytes(p.join('\n'))));
+    return add(pdfBytes(`<< /Type /Page /Parent ${pagesN} 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >>${xobj} >> /Contents ${cs} 0 R >>`));
+  });
+  objs[pagesN - 1] = pdfBytes(`<< /Type /Pages /Count ${kids.length} /Kids [${kids.map((k) => k + ' 0 R').join(' ')}] >>`);
+  let names2 = '';
+  if (attachRequest) {
+    const req = {}; for (const k of PDF_REQUEST_FIELDS) if (v[k] !== undefined) req[k] = v[k];
+    const data = pdfBytes(JSON.stringify(req));
+    const fname = `${v.requestId}-v${v.version}.json`;
+    const ef = add(stream(`/Type /EmbeddedFile /Subtype /application#2Fjson /Params << /Size ${data.length} >>`, data));
+    const fs = add(pdfBytes(`<< /Type /Filespec /F ${pdfStr(fname)} /UF ${pdfStr(fname)} /Desc ${pdfStr('Guardrail locked pricing request')} /AFRelationship /Data /EF << /F ${ef} 0 R >> >>`));
+    names2 = ` /Names << /EmbeddedFiles << /Names [${pdfStr(fname)} ${fs} 0 R] >> >> /AF [${fs} 0 R]`;
+  }
+  objs[catalogN - 1] = pdfBytes(`<< /Type /Catalog /Pages ${pagesN} 0 R${names2} >>`);
+  const info = add(pdfBytes(`<< /Title ${pdfStr('Guardrail pricing quote - ' + v.customerName)} /Author ${pdfStr(v.rep || '')} /Subject ${pdfStr(v.requestId + ' version ' + v.version)} /Producer ${pdfStr('Guardrail Pricing Calculator')} >>`));
+  // header: the binary marker line must be raw bytes, not UTF-8
+  const parts = [];
+  parts[0] = pdfConcat([pdfBytes('%PDF-1.7\n%'), new Uint8Array([0xe2, 0xe3, 0xcf, 0xd3, 0x0a])]);
+  let off = parts[0].length; const offsets = [];
+  objs.forEach((b, k) => {
+    offsets.push(off);
+    const chunk = pdfConcat([pdfBytes(`${k + 1} 0 obj\n`), b, pdfBytes('\nendobj\n')]);
+    parts.push(chunk); off += chunk.length;
+  });
+  const xref = ['xref', `0 ${objs.length + 1}`, '0000000000 65535 f ', ...offsets.map((o) => String(o).padStart(10, '0') + ' 00000 n ')].join('\n');
+  parts.push(pdfBytes(`${xref}\ntrailer\n<< /Size ${objs.length + 1} /Root ${catalogN} 0 R /Info ${info} 0 R >>\nstartxref\n${off}\n%%EOF\n`));
+  return pdfConcat(parts);
+}
+function downloadQuotePdf(v, opts) {
+  const bytes = buildQuotePdf(v, opts);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  a.download = quoteFileName(v); document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  return bytes;
+}
+
+// Read the locked request back out of a quote PDF (also copes with a PDF re-saved by another app).
+async function readRequestFromPdf(bytes) {
+  let s = ''; for (let k = 0; k < bytes.length; k += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(k, k + 0x8000));
+  if (!s.startsWith('%PDF')) throw new Error('not a PDF');
+  const inflate = async (data) => new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
+  const re = /stream\r?\n/g; let m;
+  while ((m = re.exec(s))) {
+    const start = m.index + m[0].length;
+    const objAt = s.lastIndexOf(' obj', m.index); if (objAt < 0) continue;
+    const dict = s.slice(objAt, m.index);
+    if (!/EmbeddedFile/.test(dict) && !/FlateDecode/.test(dict) && s[start] !== '{') continue;
+    const lm = /\/Length\s+(\d+)(?!\s+\d+\s+R)/.exec(dict);
+    let end = lm ? start + Number(lm[1]) : s.indexOf('endstream', start);
+    if (end < start || end > s.length) end = s.indexOf('endstream', start);
+    let data = bytes.subarray(start, end);
+    try {
+      if (/FlateDecode/.test(dict)) data = await inflate(data);
+      const t = new TextDecoder().decode(data).trim();
+      if (t[0] !== '{') continue;
+      const o = JSON.parse(t);
+      if (o && o.schema === 'grt-pricing-request/1') return o;
+    } catch { /* not this stream */ }
+  }
+  throw new Error('no locked request inside this PDF. Use the quote PDF the calculator downloaded when the request was locked.');
+}
+// A request file: a quote PDF (current) or a .json request file (earlier versions of the calculator).
+async function readRequestFile(f) {
+  const bytes = new Uint8Array(await f.arrayBuffer());
+  const s = bytes[0] === 0x25 && bytes[1] === 0x50 ? await readRequestFromPdf(bytes) : JSON.parse(new TextDecoder().decode(bytes));
+  if (s.schema !== 'grt-pricing-request/1' || !s.requestId || !s.inputs || !s.customer) throw new Error('not a pricing request');
+  return s;
+}
+
+
+// ===== Sales calculator (one page, no tabs). Uses Engine (src/engine.js), Schema (src/config-schema.js)
+// and the shared display helpers from public/common.js, all inlined by the build.
+// Prices are updated in the executive file, which saves a new copy of this calculator.
+(function () {
+  'use strict';
+  const CFG_EL = document.getElementById('grt-config');
+  const store = JSON.parse(CFG_EL.textContent); // { version, note, updatedAt, config }
+  const cfg = Schema.withDefaults(store.config);
+  const verLabel = () => `Price list v${store.version}`;
+
+  function renderVer() { /* price list version is kept in each locked request, not shown in the header */ }
+
+  // ---------------------------------------------------------------- calculator
+  const state = {
+    band: null, location: null, seats: '', term: cfg.terms[0], modules: {}, pilot: {}, commandCenter: true,
+    onPrem: false, scopedOnPremPrice: '', earlyPay: false, variableDiscountPct: 0, pilotCredit: true, manualRate: '',
+    pilotOn: true, employeeCount: '',
+  };
+  const repLimitPct = () => Math.round(((cfg.policy.repDiscountLimit == null ? 1 : cfg.policy.repDiscountLimit) * 100) * 100) / 100;
+  let reviseOf = null;   // { requestId, version, customerName }
+  let lastResult = null, lockedSinceChange = false, lastLocked = null;
+  const LOC_NAMES = Schema.schema.locationNames;
+
+  function seg(el, values, key, label = (v) => v) {
+    el.innerHTML = values.map((v) => `<button type="button" data-v="${esc(v)}">${esc(label(v))}</button>`).join('');
+    el.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; state[key] = b.dataset.v; sync(); recalc(); };
+  }
+  const stdPilotList = () => (Array.isArray(cfg.policy.pilotStandardModules) ? cfg.policy.pilotStandardModules : null);
+  const isStdPilot = (k) => !stdPilotList() || stdPilotList().includes(k);
+  function chips(el, key) {
+    el.innerHTML = cfg.modules.map((m) => `<button type="button" class="chip" data-k="${m.key}"><span>${esc(m.name)}</span><span class="chip-price" data-price="${m.key}"></span></button>`).join('');
+    el.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; state[key][b.dataset.k] = !state[key][b.dataset.k]; sync(); recalc(); };
+  }
+  function buildControls() {
+    // each band with its headcount, e.g. "SMB (up to 100 employees)"
+    const tiers = cfg.tiers, gov = cfg.tier.governedEmployees;
+    const bandText = (t, k) => t === 'Enterprise' ? `${t} (${fmtNum(gov[tiers[k - 1]] || 1000)}+ employees)` : `${t} (up to ${fmtNum(gov[t])} employees)`;
+    $('#band').insertAdjacentHTML('beforeend', tiers.map((t, k) => `<option value="${esc(t)}">${esc(bandText(t, k))}</option>`).join(''));
+    $('#band').addEventListener('change', (e) => { state.band = e.target.value; sync(); recalc(); });
+    $('#location').insertAdjacentHTML('beforeend', cfg.locations.map((v) => `<option value="${esc(v)}">${esc(`${LOC_NAMES[v] || v} (${cfg.currencyByLocation[v]})`)}</option>`).join(''));
+    $('#location').addEventListener('change', (e) => { state.location = e.target.value; sync(); recalc(); });
+    seg($('#term'), cfg.terms, 'term');
+    chips($('#modules'), 'modules');
+    chips($('#pilot'), 'pilot');
+    // standard pilot modules first; any other module is marked as needing approval
+    const pil = $('#pilot');
+    const rank = (k) => { const l = stdPilotList() || []; const i = l.indexOf(k); return i < 0 ? 100 + cfg.modules.findIndex((m) => m.key === k) : i; };
+    [...pil.children].sort((a, b) => rank(a.dataset.k) - rank(b.dataset.k)).forEach((c) => pil.appendChild(c));
+    $$('#pilot .chip').forEach((c) => { if (!isStdPilot(c.dataset.k)) c.insertAdjacentHTML('beforeend', '<span class="chip-tag">Needs approval</span>'); });
+    const stdNames = (stdPilotList() || cfg.modules.map((m) => m.key)).map((k) => (cfg.modules.find((m) => m.key === k) || {}).name).filter(Boolean);
+    $('#pilot-std-note').textContent = `Standard pilots: ${stdNames.length > 1 ? stdNames.slice(0, -1).join(', ') + ' and ' + stdNames.slice(-1) : stdNames.join('')}. All other pilot requests go through approval (Deal Review).`;
+    // A pilot only covers modules being purchased: picking a module adds it to the pilot (when a
+    // pilot is offered), dropping it drops it from the pilot, and picking a pilot module buys it.
+    $('#modules').onclick = (e) => {
+      const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k;
+      state.modules[k] = !state.modules[k];
+      state.pilot[k] = state.modules[k] && state.pilotOn && isStdPilot(k);
+      sync(); recalc();
+    };
+    $('#pilot').onclick = (e) => {
+      const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k;
+      state.pilot[k] = !state.pilot[k];
+      if (state.pilot[k]) state.modules[k] = true;
+      sync(); recalc();
+    };
+    $('#disc-range').max = repLimitPct(); $('#disc-max-label').textContent = `${repLimitPct()}%`;
+  }
+  $('#pilotOn').addEventListener('click', () => {
+    state.pilotOn = !state.pilotOn;
+    state.pilot = state.pilotOn ? Object.fromEntries(Object.entries(state.modules).filter(([k, v]) => v && isStdPilot(k))) : {};
+    sync(); recalc();
+  });
+  // discount: a slider up to the rep limit; "Need more?" opens a box for larger requests (Deal Review)
+  $('#disc-range').addEventListener('input', (e) => { state.variableDiscountPct = e.target.value; sync(); recalc(); });
+  // employee count: typed like the Enterprise seat count, held at the band's maximum ("up to N")
+  const bandCap = () => (state.band && state.band !== 'Enterprise' ? cfg.tier.governedEmployees[state.band] : null);
+  let empHeld = false;
+  function clampEmp() {
+    const cap = bandCap(), n = Number(state.employeeCount);
+    empHeld = !!(cap && state.employeeCount !== '' && n > cap);
+    if (empHeld) state.employeeCount = String(cap);
+    return empHeld;
+  }
+  $('#empcount').addEventListener('input', (e) => {
+    state.employeeCount = e.target.value;
+    if (clampEmp()) e.target.value = state.employeeCount;
+    empHint(); recalc();
+  });
+  function empHint() {
+    const h = $('#empcount-hint'), cap = bandCap();
+    h.className = 'hint warn-text'; h.textContent = '';
+    if (cap && empHeld) h.textContent = `${state.band} covers up to ${fmtNum(cap)} employees. For more, choose a larger band.`;
+  }
+  ['commandCenter', 'onPrem', 'earlyPay', 'pilotCredit'].forEach((id) => $('#' + id).addEventListener('click', () => { state[id] = !state[id]; sync(); recalc(); }));
+  // pilot modules can't be chosen without the module itself (enforced in sync)
+  $('#seats').addEventListener('input', (e) => { state.seats = e.target.value; recalc(); });
+  $('#scoped').addEventListener('input', (e) => { state.scopedOnPremPrice = e.target.value; recalc(); });
+
+  function sync() {
+    $('#band').value = state.band || ''; $('#location').value = state.location || '';
+    for (const k of ['term']) $$('#' + k + ' button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === state[k])));
+    $$('#modules .chip').forEach((b) => b.setAttribute('aria-pressed', String(!!state.modules[b.dataset.k])));
+    $$('#pilot .chip').forEach((b) => b.setAttribute('aria-pressed', String(!!state.pilot[b.dataset.k])));
+    ['commandCenter', 'onPrem', 'earlyPay', 'pilotCredit', 'pilotOn'].forEach((k) => $('#' + k).setAttribute('aria-checked', String(!!state[k])));
+    $('#pilot-box').classList.toggle('hidden', !state.pilotOn);
+    const rule = cfg.pilotRules && cfg.pilotRules[state.location];
+    const ruleBox = $('#pilot-rule');
+    ruleBox.classList.toggle('hidden', !rule);
+    if (rule) {
+      const mm = moneyIn(rule.currency);
+      ruleBox.textContent = `${LOC_NAMES[state.location] || state.location} pilot pricing: if Year 1 is over ${mm(rule.thresholdYear1)}, the pilot is a deposit of ${mm(rule.flatFee)} toward Year 1. Otherwise it's ${fmtPct(rule.percentOfYear1, 0)} of the Year 1 price.`;
+    }
+    const pct = Number(state.variableDiscountPct || 0);
+    $('#disc-range').value = Math.min(pct, repLimitPct());
+    $('#disc-val').textContent = `${fmtNum(pct)}%`;
+    $('#disc-val').classList.toggle('neg', pct > repLimitPct());
+    const capNow = bandCap(), before = state.employeeCount;
+    $('#empcount-field').classList.toggle('hidden', !capNow);
+    if (capNow) { $('#empcount').max = capNow; $('#empcount').placeholder = `Up to ${fmtNum(capNow)}`; }
+    if (clampEmp() || document.activeElement !== $('#empcount') || before !== state.employeeCount) $('#empcount').value = state.employeeCount;
+    empHint();
+    $('#seats-field').classList.toggle('hidden', state.band !== 'Enterprise');
+    $('#onprem-box').classList.toggle('hidden', !state.onPrem);
+    $('#seats').value = state.seats; $('#scoped').value = state.scopedOnPremPrice;
+  }
+  function payload() {
+    const yn = (b) => (b ? 'Y' : 'N');
+    const map = (o) => Object.fromEntries(cfg.modules.map((m) => [m.key, yn(o[m.key])]));
+    return {
+      band: state.band, location: state.location, seats: state.band === 'Enterprise' ? Number(state.seats) : 0,
+      modules: map(state.modules), commandCenter: yn(state.commandCenter), onPrem: yn(state.onPrem),
+      scopedOnPremPrice: Number(state.scopedOnPremPrice || 0), earlyPay: yn(state.earlyPay), term: state.term,
+      variableDiscountPct: Number(state.variableDiscountPct || 0), pilot: map(state.pilotOn ? state.pilot : {}), pilotCredit: yn(state.pilotCredit),
+      employeeCount: state.band === 'Enterprise' ? null : (Number(state.employeeCount) || null),
+    };
+  }
+
+  // ---- exchange rates (fetched in the browser, like the prototype; manual fallback)
+  const fxCache = {};
+  const FX_PROVIDERS = [
+    { name: 'Frankfurter (ECB)', site: 'https://frankfurter.dev', url: (c) => `https://api.frankfurter.dev/v1/latest?base=USD&symbols=${encodeURIComponent(c)}`, parse: (d, c) => ({ rate: d.rates && d.rates[c], date: d.date }) },
+    { name: 'Currency API (jsDelivr)', site: 'https://github.com/fawazahmed0/exchange-api', url: () => 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json', parse: (d, c) => ({ rate: d.usd && d.usd[c.toLowerCase()], date: d.date }) },
+    { name: 'ExchangeRate-API', site: 'https://www.exchangerate-api.com', url: () => 'https://open.er-api.com/v6/latest/USD', parse: (d, c) => ({ rate: d.rates && d.rates[c], date: d.time_last_update_utc }) },
+  ];
+  async function fetchFx(cur, force) {
+    if (cur === 'USD') return;
+    const hit = fxCache[cur];
+    if (hit && (hit.loading || (!force && hit.rate && Date.now() - hit.at < 3600e3))) return;
+    fxCache[cur] = { ...(hit || {}), loading: true };
+    let got = null;
+    for (const p of FX_PROVIDERS) {
+      try {
+        const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6500);
+        let res; try { res = await fetch(p.url(cur), { cache: 'no-store', signal: ctl.signal }); } finally { clearTimeout(t); }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const r = p.parse(await res.json(), cur);
+        if (Number(r.rate) > 0) { got = { rate: Number(r.rate), rateDate: r.date || null, source: p.name, sourceUrl: p.site }; break; }
+      } catch (e) { /* try next provider */ }
+    }
+    fxCache[cur] = got ? { ...got, at: Date.now(), checkedAt: new Date().toISOString(), loading: false }
+      : { ...(hit && hit.rate ? hit : {}), loading: false, failed: true, checkedAt: new Date().toISOString(), stale: !!(hit && hit.rate) };
+    recalc();
+  }
+  function currentFx() {
+    const cur = cfg.currencyByLocation[state.location] || 'USD';
+    if (cur === 'USD') return { currency: 'USD', rate: 1, source: 'Base currency' };
+    const m = Number(state.manualRate);
+    if (m > 0) return { currency: cur, rate: m, source: 'Manually entered rate', rateDate: new Date().toISOString().slice(0, 10), checkedAt: new Date().toISOString(), manual: true };
+    const c = fxCache[cur] || {};
+    if (c.rate) return { currency: cur, rate: c.rate, source: c.source, sourceUrl: c.sourceUrl, rateDate: c.rateDate || null, checkedAt: c.checkedAt || null, stale: c.stale };
+    // No live rate (offline, blocked, or still checking): use the company rate set in the executive file.
+    const co = cfg.fxRates && cfg.fxRates[cur];
+    if (co && co.rate > 0) return { currency: cur, rate: co.rate, source: co.source ? `Guardrail standard rate (${co.source})` : 'Guardrail standard rate', sourceUrl: co.url || null, rateDate: co.asOf, company: true, loading: c.loading };
+    return { currency: cur, rate: null, source: null, rateDate: null, checkedAt: c.checkedAt || null, loading: c.loading };
+  }
+  function fxBoxHtml(fx) {
+    if (!fx || fx.currency === 'USD') return '';
+    const status = fx.loading && !fx.rate ? 'Checking live rates…'
+      : fx.company ? `${fxNote(fx)}${fx.loading ? ' · checking for a live rate…' : ''}`
+      : fxNote(fx) + (fx.checkedAt && !fx.manual ? ' · checked ' + fmtDate(fx.checkedAt) : '');
+    return `<div class="fxbox"><div class="rowx"><b>${fx.rate ? 'Exchange rate' : 'Exchange rate needed'}</b>
+        <button class="btn small" id="fxrefresh" type="button">Refresh rate</button></div>
+      ${fx.rate
+        ? `<div class="fx-rate">1 USD = <b>${esc(Number(fx.rate).toLocaleString('en-US', { maximumFractionDigits: 6 }))} ${esc(fx.currency)}</b></div>
+           <div class="fx-source">Converted using: ${fxSourceHtml(fx)}${fx.checkedAt && !fx.manual && !fx.company ? ` · checked ${esc(fmtDate(fx.checkedAt))}` : ''}${fx.company && fx.loading ? ' · checking for a live rate…' : ''}${fx.stale ? ' · last good rate, live check failed' : ''}</div>`
+        : `<div class="muted">${esc(status)}</div>`}
+      <div class="rowx" style="margin-top:8px"><label for="manualRate">${fx.manual ? 'Manual' : 'Override'} rate: 1 USD =</label>
+        <input id="manualRate" type="number" min="0" step="any" value="${esc(state.manualRate)}" placeholder="${esc(fx.currency)}"></div>
+      ${!fx.rate && !fx.loading ? `<div class="muted">Couldn't reach the exchange-rate service, so prices are shown in US dollars. Enter a verified rate to show ${esc(fx.currency)}.</div>` : ''}</div>`;
+  }
+
+  // Each module's own annual list price (and the pilot fee) on its button, before the bundle discount.
+  function showChipPrices(c) {
+    const m = c ? moneyFor(c.fx) : null;
+    const list = c ? (c.display ? c.display.moduleListPrices : c.moduleListPrices) : null;
+    $$('#modules .chip-price').forEach((s) => (s.textContent = c && state.modules[s.dataset.price] ? `${m(list[s.dataset.price])}/yr` : ''));
+    const rule = c && c.pilot.rule;
+    $$('#pilot .chip-price').forEach((s) => (s.textContent = c && state.pilot[s.dataset.price] && !rule && !(cfg.pilotRules && cfg.pilotRules[state.location]) ? m(c.pilotFeePerModule) : ''));
+  }
+
+  // Small price bar pinned to the bottom on phones, where the summary sits below the inputs.
+  function updateMobileBar(c) {
+    const bar = $('#mbar');
+    if (!c) { bar.classList.add('hidden'); return; }
+    bar.classList.remove('hidden');
+    $('#mbar-price').textContent = moneyFor(c.fx)(c.finalPrice);
+    const review = c.dealStatus === 'DEAL REVIEW';
+    $('#mbar-status').textContent = 'Deal Review';
+    $('#mbar-status').className = 'pill review' + (review ? '' : ' hidden');
+  }
+  $('#mbar-go').addEventListener('click', () => $('#results').scrollIntoView({ behavior: 'smooth' }));
+
+  // the final price counts to its new value, so a change is easy to notice
+  let shownPrice = null, priceAnim = 0;
+  function animatePrice(c) {
+    const el = $('#out .hero .amount'), to = c.finalPrice, m = moneyFor(c.fx), from = shownPrice;
+    shownPrice = to; cancelAnimationFrame(priceAnim);
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!el || from == null || from === to || reduce) return;
+    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+    const t0 = performance.now(), dur = 380;
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = m(from + (to - from) * e);
+      if (k < 1) priceAnim = requestAnimationFrame(step); else el.textContent = m(to);
+    };
+    priceAnim = requestAnimationFrame(step);
+  }
+  // other discounts already in the price, shown above the additional-discount slider
+  function showDiscountsSoFar(c) {
+    const el = $('#disc-already'); if (!el) return;
+    if (!c) { el.innerHTML = ''; return; }
+    const D = c.discounts, R = c.rates || {}, m = moneyFor(c.fx);
+    const parts = [['Bundle', D.bundle, R.bundle], ['Early Pay', D.earlyPay, R.earlyPay], ['Multi-year', D.multiYear, R.multiYear]].filter(([, v]) => v > 0);
+    const sofar = D.total - (D.additional || 0);
+    el.innerHTML = parts.length
+      ? `<b>Already applied:</b> ${parts.map(([l, v, r]) => `${l} ${fmtPct(r, r * 100 % 1 ? 1 : 0)}`).join(' · ')} <span class="muted">= ${m(sofar)} (${fmtPct(sofar / c.totalMSRP, 1)} of list)</span>`
+      : '<b>Already applied:</b> <span class="muted">no other discounts yet</span>';
+  }
+  function recalc() {
+    lockedSinceChange = false;
+    const out = $('#out'), empty = $('#empty'), lock = $('#lock');
+    $('#printbtn').classList.add('hidden');
+    $('#review-mail').classList.add('hidden');
+    const hide = (msg) => { showChipPrices(null); showDiscountsSoFar(null); updateMobileBar(null); out.classList.add('hidden'); lock.classList.add('hidden'); empty.classList.remove('hidden'); empty.textContent = msg; lastResult = null; };
+    if (!state.band || !state.location) return hide(`To see the price, choose ${!state.band && !state.location ? 'an employee band and a buyer location' : !state.band ? 'an employee band' : 'a buyer location'} on the left.`);
+    if (state.band === 'Enterprise' && !(Number(state.seats) > 0)) return hide('Enter the Enterprise seat count to see pricing.');
+    let r;
+    try { r = Engine.calculate(payload(), cfg); } catch (e) { return hide(e.message); }
+    const fx = currentFx();
+    // always try for a live rate once per currency; the standard rate covers the gap until it arrives
+    if (fx.currency !== 'USD' && !fx.manual && !fxCache[fx.currency]) fetchFx(fx.currency);
+    r.customer.fx = fx;
+    Engine.applyPilotRules(r.customer, cfg, fx);
+    lastResult = r;
+    showChipPrices(r.customer);
+    empty.classList.add('hidden'); out.classList.remove('hidden'); lock.classList.remove('hidden');
+    out.innerHTML = salesSummaryHtml(r.customer, fxBoxHtml(fx), r.inputs);
+    animatePrice(r.customer);
+    $('#lockbtn').textContent = r.customer.dealStatus === 'DEAL REVIEW' ? 'Lock and send to Slack for Deal Review' : 'Lock in pricing request';
+    showDiscountsSoFar(r.customer);
+    updateMobileBar(r.customer);
+    $('#onprem-flag').classList.toggle('hidden', !r.customer.onPremActionRequired);
+    $('#lockerr').textContent = '';
+    const mr = $('#manualRate');
+    if (mr) mr.addEventListener('change', (e) => { state.manualRate = e.target.value; recalc(); });
+    const rf = $('#fxrefresh');
+    if (rf) rf.addEventListener('click', () => { state.manualRate = ''; fetchFx(fx.currency, true); recalc(); });
+  }
+
+  // ---- lock in a pricing request
+  function newRequestId() {
+    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    return `GRT-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  }
+  // Approvals are given in Slack. The rep records who approved and the link to
+  // that message; the quote PDF unlocks and carries the record so it can be checked later.
+  const APPROVALS_KEY = 'grt-approvals-v2';
+  const approvalKey = (s) => `${s.requestId}-v${s.version}`;
+  function readApprovals() { try { return JSON.parse(localStorage.getItem(APPROVALS_KEY) || '{}'); } catch { return {}; } }
+  function approvalFor(s) { return readApprovals()[approvalKey(s)] || null; }
+  function saveApproval(s, a) { try { const all = readApprovals(); all[approvalKey(s)] = a; localStorage.setItem(APPROVALS_KEY, JSON.stringify(all)); } catch { /* fine */ } }
+  function withApproval(s) { const a = approvalFor(s); return a ? { ...s, approval: a } : s; }
+  const SLACK_LINK = /^https:\/\/[a-z0-9-]+\.slack\.com\/archives\/\S+$/i;
+  function recordApproval(s, by, link) {
+    by = by.trim(); link = link.trim();
+    if (!by) return 'Enter who approved it.';
+    if (!SLACK_LINK.test(link)) return 'Paste the Slack link to the approval reply (in Slack: hover the reply, More actions, Copy link).';
+    const a = { by, at: new Date().toISOString().slice(0, 10), link, via: 'Slack' };
+    saveApproval(s, a);
+    downloadQuotePdf({ ...s, approval: a });
+    renderHistory();
+    toast(`Approval by ${by} recorded. Quote PDF downloaded.`);
+    return null;
+  }
+  // ---- post the Deal Review to Slack (incoming webhook). The browser can send it but can't
+  // read Slack's reply, so a failure only shows if the network refuses it.
+  function slackMessage(s) {
+    const c = s.customer, i = s.inputs, m = moneyFor(c.fx), D = c.discounts;
+    const names = Object.fromEntries(c.lines.modules.map((x) => [x.key, x.name.replace('Traffic Light for ', '')]));
+    const sel = (o) => Object.entries(o || {}).filter(([, v]) => v).map(([k]) => names[k]).join(', ') || 'none';
+    const f = (t, v) => ({ type: 'mrkdwn', text: `*${t}*\n${v}` });
+    const text = `Deal Review: ${s.customerName} (${s.requestId}-v${s.version}) from ${s.rep}. ${c.dealNote}`;
+    return { text, blocks: [
+      { type: 'header', text: { type: 'plain_text', text: `Deal Review: ${s.customerName}`.slice(0, 150) } },
+      { type: 'section', text: { type: 'mrkdwn', text: `:red_circle: *${c.dealNote}*` } },
+      { type: 'section', fields: [
+        f('Rep', s.rep), f('Quote', `${s.requestId}, v${s.version}${s.stage ? ` (${s.stage})` : ''}`),
+        f('Band and location', `${i.band}, ${LOC_NAMES[i.location] || i.location}`), f('Term', `${i.term}${i.earlyPay ? ', Early Pay' : ''}`),
+        f('Modules', `${sel(i.modules)}${i.commandCenter ? ' + AI Command Center' : ''}`), f('Pilot', `${sel(i.pilot)}${c.pilot.total ? ` (${m(c.pilot.total)})` : ''}`),
+        f('List price', m(c.totalMSRP)), f('Discounts', D.total ? `${m(D.total)} (${fmtPct(D.totalPctOfMSRP, 1)})` : 'none'),
+        f('Final price (Year 1)', m(c.finalPrice)), f('Due at signing', m(c.year1DueAtSigning)),
+      ] },
+      ...(s.hubspotRecord ? [{ type: 'section', text: { type: 'mrkdwn', text: `*HubSpot:* ${/^https:/.test(s.hubspotRecord) ? `<${s.hubspotRecord}|Open the deal>` : s.hubspotRecord}` } }] : []),
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Reply in this thread with *Approved*, or what to change.' }] },
+    ] };
+  }
+  const slackOn = () => /^https:\/\/hooks\.slack\.com\/services\/\S+$/.test(cfg.slackWebhookUrl || '');
+  async function postToSlack(s) {
+    try {
+      await fetch(cfg.slackWebhookUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'payload=' + encodeURIComponent(JSON.stringify(slackMessage(s))) });
+      return true;
+    } catch { return false; }
+  }
+  function showReviewMail(s) {
+    const box = $('#review-mail');
+    if (!s || s.status !== 'DEAL REVIEW') { box.classList.add('hidden'); return; }
+    $('#review-where').textContent = `Posted to ${cfg.slackChannel || 'Slack'} for an executive to approve.`;
+    $('#apr-by').value = ''; $('#apr-link').value = ''; $('#apr-err').textContent = '';
+    box.classList.remove('hidden');
+  }
+  $('#apr-unlock').addEventListener('click', () => {
+    if (!lastLocked) return;
+    const err = recordApproval(lastLocked, $('#apr-by').value, $('#apr-link').value);
+    if (err) { $('#apr-err').textContent = err; return; }
+    $('#review-mail').classList.add('hidden'); $('#printbtn').classList.remove('hidden');
+  });
+  $('#slack-retry').addEventListener('click', () => { if (lastLocked) sendForReview(lastLocked); });
+  // post the Deal Review to Slack; on failure the rep can try again
+  function sendForReview(s) {
+    $('#slack-retry').classList.add('hidden');
+    if (!slackOn()) { $('#slack-retry').classList.remove('hidden'); toast('Slack isn\'t set up in this calculator. Ask for the latest version.'); return; }
+    postToSlack(s).then((ok) => {
+      if (ok) toast(`Locked ${s.requestId}, version ${s.version}. Posted to ${cfg.slackChannel || 'Slack'} for Deal Review.`);
+      else { $('#slack-retry').classList.remove('hidden'); toast("Couldn't reach Slack. Check your connection and try again."); }
+    });
+  }
+  $('#lockbtn').addEventListener('click', () => {
+    const name = $('#cname').value.trim(), rep = $('#repname').value.trim();
+    const hubspot = $('#hubspot').value.trim(), stage = $('#stage').value;
+    $('#lockerr').textContent = '';
+    if (!rep) { $('#lockerr').textContent = 'Enter the rep name.'; $('#repname').focus(); return; }
+    if (!name) { $('#lockerr').textContent = 'Enter the customer or opportunity name to lock this request.'; $('#cname').focus(); return; }
+    if (hubspot && /^[a-z]+:/i.test(hubspot) && !/^https:\/\/([a-z0-9-]+\.)*hubspot\.com\//i.test(hubspot)) { $('#lockerr').textContent = 'The HubSpot record should be a hubspot.com link (or just the record ID).'; $('#hubspot').focus(); return; }
+    if (!lastResult) return;
+    if (lockedSinceChange) { $('#lockerr').textContent = 'Already locked. Change something to save a new version.'; return; }
+    const fx = lastResult.customer.fx;
+    if (!fx.rate) { lastResult.customer.fx = { currency: 'USD', rate: 1, source: `Quoted in USD (no ${fx.currency} rate available)` }; }
+    const requestId = reviseOf ? reviseOf.requestId : newRequestId();
+    const version = reviseOf ? reviseOf.version + 1 : 1;
+    const snap = {
+      schema: 'grt-pricing-request/1', requestId, version, customerName: name, rep, stage, hubspotRecord: hubspot || null,
+      lockedAt: new Date().toISOString(), assumptionsVersion: store.version, assumptionsNote: store.note, assumptionsHash: configHash(cfg),
+      status: lastResult.customer.dealStatus, inputs: lastResult.inputs,
+      customer: lastResult.customer,
+    };
+    deepFreeze(snap);
+    reviseOf = { requestId, version, customerName: name, hubspotRecord: hubspot || null };
+    lockedSinceChange = true; lastLocked = snap;
+    if (stage === 'Confirmed') $('#stage').value = 'Revised';
+    const review = snap.status === 'DEAL REVIEW';
+    showBanner(snap, true);
+    saveHistory(snap); renderHistory();
+    showReviewMail(snap);
+    if (review) {
+      // no quote PDF for a Deal Review: it goes to an executive for approval first
+      sendForReview(snap);
+    } else {
+      downloadQuotePdf(snap);
+      $('#printbtn').classList.remove('hidden');
+      toast(`Locked ${requestId}, version ${version}. Quote PDF downloaded.`);
+    }
+  });
+  $('#printbtn').addEventListener('click', () => { if (lastLocked) downloadQuotePdf(withApproval(lastLocked)); });
+
+  function showBanner(s, justLocked) {
+    const b = $('#revise-banner'); b.classList.remove('hidden');
+    b.innerHTML = justLocked
+      ? `<span><b>Locked:</b> ${esc(s.requestId)} “${esc(s.customerName)}”, version ${s.version}. Further changes lock as version ${s.version + 1}.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`
+      : `<span><b>Revising</b> ${esc(s.requestId)} “${esc(s.customerName)}” (latest version ${s.version}). Locking saves version ${s.version + 1}; earlier versions stay as they are.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`;
+    $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; $('#hubspot').value = ''; $('#stage').value = 'Confirmed'; recalc(); };
+  }
+
+  function loadForRevision(s) {
+    const i = s.inputs;
+    Object.assign(state, {
+      band: i.band, location: i.location, seats: i.seats ? String(i.seats) : '', term: i.term, modules: { ...i.modules }, pilot: { ...i.pilot },
+      commandCenter: i.commandCenter, onPrem: i.onPrem, scopedOnPremPrice: i.scopedOnPremPrice || '', earlyPay: i.earlyPay,
+      variableDiscountPct: i.variableDiscountPct, pilotCredit: i.pilotCredit,
+      manualRate: s.customer.fx && s.customer.fx.manual ? String(s.customer.fx.rate) : '',
+      pilotOn: Object.values(i.pilot || {}).some(Boolean), employeeCount: i.employeeCount ? String(i.employeeCount) : '',
+    });
+    reviseOf = { requestId: s.requestId, version: s.version, customerName: s.customerName };
+    $('#cname').value = s.customerName;
+    $('#hubspot').value = s.hubspotRecord || '';
+    $('#stage').value = s.stage === 'Final (Pilot)' || s.stage === 'Final (Contract)' ? s.stage : 'Revised';
+    sync(); recalc(); showBanner(s, false);
+  }
+
+  // ---- this browser's locked requests (a convenience; the quote PDFs are the record)
+  const HKEY = 'grt-pricing-history-v1';
+  function readHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } }
+  function saveHistory(snap) {
+    try { const h = readHistory().filter((x) => !(x.requestId === snap.requestId && x.version === snap.version)); h.unshift(snap); localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 50))); } catch { /* storage unavailable */ }
+  }
+  function renderHistory() {
+    const h = readHistory();
+    $('#history-card').classList.toggle('hidden', !h.length);
+    $('#history').innerHTML = h.map((s, i) => {
+      const review = s.status === 'DEAL REVIEW', apr = review ? approvalFor(s) : null;
+      return `<div class="hist"><div><b>${esc(s.customerName)}</b> · v${s.version}${s.stage ? ` · <span class="stage">${esc(s.stage)}</span>` : ''}<div class="hint">${esc(fmtDate(s.lockedAt))} · ${moneyFor(s.customer.fx)(s.customer.finalPrice)} ${apr ? `<span class="pill standard">Approved by ${esc(apr.by)}</span>${apr.link ? ` <a href="${esc(apr.link)}" target="_blank" rel="noopener noreferrer">${apr.via === 'Slack' ? 'Slack' : 'link'} ↗</a>` : ''}` : `<span class="pill ${review ? 'review' : 'standard'}">${review ? 'Deal Review' : 'Standard'}</span>`}</div></div>
+        <div class="acts">${review && !apr ? `<button class="btn small" type="button" data-h="${i}" data-a="code">Record approval</button>` : `<button class="btn small" type="button" data-h="${i}" data-a="pdf">Quote PDF</button>`}<button class="btn small" type="button" data-h="${i}" data-a="revise">Revise</button></div></div>`;
+    }).join('');
+  }
+  $('#history').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-h]'); if (!b) return;
+    const s = readHistory()[Number(b.dataset.h)]; if (!s) return;
+    if (b.dataset.a === 'pdf') { if (s.status === 'DEAL REVIEW' && !approvalFor(s)) return toast('Record the approval first.'); downloadQuotePdf(withApproval(s)); }
+    if (b.dataset.a === 'code') { lastLocked = s; showReviewMail(s); $('#review-mail').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#apr-by').focus(); }
+    if (b.dataset.a === 'revise') { loadForRevision(s); window.scrollTo(0, 0); }
+  });
+
+  // ---- revise a locked request: open the quote PDF the rep saved
+  $('#openlocked').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try {
+      const s = await readRequestFile(f).catch((err) => { throw new Error(`${f.name}: ${err.message}`); });
+      loadForRevision(s);
+      toast(`Loaded ${s.requestId} version ${s.version}. Locking saves version ${s.version + 1}.`);
+    } catch (err) { toast(err.message); }
+  });
+
+  // ---------------------------------------------------------------- start
+  buildControls(); sync(); renderVer(); recalc(); renderHistory();
+  window.GRT = { Engine, get config() { return cfg; } }; // used by the automated parity check
+})();
+
+</script>
+</body>
+</html>
