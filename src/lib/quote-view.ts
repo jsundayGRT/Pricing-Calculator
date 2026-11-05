@@ -4,6 +4,11 @@ function num(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
 
+function positive(v: unknown): number | null {
+  const n = num(v);
+  return n != null && n > 0 ? n : null;
+}
+
 function str(v: unknown): string | null {
   if (v == null) return null;
   const s = String(v).trim();
@@ -45,6 +50,7 @@ export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
   const internal = (snap.internal || {}) as Record<string, unknown>;
   const costs = (internal.costs || {}) as Record<string, unknown>;
   const fx = (customer.fx || {}) as Record<string, unknown>;
+  const included = (customer.included || {}) as Record<string, unknown>;
   const modulesObj = (inputs.modules || {}) as Record<string, unknown>;
   const modules = Object.entries(modulesObj)
     .filter(([, on]) => !!on)
@@ -61,7 +67,11 @@ export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
     status: quote.status,
     stage: quote.stage || null,
     band: str(inputs.band),
-    seats: num(inputs.seats) ?? num((customer.included as Record<string, unknown> | undefined)?.governedEmployees),
+    // Only Enterprise prices by an entered seat count; other bands store 0 there and keep the
+    // employee count the rep typed (optional) under customer.included.
+    seats: positive(inputs.seats)
+      ?? positive(included.customerEmployees)
+      ?? positive(included.governedEmployees),
     location: str(inputs.location),
     modules,
     term: str(inputs.term),
