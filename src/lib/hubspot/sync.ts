@@ -1,5 +1,5 @@
-// Pushes a locked (or approved) pricing request to HubSpot: line items, a quote on the deal,
-// the deal amount, and the customer quote PDF as a note. Safe to run again: a request that
+// Pushes a locked (or approved) pricing request to HubSpot: line items, a quote on the deal
+// (linking the customer quote PDF), the deal amount, and the PDF as a note. Safe to run again: a request that
 // already has a quote updates it instead of creating another.
 
 import { getQuoteById, readQuotePdf, updateQuoteHubSpot, type HubSpotSync, type QuoteRecord } from '../quotes';
@@ -88,7 +88,23 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
     lineItemIds.push(String(created.id));
   }
 
-  // 2. The quote.
+  // 2. The customer quote PDF, uploaded once (private: only signed-in HubSpot users can open it).
+  // Saved right away so a failure later in the sync doesn't upload it again on retry.
+  let fileId = prev.fileId || null;
+  if (!fileId) {
+    const pdf = readQuotePdf(record.id);
+    if (!pdf) throw new Error('No quote PDF was saved with this request. Lock it again from the calculator.');
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(pdf)],{ type: 'application/pdf' }), pdfFileName(record));
+    form.append('folderPath', FILES_FOLDER);
+    form.append('options', JSON.stringify({ access: 'PRIVATE', overwrite: false, duplicateValidationStrategy: 'NONE' }));
+    const uploaded = await request<{ id: string }>('/files/v3/files', { method: 'POST', form });
+    fileId = String(uploaded.id);
+    updateQuoteHubSpot(record.id, { fileId });
+  }
+  const pdfUrl = `https://${account.uiDomain}/files/${account.portalId}/?showDetails=${fileId}`;
+
+  // 3. The quote. Quotes can't hold attachments, so the PDF is linked from its comments.
   // Dates are the HubSpot account's calendar dates (its time zone), not UTC.
   const expiry = new Date(now.getTime() + expiryDays() * 86_400_000);
   const quoteProps: Record<string, string> = {
@@ -97,6 +113,7 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
     hs_expiration_date: localDate(expiry, account.timeZone),
     hs_currency: pricing.currency,
     hs_language: 'en',
+    hs_comments: `Pricing calculator PDF (${requestLabel}, Guardrail team only): ${pdfUrl}`,
   };
   const templateId = process.env.HUBSPOT_QUOTE_TEMPLATE_ID || '';
   let quoteId = prev.quoteId || null;
@@ -125,25 +142,14 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
   }
   const quoteUrl = `https://${account.uiDomain}/contacts/${account.portalId}/record/0-14/${quoteId}`;
 
-  // 3. The deal: amount follows the quote, and it records which request priced it.
+  // 4. The deal: amount follows the quote, and it records which request priced it.
   await ensureDealProperty(client);
   await request(`/crm/v3/objects/deals/${encodeURIComponent(dealId)}`, {
     method: 'PATCH',
     body: { properties: { amount: pricing.total.toFixed(2), [PRICING_REQUEST_PROPERTY]: requestLabel } },
   });
 
-  // 4. The customer quote PDF, uploaded once and attached to a note on the deal.
-  let fileId = prev.fileId || null;
-  if (!fileId) {
-    const pdf = readQuotePdf(record.id);
-    if (!pdf) throw new Error('No quote PDF was saved with this request. Lock it again from the calculator.');
-    const form = new FormData();
-    form.append('file', new Blob([new Uint8Array(pdf)],{ type: 'application/pdf' }), pdfFileName(record));
-    form.append('folderPath', FILES_FOLDER);
-    form.append('options', JSON.stringify({ access: 'PRIVATE', overwrite: false, duplicateValidationStrategy: 'NONE' }));
-    const uploaded = await request<{ id: string }>('/files/v3/files', { method: 'POST', form });
-    fileId = String(uploaded.id);
-  }
+  // 5. The same PDF attached to a note on the deal.
   const noteProps = {
     hs_timestamp: now.toISOString(),
     hs_note_body: noteBody(record, requestLabel, quoteUrl, account.timeZone),

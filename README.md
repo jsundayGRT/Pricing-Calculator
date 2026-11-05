@@ -39,7 +39,7 @@ When a rep locks a pricing request, or an executive approves one, the server sen
 1. One line item per priced product (customer-facing prices only: list price, discount, annual billing over the contract term; implementation is one-time). Cost, margin and every other executive-only figure stay in the app.
 2. A **Draft** quote titled `<Deal name> – Pricing – <request ID> v<version>`, expiring in `HUBSPOT_QUOTE_EXPIRY_DAYS`, using the `HUBSPOT_QUOTE_TEMPLATE_ID` template, and associated with the deal, its line items, the deal's primary company and its first contact.
 3. The deal's **Amount** is set to the quote total (Year 1, after all discounts), and its **Pricing request ID** property is set (the property is created on first use).
-4. The customer quote PDF from the calculator is uploaded to the private **Pricing Calculator** folder in HubSpot Files and attached to a note on the deal: *Pricing request … locked by … on …. Quote: …*
+4. The customer quote PDF from the calculator is uploaded to the private **Pricing Calculator** folder in HubSpot Files. HubSpot quotes can't hold attachments, so the quote's **Comments to buyer** links to the PDF (the link opens only for signed-in HubSpot users), and the PDF is also attached to a note on the deal: *Pricing request … locked by … on …. Quote: …*
 
 Each locked version gets its own HubSpot quote. Syncing a version again (a retry, or an approval after the lock) updates that quote instead of creating a second one, replaces its line items, and keeps a quote someone already published in its published state. Pilot fees are not added to the quote.
 

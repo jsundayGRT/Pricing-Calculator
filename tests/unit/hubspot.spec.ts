@@ -136,6 +136,7 @@ test('a lock creates the quote, line items, deal update and PDF note', async () 
     hs_title: 'Northwind – Platform – Pricing – GRT-TEST1 v1',
     hs_status: 'DRAFT',
     hs_expiration_date: '2026-12-04',
+    hs_comments: 'Pricing calculator PDF (GRT-TEST1 v1, Guardrail team only): https://app-na2.hubspot.com/files/4242/?showDetails=file-1',
   });
   const linked = qb.associations.map((a) => `${a.types[0].associationTypeId}:${a.to.id}`);
   expect(linked).toEqual(expect.arrayContaining(['64:555', '286:tpl-9', '69:21', '71:12']));
@@ -225,6 +226,12 @@ test('a failure marks the request and keeps the lock', async () => {
   expect(saved.status).toBe(record.status);
   expect(saved.hubspot).toMatchObject({ status: 'failed' });
   expect(saved.hubspot!.error).toContain('Template not found');
+  // The PDF was uploaded before the failure; a retry must reuse it, not upload a second copy.
+  expect(saved.hubspot!.fileId).toBe('file-1');
+  const retry = fakeHubSpot();
+  await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: retry.fetchFn, ...quiet }) });
+  expect(retry.calls.some((c) => c.path === '/files/v3/files')).toBe(false);
+  expect(getQuoteById(record.id)!.hubspot!.status).toBe('synced');
   expect(errors.length).toBe(1);
 });
 
