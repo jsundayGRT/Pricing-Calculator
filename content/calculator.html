@@ -531,7 +531,6 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
   <div class="page-head">
     <div>
       <h1>Pricing calculator</h1>
-      <p class="sub">The total updates as you change the quote. A 1-year term and AI Command Center start on.</p>
     </div>
     <label class="revise-btn" for="openlocked">Revise a locked request</label><input id="openlocked" type="file" accept=".pdf,application/pdf,.json,application/json" class="hidden">
   </div>
@@ -542,8 +541,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
         <h2><span class="num">1</span>Customer</h2>
         <div class="row2 band-row">
           <div class="field"><label class="label" for="band">Employee band</label>
-            <div class="select-wrap"><select id="band" aria-describedby="band-hint"><option value="" disabled selected>Choose a band</option></select></div>
-            <div class="hint" id="band-hint">Match the band to headcount. Enterprise is 1,000 or more employees.</div></div>
+            <div class="select-wrap"><select id="band"><option value="" disabled selected>Choose a band</option></select></div></div>
           <div class="field"><label class="label" for="location">Buyer location</label>
             <div class="select-wrap"><select id="location" aria-describedby="location-hint"><option value="" disabled selected>Choose a location</option></select></div>
             <div class="hint" id="location-hint">Sets the quote currency. US prices stay in dollars.</div></div>
@@ -556,14 +554,14 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
         <div class="field hidden" id="seats-field">
           <label class="label" for="seats">Enterprise seat count</label>
           <input id="seats" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 5,000" style="max-width:240px" aria-describedby="seats-hint">
-          <div class="hint" id="seats-hint">Enterprise is 1,000+ employees. Enter the seat count to see the price.</div>
+          <div class="hint" id="seats-hint">Enterprise is 1,000 or more employees.</div>
         </div>
       </div>
 
       <div class="card step">
         <h2><span class="num">2</span>Pilot <span class="optional">Optional</span></h2>
         <div class="option" style="border-top:0;padding-top:0">
-          <div><b id="pilot-label">Offer a pilot</b><div class="hint" id="pilot-hint">On by default. Pilots cover the Traffic Light modules being purchased. Command Center isn't piloted.</div></div>
+          <div><b id="pilot-label">Offer a pilot</b><div class="hint" id="pilot-hint">Pilots cover the Traffic Light modules being purchased. Command Center isn't piloted.</div></div>
           <button class="switch" role="switch" id="pilotOn" aria-labelledby="pilot-label" aria-describedby="pilot-hint"></button>
         </div>
         <div id="pilot-box" class="hidden">
@@ -580,13 +578,13 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
       <div class="card step">
         <h2><span class="num">3</span>Products</h2>
         <fieldset class="field plain"><legend class="label">Traffic Light modules</legend><div class="tiles" id="modules"></div>
-          <div class="hint" id="modules-hint">Leave these off for a Command Center only quote. Each selected module shows its yearly list price.</div></fieldset>
+          <div class="hint" id="modules-hint">Leave these off for a Command Center only quote.</div></fieldset>
         <div class="option">
-          <div><b id="cc-label">AI Command Center</b><div class="hint" id="cc-hint">On by default.</div></div>
-          <button class="switch" role="switch" id="commandCenter" aria-labelledby="cc-label" aria-describedby="cc-hint"></button>
+          <div><b id="cc-label">AI Command Center</b></div>
+          <button class="switch" role="switch" id="commandCenter" aria-labelledby="cc-label"></button>
         </div>
         <div class="option">
-          <div><b id="onprem-label">On-prem / dedicated infrastructure</b><div class="hint" id="onprem-hint">Off by default. Scoped and priced by the team.</div></div>
+          <div><b id="onprem-label">On-prem / dedicated infrastructure</b><div class="hint" id="onprem-hint">Scoped and priced by the team.</div></div>
           <button class="switch" role="switch" id="onPrem" aria-labelledby="onprem-label" aria-describedby="onprem-hint"></button>
         </div>
         <div id="onprem-box" class="hidden sub-panel">
@@ -601,17 +599,16 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
       <div class="card step">
         <h2><span class="num">4</span>Terms and discounts</h2>
         <div class="field"><span class="label" id="term-label">Contract term</span><div class="seg wide" id="term" role="group" aria-labelledby="term-label" style="max-width:420px"></div>
-          <div class="hint">Starts at 1-Year. A longer term applies the multi-year discount.</div></div>
+          <div class="hint">A longer term applies the multi-year discount.</div></div>
         <div class="option">
-          <div><b id="early-label">Early Pay</b><div class="hint" id="early-hint">Off by default. Paid annually, within 30 days of contract.</div></div>
+          <div><b id="early-label">Early Pay</b><div class="hint" id="early-hint">Paid annually, within 30 days of contract.</div></div>
           <button class="switch" role="switch" id="earlyPay" aria-labelledby="early-label" aria-describedby="early-hint"></button>
         </div>
         <div class="field disc-field">
           <div class="disc-already" id="disc-already"></div>
           <label class="label" for="disc-range">Additional discount <b class="disc-val" id="disc-val">0%</b></label>
-          <input id="disc-range" class="range" type="range" min="0" max="20" step="0.5" value="0" aria-valuetext="0% additional discount" aria-describedby="disc-hint">
+          <input id="disc-range" class="range" type="range" min="0" max="20" step="0.5" value="0" aria-valuetext="0% additional discount">
           <div class="range-scale"><span>0%</span><span id="disc-max-label">20%</span></div>
-          <div class="hint" id="disc-hint">Starts at 0%. Move the slider, or use the arrow keys while it is focused.</div>
         </div>
       </div>
     </section>
