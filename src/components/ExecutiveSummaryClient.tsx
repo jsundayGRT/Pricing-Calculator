@@ -103,13 +103,11 @@ export function ExecutiveSummaryClient() {
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [approving, setApproving] = useState(false);
-  // Decision panel: Edit reopens Approve/Decline on a decided request; Decline asks for the reason.
-  const [editing, setEditing] = useState(false);
+  // Decision panel: Decline asks for the reason. A decision is final.
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState('');
 
   function resetDecisionForm() {
-    setEditing(false);
     setDeclining(false);
     setReason('');
   }
@@ -385,13 +383,7 @@ export function ExecutiveSummaryClient() {
                   {(() => {
                     const status = detail.summary.status;
                     const decided = status === 'APPROVED' || status === 'NOT APPROVED';
-                    if (decided && !editing) {
-                      return (
-                        <div className="review-actions" style={{ marginTop: 0 }}>
-                          <button className="btn small" type="button" onClick={() => setEditing(true)}>Edit decision</button>
-                        </div>
-                      );
-                    }
+                    if (decided) return null;
                     if (declining) {
                       return (
                         <form className="log-form" onSubmit={(event) => { event.preventDefault(); void decide(detail.summary.id, 'decline'); }}>
@@ -415,21 +407,14 @@ export function ExecutiveSummaryClient() {
                     }
                     return (
                       <div className="review-actions" style={{ marginTop: 0 }}>
-                        {status !== 'APPROVED' ? (
-                          <button className="btn approve" type="button" disabled={approving} onClick={() => void decide(detail.summary.id, 'approve')}>
-                            {approving ? 'Saving…' : 'Approve'}
-                          </button>
-                        ) : null}
-                        {status !== 'NOT APPROVED' ? (
-                          <button className="btn decline" type="button" disabled={approving} onClick={() => setDeclining(true)}>Decline</button>
-                        ) : null}
-                        {decided ? (
-                          <button className="btn small" type="button" disabled={approving} onClick={resetDecisionForm}>Cancel</button>
-                        ) : null}
+                        <button className="btn approve" type="button" disabled={approving} onClick={() => void decide(detail.summary.id, 'approve')}>
+                          {approving ? 'Saving…' : 'Approve'}
+                        </button>
+                        <button className="btn decline" type="button" disabled={approving} onClick={() => setDeclining(true)}>Decline</button>
                       </div>
                     );
                   })()}
-                  <h2 style={{ marginTop: 16 }}>History</h2>
+                  <h2 style={{ marginTop: detail.summary.status === 'APPROVED' || detail.summary.status === 'NOT APPROVED' ? 0 : 16 }}>History</h2>
                   <RequestLog snapshot={detail.quote.snapshot} />
                 </div>
 

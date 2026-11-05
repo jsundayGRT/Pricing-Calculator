@@ -40,6 +40,13 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ summary: summarizeForExec(quote), quote });
   }
   const note = typeof body?.note === 'string' ? body.note : '';
+  // A decision is final: an approved or declined request can't be decided again.
+  if (body?.action === 'approve' || body?.action === 'decline') {
+    const current = await getQuoteById(id);
+    if (current && (current.status === 'APPROVED' || current.status === 'NOT APPROVED')) {
+      return NextResponse.json({ error: `already ${current.status === 'APPROVED' ? 'approved' : 'declined'}` }, { status: 409 });
+    }
+  }
   // Not approving always needs a reason: the rep sees it on their dashboard.
   if (body?.action === 'decline' && !note.trim()) {
     return NextResponse.json({ error: 'reason required' }, { status: 400 });
