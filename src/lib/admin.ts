@@ -1,6 +1,10 @@
 import type { SessionUser } from './session';
 
-const DEFAULT_ADMINS = ['jared.sunday@guardrail.tech'];
+const DEFAULT_ADMINS = [
+  'jared.sunday@guardrail.tech',
+  'susan.landaluce@guardrail.tech',
+  'dena.lumbang@guardrail.tech',
+];
 
 export function adminEmails(): string[] {
   const fromEnv = (process.env.ADMIN_EMAILS || '')
