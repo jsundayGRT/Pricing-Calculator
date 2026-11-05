@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import { isAdmin } from '@/lib/admin';
 import type { SessionUser } from '@/lib/session';
+import { UserMenu } from '@/components/UserMenu';
 
 export function AppHeader({
   user,
@@ -30,13 +31,7 @@ export function AppHeader({
               </a>
             ) : null}
           </nav>
-          <div className="who">
-            <span>
-              {user.name}{user.email ? ` · ${user.email}` : ''}
-              {admin ? ' · Admin' : ''}
-            </span>
-            <a className="btn small" href="/api/auth/logout">Sign out</a>
-          </div>
+          <UserMenu name={user.name} email={user.email} admin={admin} />
         </>
       ) : null}
     </header>
