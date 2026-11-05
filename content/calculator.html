@@ -70,10 +70,10 @@ h3 { font-size: 15px; margin: 0 0 8px; }
 .brand span { color: var(--nav-muted); font-weight: 400; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand { gap: 16px; }
-.brand img { height: 40px; width: auto; display: block; }
+.brand img { height: 46px; width: auto; display: block; filter: brightness(0) invert(1); }
 .brand .brand-sep { width: 1px; height: 30px; background: rgba(160,196,214,.4); }
 .brand .brand-app { color: #fff; font-weight: 600; letter-spacing: -.01em; font-size: 21px; }
-@media (max-width: 560px) { .brand img { height: 32px; } .brand .brand-sep { height: 24px; } .brand .brand-app { font-size: 17px; } }
+@media (max-width: 560px) { .brand img { height: 34px; } .brand .brand-sep { height: 24px; } .brand .brand-app { font-size: 17px; } }
 .nav { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
 .nav a { color: var(--nav-muted); text-decoration: none; padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
 .nav a:hover { background: rgba(255,255,255,.08); color: #fff; }
@@ -522,7 +522,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 </head>
 <body class="sales">
 <header class="topbar">
-  <div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="135" height="40"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing calculator</span></div>
+  <div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="157" height="46"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing calculator</span></div>
   <div style="flex:1"></div>
   <div class="who" id="who"><a class="btn small" href="/">Dashboard</a><a class="btn small" id="signout" href="/api/auth/logout">Sign out</a></div>
 </header>
@@ -1341,7 +1341,7 @@ async function renderTopbar(active) {
   ];
   const bar = document.createElement('header');
   bar.className = 'topbar';
-  bar.innerHTML = `<div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="135" height="40"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing</span></div>
+  bar.innerHTML = `<div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="157" height="46"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing</span></div>
     <nav class="nav">${links.map(([h, t, k]) => `<a href="${h}" class="${k === active ? 'active' : ''}">${t}</a>`).join('')}</nav>
     <div class="who">${esc(me.name)} · ${esc(me.role)} <button class="btn small" id="signout">Sign out</button></div>`;
   document.body.prepend(bar);

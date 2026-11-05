@@ -16,7 +16,7 @@ export function AppHeader({
     <header className="topbar">
       <div className="brand">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Guardrail Technologies" width={135} height={40} />
+        <img src="/logo.png" alt="Guardrail Technologies" width={157} height={46} />
         <span className="brand-sep" aria-hidden="true" />
         <span className="brand-app">Pricing</span>
       </div>

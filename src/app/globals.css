@@ -82,7 +82,7 @@ p { margin: 0; }
   z-index: 5;
 }
 .brand { display: flex; align-items: center; gap: 16px; font-weight: 700; }
-.brand img { height: 40px; width: auto; display: block; }
+.brand img { height: 46px; width: auto; display: block; filter: brightness(0) invert(1); }
 .brand .brand-sep { width: 1px; height: 30px; background: rgba(160,196,214,.4); }
 .brand .brand-app { color: #fff; font-weight: 600; letter-spacing: -.01em; font-size: 21px; }
 .nav { display: flex; gap: 4px; flex: 1; }
@@ -163,7 +163,7 @@ p { margin: 0; }
 @media (max-width: 800px) {
   .topbar { height: auto; flex-wrap: wrap; align-items: center; padding: 10px 12px; gap: 8px 12px; }
   .brand { min-width: 0; }
-  .brand img { height: 28px; }
+  .brand img { height: 34px; }
   .brand .brand-app { font-size: 16px; }
   .nav { flex: 1 1 100%; order: 3; min-width: 0; overflow-x: auto; }
   .user-menu-name, .user-menu-caret { display: none; }
