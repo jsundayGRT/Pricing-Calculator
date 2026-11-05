@@ -372,8 +372,6 @@ body.sales .empty { padding: 8px 4px 4px; text-align: left; color: var(--text); 
 #empty-msg { margin: 0; color: var(--muted); max-width: 36ch; }
 fieldset.plain { border: 0; padding: 0; margin: 0 0 16px; min-width: 0; }
 fieldset.plain legend.label { padding: 0; }
-.req { display: none; margin-left: 6px; color: var(--bad-text); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.field:hover .req, .field:focus-within .req { display: inline; }
 body.sales ::placeholder { color: var(--placeholder); opacity: 1; }
 body.sales input[aria-invalid="true"], body.sales select[aria-invalid="true"] { border-color: var(--bad-text); box-shadow: 0 0 0 3px var(--bad-soft); }
 body.sales { overflow-x: clip; }
@@ -543,11 +541,11 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
       <div class="card step">
         <h2><span class="num">1</span>Customer</h2>
         <div class="row2 band-row">
-          <div class="field"><label class="label" for="band">Employee band <span class="req">Required</span></label>
-            <div class="select-wrap"><select id="band" required aria-required="true" aria-describedby="band-hint"><option value="" disabled selected>Choose a band</option></select></div>
+          <div class="field"><label class="label" for="band">Employee band</label>
+            <div class="select-wrap"><select id="band" aria-describedby="band-hint"><option value="" disabled selected>Choose a band</option></select></div>
             <div class="hint" id="band-hint">Match the band to headcount. Enterprise is 1,000 or more employees.</div></div>
-          <div class="field"><label class="label" for="location">Buyer location <span class="req">Required</span></label>
-            <div class="select-wrap"><select id="location" required aria-required="true" aria-describedby="location-hint"><option value="" disabled selected>Choose a location</option></select></div>
+          <div class="field"><label class="label" for="location">Buyer location</label>
+            <div class="select-wrap"><select id="location" aria-describedby="location-hint"><option value="" disabled selected>Choose a location</option></select></div>
             <div class="hint" id="location-hint">Sets the quote currency. US prices stay in dollars.</div></div>
         </div>
         <div class="field hidden" id="empcount-field">
@@ -556,8 +554,8 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
           <div class="hint" id="empcount-hint"></div>
         </div>
         <div class="field hidden" id="seats-field">
-          <label class="label" for="seats">Enterprise seat count <span class="req">Required</span></label>
-          <input id="seats" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 5,000" style="max-width:240px" aria-required="true" aria-describedby="seats-hint">
+          <label class="label" for="seats">Enterprise seat count</label>
+          <input id="seats" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 5,000" style="max-width:240px" aria-describedby="seats-hint">
           <div class="hint" id="seats-hint">Enterprise is 1,000+ employees. Enter the seat count to see the price.</div>
         </div>
       </div>
@@ -630,8 +628,8 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
       <div class="card lock hidden" id="lock">
         <h2>Lock in this request</h2>
         <div class="row2">
-          <div class="field"><label class="label" for="repname">Rep name <span class="req">Required</span></label><input id="repname" type="text" maxlength="100" placeholder="Your name" autocomplete="name" aria-required="true" aria-describedby="lockerr"></div>
-          <div class="field"><label class="label" for="cname">Customer or opportunity <span class="req">Required</span></label><input id="cname" type="text" maxlength="200" placeholder="Customer name" aria-required="true" aria-describedby="lockerr"></div>
+          <div class="field"><label class="label" for="repname">Rep name</label><input id="repname" type="text" maxlength="100" placeholder="Your name" autocomplete="name" aria-describedby="lockerr"></div>
+          <div class="field"><label class="label" for="cname">Customer or opportunity</label><input id="cname" type="text" maxlength="200" placeholder="Customer name" aria-describedby="lockerr"></div>
         </div>
         <div class="row2">
           <div class="field"><label class="label" for="hubspot">HubSpot record</label><input id="hubspot" type="text" maxlength="500" placeholder="Paste the deal link"></div>
