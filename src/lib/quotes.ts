@@ -117,13 +117,29 @@ export function upsertQuote(input: {
 }
 
 export function approveQuote(id: string, approver: { name: string; email: string }) {
+  return decideQuote(id, approver, 'approve');
+}
+
+export function declineQuote(id: string, approver: { name: string; email: string }) {
+  return decideQuote(id, approver, 'decline');
+}
+
+function decideQuote(id: string, approver: { name: string; email: string }, action: 'approve' | 'decline') {
   const store = readStore();
   const quote = store.quotes.find((q) => q.id === id);
   if (!quote) return null;
   const now = new Date().toISOString();
-  const approval = { by: approver.name || approver.email, email: approver.email, at: now.slice(0, 10) };
-  quote.snapshot = { ...quote.snapshot, approval, status: 'APPROVED' };
-  quote.status = 'APPROVED';
+  const by = approver.name || approver.email;
+  const decision = { by, email: approver.email, at: now.slice(0, 10), outcome: action === 'approve' ? 'approved' : 'not-approved' };
+  if (action === 'approve') {
+    quote.snapshot = { ...quote.snapshot, approval: decision, status: 'APPROVED' };
+    quote.status = 'APPROVED';
+  } else {
+    const { approval: _removed, ...rest } = quote.snapshot;
+    void _removed;
+    quote.snapshot = { ...rest, decision, status: 'NOT APPROVED' };
+    quote.status = 'NOT APPROVED';
+  }
   quote.updatedAt = now;
   writeStore(store);
   return quote;

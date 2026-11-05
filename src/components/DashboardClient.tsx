@@ -119,11 +119,12 @@ export function DashboardClient({ userName }: { userName: string }) {
           {quotes.map((q) => {
             const review = q.status === 'DEAL REVIEW';
             const approved = q.status === 'APPROVED';
+            const declined = q.status === 'NOT APPROVED';
             return (
               <article key={q.id} className="card quote-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                  <span className={`pill ${review ? 'review' : 'standard'}`}>
-                    {review ? 'Deal Review' : approved ? 'Approved' : 'Standard'}
+                  <span className={`pill ${review || declined ? 'review' : 'standard'}`}>
+                    {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                   </span>
                   <span className="quote-meta">v{q.version}</span>
                 </div>

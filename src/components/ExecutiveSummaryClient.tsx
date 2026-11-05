@@ -38,6 +38,11 @@ function pts(v?: number | null) {
   return `${v >= 0 ? '+' : ''}${n} pts`;
 }
 
+function decisionBy(snapshot: Record<string, unknown>, key: 'approval' | 'decision') {
+  const record = snapshot[key] as { by?: string } | undefined;
+  return record?.by ? ` by ${record.by}` : '';
+}
+
 function fmtDate(iso: string) {
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -64,21 +69,21 @@ export function ExecutiveSummaryClient() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [approving, setApproving] = useState(false);
 
-  async function approve(id: string) {
+  async function decide(id: string, action: 'approve' | 'decline') {
     setApproving(true);
     setError('');
     try {
       const res = await fetch(`/api/admin/quotes/${encodeURIComponent(id)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve' }),
+        body: JSON.stringify({ action }),
       });
-      if (!res.ok) throw new Error('Could not approve this request');
+      if (!res.ok) throw new Error(action === 'approve' ? 'Could not approve this request' : 'Could not decline this request');
       const data = await res.json();
       setDetail(data);
       setQuotes((prev) => (prev || []).map((q) => (q.id === id ? data.summary : q)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not approve this request');
+      setError(err instanceof Error ? err.message : 'Could not save this decision');
     } finally {
       setApproving(false);
     }
@@ -183,6 +188,7 @@ export function ExecutiveSummaryClient() {
               <option value="ALL">All</option>
               <option value="DEAL REVIEW">Deal Review</option>
               <option value="APPROVED">Approved</option>
+              <option value="NOT APPROVED">Not approved</option>
               <option value="STANDARD">Standard</option>
             </select>
           </div>
@@ -232,6 +238,7 @@ export function ExecutiveSummaryClient() {
               {filtered.map((q) => {
                 const review = q.status === 'DEAL REVIEW';
                 const approved = q.status === 'APPROVED';
+                const declined = q.status === 'NOT APPROVED';
                 return (
                   <tr
                     key={q.id}
@@ -258,8 +265,8 @@ export function ExecutiveSummaryClient() {
                     <td className="num">{money(q.finalPrice, q.currency)}</td>
                     <td className="num">{money(q.year1Due, q.currency)}</td>
                     <td>
-                      <span className={`pill ${review ? 'review' : 'standard'}`}>
-                        {review ? 'Deal Review' : approved ? 'Approved' : 'Standard'}
+                      <span className={`pill ${review || declined ? 'review' : 'standard'}`}>
+                        {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                       </span>
                       {review && q.reviewReason ? <div className="reason">{q.reviewReason}</div> : null}
                     </td>
@@ -298,12 +305,19 @@ export function ExecutiveSummaryClient() {
                       {detail.summary.reviewReason ? `: ${detail.summary.reviewReason}` : ''}
                       {detail.summary.dealNote ? ` — ${detail.summary.dealNote}` : ''}
                     </div>
-                    <button className="btn primary" type="button" style={{ marginTop: 12 }} disabled={approving} onClick={() => void approve(detail.summary.id)}>
-                      {approving ? 'Approving…' : 'Approve'}
-                    </button>
+                    <div className="review-actions">
+                      <button className="btn primary" type="button" disabled={approving} onClick={() => void decide(detail.summary.id, 'approve')}>
+                        {approving ? 'Saving…' : 'Approve'}
+                      </button>
+                      <button className="btn" type="button" disabled={approving} onClick={() => void decide(detail.summary.id, 'decline')}>
+                        Do not approve
+                      </button>
+                    </div>
                   </div>
                 ) : detail.summary.status === 'APPROVED' ? (
-                  <div className="flag ok">Approved{detail.quote.snapshot && (detail.quote.snapshot as { approval?: { by?: string } }).approval?.by ? ` by ${(detail.quote.snapshot as { approval?: { by?: string } }).approval?.by}` : ''}</div>
+                  <div className="flag ok">Approved{decisionBy(detail.quote.snapshot, 'approval')}</div>
+                ) : detail.summary.status === 'NOT APPROVED' ? (
+                  <div className="flag bad">Not approved{decisionBy(detail.quote.snapshot, 'decision')}</div>
                 ) : null}
 
                 <div className="card" style={{ marginBottom: 16 }}>
