@@ -37,5 +37,6 @@
 *.tsbuildinfo
 next-env.d.ts
 
-# local quote store
-/data/quotes.json
+# local quote store and saved quote PDFs
+/data/*
+!/data/.gitkeep

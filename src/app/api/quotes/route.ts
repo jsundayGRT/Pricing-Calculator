@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { listQuotesForUser, upsertQuote } from '@/lib/quotes';
+import { after, NextResponse } from 'next/server';
+import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
+import { listQuotesForUser, saveQuotePdf, upsertQuote } from '@/lib/quotes';
 import { readSession } from '@/lib/session';
 
 export async function GET() {
@@ -30,6 +31,11 @@ export async function POST(request: Request) {
       ownerName: session.name,
       snapshot,
     });
+    // The calculator sends the customer quote PDF it built, for the HubSpot sync to upload.
+    const pdf = decodePdf(body?.pdf);
+    if (pdf) saveQuotePdf(record.id, pdf);
+    // Sync after the response: a HubSpot problem never blocks the lock.
+    if (record.hubspot?.dealId) after(() => syncRequestToHubSpot(record.id));
     const { snapshot: _ignored, ...summary } = record;
     void _ignored;
     return NextResponse.json({ quote: summary }, { status: 201 });
@@ -37,4 +43,13 @@ export async function POST(request: Request) {
     const message = err instanceof Error ? err.message : 'Unable to save quote';
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
+
+function decodePdf(value: unknown): Uint8Array | null {
+  if (typeof value !== 'string' || !value) return null;
+  const bytes = Buffer.from(value, 'base64');
+  if (bytes.length > MAX_PDF_BYTES || bytes.subarray(0, 5).toString('latin1') !== '%PDF-') return null;
+  return bytes;
 }
