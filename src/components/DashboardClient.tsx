@@ -91,7 +91,7 @@ export function DashboardClient({ userName }: { userName: string }) {
 
       <div className="hero">
         <small>Guardrail Pricing</small>
-        <div className="amount">Welcome back</div>
+        <div className="amount">Welcome back, {userName}</div>
         <small>Each signed-in user only sees their own locked quotes.</small>
       </div>
 

@@ -8,6 +8,7 @@ test('locked requests stay on the dashboard and fields have no required marker',
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Locked requests' })).toBeVisible();
+  await expect(page.locator('.hero .amount')).toHaveText('Welcome back, Jared Sunday');
 
   const frame = await openCalculator(page);
   await expect(frame.locator('#history-card')).toHaveCount(0);
