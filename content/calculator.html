@@ -522,7 +522,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 </head>
 <body class="sales">
 <header class="topbar">
-  <div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="157" height="46"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing calculator</span></div>
+  <div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="157" height="46"></div>
   <div style="flex:1"></div>
   <div class="who" id="who"><a class="btn small" href="/">Dashboard</a><a class="btn small" id="signout" href="/api/auth/logout">Sign out</a></div>
 </header>
@@ -1341,7 +1341,7 @@ async function renderTopbar(active) {
   ];
   const bar = document.createElement('header');
   bar.className = 'topbar';
-  bar.innerHTML = `<div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="157" height="46"><span class="brand-sep" aria-hidden="true"></span><span class="brand-app">Pricing</span></div>
+  bar.innerHTML = `<div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="157" height="46"></div>
     <nav class="nav">${links.map(([h, t, k]) => `<a href="${h}" class="${k === active ? 'active' : ''}">${t}</a>`).join('')}</nav>
     <div class="who">${esc(me.name)} · ${esc(me.role)} <button class="btn small" id="signout">Sign out</button></div>`;
   document.body.prepend(bar);

@@ -17,8 +17,6 @@ export function AppHeader({
       <div className="brand">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Guardrail Technologies" width={157} height={46} />
-        <span className="brand-sep" aria-hidden="true" />
-        <span className="brand-app">Pricing</span>
       </div>
       {user ? (
         <>
