@@ -1,15 +1,17 @@
 import type { HubSpotSync } from '@/lib/quotes';
 
-export function hubspotLabel(hs?: HubSpotSync | null) {
+export function hubspotLabel(hs?: HubSpotSync | null, requestStatus?: string) {
   if (!hs?.dealId) return null;
   if (hs.status === 'synced') return 'HubSpot quote synced';
+  if (requestStatus === 'NOT APPROVED') return 'Not sent to HubSpot (not approved)';
+  if (hs.status === 'awaiting-approval' || requestStatus === 'DEAL REVIEW') return 'Goes to HubSpot once approved';
   if (hs.status === 'failed') return 'HubSpot sync failed';
   if (hs.status === 'skipped') return 'HubSpot not connected';
   return 'HubSpot sync pending';
 }
 
-export function HubSpotSyncLine({ hubspot }: { hubspot?: HubSpotSync | null }) {
-  const label = hubspotLabel(hubspot);
+export function HubSpotSyncLine({ hubspot, status }: { hubspot?: HubSpotSync | null; status?: string }) {
+  const label = hubspotLabel(hubspot, status);
   if (!label || !hubspot) return null;
   return (
     <div>

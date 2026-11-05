@@ -37,6 +37,12 @@ export async function syncRequestToHubSpot(
   if (!record) return { ok: false, hubspot: null };
   const dealId = record.hubspot?.dealId;
   if (!dealId) return { ok: false, hubspot: record.hubspot ?? null };
+  // A Deal Review goes to HubSpot only once approved; a declined one never does.
+  if (record.status === 'DEAL REVIEW' || record.status === 'NOT APPROVED') {
+    if (record.hubspot?.status === 'synced') return { ok: false, hubspot: record.hubspot };
+    const hs = (await updateQuoteHubSpot(recordId, { status: 'awaiting-approval', error: null }))?.hubspot;
+    return { ok: false, hubspot: hs ?? null };
+  }
   if (!opts.client && !hubspotEnabled()) {
     const hs = (await updateQuoteHubSpot(recordId, { status: 'skipped', error: 'HubSpot is not configured (HUBSPOT_TOKEN is not set).' }))?.hubspot;
     return { ok: false, hubspot: hs ?? null };

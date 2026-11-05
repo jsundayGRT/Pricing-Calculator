@@ -420,7 +420,7 @@ export function ExecutiveSummaryClient() {
                     ) : null}
                     <table className="kv"><tbody>
                       <tr><td>Deal</td><td>{detail.quote.hubspot.dealName || detail.quote.hubspot.dealId}</td></tr>
-                      <tr><td>Status</td><td>{hubspotLabel(detail.quote.hubspot)}</td></tr>
+                      <tr><td>Status</td><td>{hubspotLabel(detail.quote.hubspot, detail.summary.status)}</td></tr>
                       <tr><td>Quote</td><td>{detail.quote.hubspot.quoteUrl
                         ? <a href={detail.quote.hubspot.quoteUrl} target="_blank" rel="noopener noreferrer">Open in HubSpot</a>
                         : '—'}</td></tr>

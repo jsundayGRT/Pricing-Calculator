@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 import { createHubSpotClient } from '../../src/lib/hubspot/client';
 import { buildQuotePricing } from '../../src/lib/hubspot/payload';
 import { resetHubSpotCaches, syncRequestToHubSpot } from '../../src/lib/hubspot/sync';
-import { getQuoteById, saveQuotePdf, upsertQuote } from '../../src/lib/quotes';
+import { approveQuote, declineQuote, getQuoteById, saveQuotePdf, upsertQuote } from '../../src/lib/quotes';
 import { scenarios } from '../scenarios';
 
 // ---- the real pricing engine, loaded from the calculator page
@@ -260,6 +260,33 @@ test('dry run logs payloads and calls nothing', async () => {
 test('a request without a deal is not synced', async () => {
   const snap = { ...snapshotFor(), hubspotDeal: null, hubspotRecord: null };
   const record = await lockRequest(snap);
+  const hs = fakeHubSpot();
+  const res = await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: hs.fetchFn, ...quiet }) });
+  expect(res.ok).toBe(false);
+  expect(hs.calls.length).toBe(0);
+});
+
+test('a Deal Review goes to HubSpot only once approved', async () => {
+  const record = await lockRequest({ ...snapshotFor(), status: 'DEAL REVIEW' });
+  expect(record.hubspot!.status).toBe('awaiting-approval');
+
+  // Before approval (a retry, for example): nothing is sent.
+  const before = fakeHubSpot();
+  const res = await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: before.fetchFn, ...quiet }) });
+  expect(res.ok).toBe(false);
+  expect(before.calls.length).toBe(0);
+  expect((await getQuoteById(record.id))!.hubspot!.status).toBe('awaiting-approval');
+
+  await approveQuote(record.id, { name: 'Susan', email: 's@guardrail.tech' });
+  const after = fakeHubSpot();
+  expect((await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: after.fetchFn, ...quiet }) })).ok).toBe(true);
+  expect(after.calls.some((c) => c.method === 'POST' && c.path === '/crm/v3/objects/quotes')).toBe(true);
+  expect((await getQuoteById(record.id))!.hubspot!.status).toBe('synced');
+});
+
+test('a declined Deal Review is never sent to HubSpot', async () => {
+  const record = await lockRequest({ ...snapshotFor(), status: 'DEAL REVIEW' });
+  await declineQuote(record.id, { name: 'Susan', email: 's@guardrail.tech' });
   const hs = fakeHubSpot();
   const res = await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: hs.fetchFn, ...quiet }) });
   expect(res.ok).toBe(false);

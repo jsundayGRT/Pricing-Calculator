@@ -135,7 +135,7 @@ export function DashboardClient({ userName }: { userName: string }) {
                   <div><b style={{ color: 'var(--text)' }}>{money(q.finalPrice, q.currency)}</b> · Year 1</div>
                   {q.stage ? <div>Stage: {q.stage}</div> : null}
                   {q.hubspot?.dealName ? <div>Deal: {q.hubspot.dealName}</div> : null}
-                  <HubSpotSyncLine hubspot={q.hubspot} />
+                  <HubSpotSyncLine hubspot={q.hubspot} status={q.status} />
                 </div>
                 <div className="quote-actions">
                   <a className="btn small" href={`/calculator?revise=${encodeURIComponent(q.id)}`}>

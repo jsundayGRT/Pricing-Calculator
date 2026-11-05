@@ -35,8 +35,9 @@ export async function POST(request: Request) {
     // The calculator sends the customer quote PDF it built, for the HubSpot sync to upload.
     const pdf = decodePdf(body?.pdf);
     if (pdf) await saveQuotePdf(record.id, pdf);
-    // Sync after the response: a HubSpot or Slack problem never blocks the lock.
-    if (record.hubspot?.dealId) after(() => syncRequestToHubSpot(record.id));
+    // Sync after the response: a HubSpot or Slack problem never blocks the lock. A Deal Review
+    // waits for approval before anything goes to HubSpot.
+    if (record.hubspot?.dealId && record.status !== 'DEAL REVIEW') after(() => syncRequestToHubSpot(record.id));
     if (record.status === 'DEAL REVIEW' && !record.slack) {
       const appUrl = new URL(request.url).origin;
       after(() => postDealReview(record.id, appUrl));

@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { store } from './store';
 
-export type HubSpotSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped';
+// 'awaiting-approval': a Deal Review isn't sent to HubSpot until it is approved.
+export type HubSpotSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped' | 'awaiting-approval';
 
 // What the HubSpot sync knows about a request. Only IDs and links: nothing priced lives here.
 export type HubSpotSync = {
@@ -95,7 +96,7 @@ export async function upsertQuote(input: {
   // creating a duplicate) unless the deal changed.
   const hubspot: HubSpotSync | null = existing?.hubspot && existing.hubspot.dealId === dealId
     ? { ...existing.hubspot, dealName }
-    : dealId ? { dealId, dealName, status: 'pending' } : null;
+    : dealId ? { dealId, dealName, status: snap.status === 'DEAL REVIEW' ? 'awaiting-approval' : 'pending' } : null;
 
   const record: QuoteRecord = {
     id: existing?.id || randomUUID(),

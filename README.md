@@ -34,7 +34,7 @@ Entra redirect URI:
 
 ## HubSpot integration
 
-When a rep locks a pricing request, or an executive approves one, the server sends it to the HubSpot deal the rep picked:
+When a rep locks a pricing request, the server sends it to the HubSpot deal the rep picked. A request that needs a **Deal Review** waits: it is sent only once it is approved (on the Executive Dashboard or in Slack), and a declined one is never sent. What is sent:
 
 1. One line item per priced product (customer-facing prices only: list price, discount, annual billing over the contract term; implementation is one-time). Cost, margin and every other executive-only figure stay in the app.
 2. A **Draft** quote titled `<Deal name> – Pricing – <request ID> v<version>`, expiring in `HUBSPOT_QUOTE_EXPIRY_DAYS`, using the `HUBSPOT_QUOTE_TEMPLATE_ID` template, and associated with the deal, its line items, the deal's primary company and its first contact.
