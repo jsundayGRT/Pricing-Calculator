@@ -27,7 +27,10 @@ export function buildAuthorizeUrl(request: Request, { state, challenge }: { stat
     state,
     code_challenge: challenge,
     code_challenge_method: 'S256',
-    prompt: 'select_account',
+    // No forced account picker: someone already signed in to Microsoft goes straight through, so
+    // the calculator's own page is the only sign-in screen they see. The domain hint skips
+    // Microsoft's "which organisation" step for Guardrail accounts.
+    domain_hint: cfg.allowedEmailDomain || 'guardrail.tech',
   });
   return `${cfg.authorizeUrl}?${params}`;
 }
@@ -89,13 +92,4 @@ export function assertAllowedUser(user: SessionUser) {
   if (domain !== allowedEmailDomain) {
     throw new Error(`Sign-in is limited to @${allowedEmailDomain} accounts`);
   }
-}
-
-export function buildLogoutUrl(request: Request, postLogoutRedirectUri: string) {
-  const cfg = getAuthConfig();
-  const params = new URLSearchParams({
-    client_id: cfg.clientId,
-    post_logout_redirect_uri: postLogoutRedirectUri,
-  });
-  return `${cfg.logoutUrl}?${params}`;
 }
