@@ -10,16 +10,21 @@ export function hubspotLabel(hs?: HubSpotSync | null, requestStatus?: string) {
   return 'HubSpot sync pending';
 }
 
+// Requests synced before the link fix saved /record/0-14/<id>, which HubSpot doesn't serve.
+export function quoteLink(hs?: HubSpotSync | null) {
+  return hs?.quoteUrl ? hs.quoteUrl.replace('/record/0-14/', '/quote/') : null;
+}
+
 export function HubSpotSyncLine({ hubspot, status }: { hubspot?: HubSpotSync | null; status?: string }) {
   const label = hubspotLabel(hubspot, status);
   if (!label || !hubspot) return null;
   return (
     <div>
       <span style={{ color: hubspot.status === 'failed' ? 'var(--bad)' : undefined }}>{label}</span>
-      {hubspot.quoteUrl ? (
+      {quoteLink(hubspot) ? (
         <>
           {' · '}
-          <a href={hubspot.quoteUrl} target="_blank" rel="noopener noreferrer">Open quote</a>
+          <a href={quoteLink(hubspot)!} target="_blank" rel="noopener noreferrer">Open quote</a>
         </>
       ) : null}
     </div>

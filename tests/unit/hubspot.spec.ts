@@ -155,11 +155,11 @@ test('a lock creates the quote, line items, deal update and PDF note', async () 
   const nb = note.body as { properties: Record<string, string> };
   expect(nb.properties.hs_attachment_ids).toBe('file-1');
   expect(nb.properties.hs_note_body).toContain('Pricing request GRT-TEST1 v1 locked by Avery Rep on 2026-11-04.');
-  expect(nb.properties.hs_note_body).toContain('https://app-na2.hubspot.com/contacts/4242/record/0-14/q-1');
+  expect(nb.properties.hs_note_body).toContain('https://app-na2.hubspot.com/contacts/4242/quote/q-1');
 
   const saved = (await getQuoteById(record.id))!.hubspot!;
   expect(saved).toMatchObject({ status: 'synced', quoteId: 'q-1', fileId: 'file-1', noteId: 'note-1', error: null });
-  expect(saved.quoteUrl).toBe('https://app-na2.hubspot.com/contacts/4242/record/0-14/q-1');
+  expect(saved.quoteUrl).toBe('https://app-na2.hubspot.com/contacts/4242/quote/q-1');
 });
 
 test('nothing executive-only is sent to HubSpot', async () => {

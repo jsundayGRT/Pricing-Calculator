@@ -146,7 +146,8 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
     });
     quoteId = String(created.id);
   }
-  const quoteUrl = `https://${account.uiDomain}/contacts/${account.portalId}/record/0-14/${quoteId}`;
+  // HubSpot opens quotes at /contacts/<portal>/quote/<id> (the generic /record/0-14/ page is "not found").
+  const quoteUrl = `https://${account.uiDomain}/contacts/${account.portalId}/quote/${quoteId}`;
 
   // 4. The deal: amount follows the quote, and it records which request priced it.
   await ensureDealProperty(client);

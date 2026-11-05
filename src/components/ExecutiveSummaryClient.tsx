@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ExecQuoteSummary } from '@/lib/quote-view';
 import type { HubSpotSync } from '@/lib/quotes';
-import { hubspotLabel } from './HubSpotSyncLine';
+import { hubspotLabel, quoteLink } from './HubSpotSyncLine';
 
 type DetailPayload = {
   summary: ExecQuoteSummary;
@@ -421,8 +421,8 @@ export function ExecutiveSummaryClient() {
                     <table className="kv"><tbody>
                       <tr><td>Deal</td><td>{detail.quote.hubspot.dealName || detail.quote.hubspot.dealId}</td></tr>
                       <tr><td>Status</td><td>{hubspotLabel(detail.quote.hubspot, detail.summary.status)}</td></tr>
-                      <tr><td>Quote</td><td>{detail.quote.hubspot.quoteUrl
-                        ? <a href={detail.quote.hubspot.quoteUrl} target="_blank" rel="noopener noreferrer">Open in HubSpot</a>
+                      <tr><td>Quote</td><td>{quoteLink(detail.quote.hubspot)
+                        ? <a href={quoteLink(detail.quote.hubspot)!} target="_blank" rel="noopener noreferrer">Open in HubSpot</a>
                         : '—'}</td></tr>
                       <tr><td>Last synced</td><td>{fmtWhen(detail.quote.hubspot.syncedAt)}</td></tr>
                       <tr><td>Attempts</td><td>{detail.quote.hubspot.attempts ?? 0}</td></tr>
