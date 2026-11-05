@@ -86,6 +86,27 @@ A retry re-uses the quote PDF saved at lock time. Requests locked before this in
 npm run test:unit   # HubSpot sync against a mocked HubSpot API; no browser or app needed
 ```
 
+## Slack Deal Review approvals
+
+When a locked request needs a **Deal Review**, the app posts it to a Slack channel with **Approve** and **Decline** buttons. Anyone in the channel can decide; the click works exactly like approving or declining on the Executive Dashboard (an approval also updates the HubSpot quote), and the message is updated to show who decided. A decision made on the Executive Dashboard updates the Slack message too, so nobody acts on it twice. If Slack is down or not configured, locking works as before.
+
+The message shows the customer, request ID, rep, Year 1 price, requested and applied discount, margin against target, term, customer size, HubSpot deal and the reason for review, plus a link to the Executive Dashboard. Keep the channel to people who may see margins.
+
+### Set it up
+
+1. Requires Redis storage (see **Storage** below), so the request still exists when someone clicks.
+2. At https://api.slack.com/apps → **Create New App** → **From a manifest**, pick the workspace and paste [`slack-app-manifest.yml`](slack-app-manifest.yml) (change the URL in it if the app runs elsewhere). Install it to the workspace.
+3. Create the channel (for example `#deal-review`) and invite the app: `/invite @Guardrail Pricing`.
+4. In Vercel add:
+
+| Variable | Value |
+|---|---|
+| `SLACK_BOT_TOKEN` | **OAuth & Permissions → Bot User OAuth Token** (`xoxb-…`). Secret. |
+| `SLACK_SIGNING_SECRET` | **Basic Information → Signing Secret**. Secret. |
+| `SLACK_DEAL_REVIEW_CHANNEL` | The channel ID (channel name → **View channel details** → bottom, e.g. `C0123ABCD`). |
+
+Then redeploy.
+
 ## Local development
 
 ```bash
@@ -100,6 +121,6 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Push to `main` with the GitHub repo connected to Vercel. Set the env vars in the Vercel project and redeploy.
 
-### Quote storage note
+### Storage
 
-Quotes are stored in a JSON file (`data/quotes.json` locally, `/tmp/grt-quotes.json` on Vercel), and the quote PDFs saved for HubSpot next to it (`quote-pdfs/`). On Vercel `/tmp` does not survive a redeploy or a new instance, so HubSpot sync status and the saved PDF can be lost with it. That is fine for an internal MVP; for durable multi-instance production later, swap the store in `src/lib/quotes.ts` for Postgres/Redis.
+Locked requests and their quote PDFs are kept in **Upstash Redis** when it is connected: in Vercel open the project → **Storage** → **Create Database** → **Upstash for Redis** (free plan) and connect it to the project, which adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`; then redeploy. Without those variables the app falls back to a JSON file (`data/quotes.json` locally, `/tmp` on Vercel), which is fine for local development but not on Vercel: `/tmp` is per-instance and temporary, so requests can disappear, and Slack approvals would often find nothing.

@@ -1,0 +1,206 @@
+// Deal Review approvals in Slack. When a locked request needs a Deal Review, a message with
+// Approve / Decline buttons is posted to SLACK_DEAL_REVIEW_CHANNEL. Clicking a button decides the
+// request (same as the Executive Dashboard) and the message is updated to show who decided.
+//
+// Settings: SLACK_BOT_TOKEN (xoxb-…, scopes chat:write, users:read, users:read.email),
+// SLACK_SIGNING_SECRET, SLACK_DEAL_REVIEW_CHANNEL (channel ID, e.g. C0123ABCD). The bot must be
+// invited to the channel.
+
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { getQuoteById, setQuoteSlack, type QuoteRecord } from './quotes';
+import { summarizeForExec, type ExecQuoteSummary } from './quote-view';
+
+export const APPROVE_ACTION = 'deal_review_approve';
+export const DECLINE_ACTION = 'deal_review_decline';
+
+export function slackEnabled() {
+  return !!process.env.SLACK_BOT_TOKEN && !!process.env.SLACK_DEAL_REVIEW_CHANNEL;
+}
+
+type FetchFn = typeof fetch;
+let fetchOverride: FetchFn | null = null;
+// For tests: send Slack calls to a fake.
+export function setSlackFetchForTests(fn: FetchFn | null) {
+  fetchOverride = fn;
+}
+
+// Write methods take JSON; read methods like users.info only take form fields.
+export async function slackApi<T = Record<string, unknown>>(
+  method: string,
+  body: Record<string, unknown>,
+  { form = false } = {},
+): Promise<T> {
+  const res = await (fetchOverride ?? fetch)(`https://slack.com/api/${method}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN || ''}`,
+      'Content-Type': form ? 'application/x-www-form-urlencoded' : 'application/json; charset=utf-8',
+    },
+    body: form
+      ? new URLSearchParams(Object.entries(body).map(([k, v]) => [k, String(v)])).toString()
+      : JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string } & T;
+  if (!data.ok) throw new Error(`Slack ${method} failed: ${data.error || res.status}`);
+  return data;
+}
+
+// Slack signs every request it sends us; reject anything unsigned, tampered with or replayed.
+export function verifySlackSignature(rawBody: string, timestamp: string | null, signature: string | null, now = Date.now()) {
+  const secret = process.env.SLACK_SIGNING_SECRET;
+  if (!secret || !timestamp || !signature) return false;
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts) || Math.abs(now / 1000 - ts) > 60 * 5) return false;
+  const expected = `v0=${createHmac('sha256', secret).update(`v0:${timestamp}:${rawBody}`).digest('hex')}`;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+const pct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1).replace(/\.0$/, '')}%`);
+
+function money(v: number | null, currency: string | null) {
+  if (v == null) return '—';
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0 }).format(v);
+  } catch {
+    return `${currency || ''} ${Math.round(v).toLocaleString('en-US')}`;
+  }
+}
+
+function esc(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function summaryBlocks(quote: QuoteRecord, s: ExecQuoteSummary, appUrl: string) {
+  const deal = quote.hubspot?.dealName ? esc(quote.hubspot.dealName) : '—';
+  const fields = [
+    `*Request*\n${esc(s.requestId)} v${s.version}`,
+    `*Rep*\n${esc(s.rep)}`,
+    `*Final price · Year 1*\n${money(s.finalPrice, s.currency)}`,
+    `*Discount requested / applied*\n${pct(s.discountRequestedPct)} / ${pct(s.discountAppliedPct)}`,
+    `*Margin / target*\n${pct(s.finalMarginPct)} / ${pct(s.regionalTargetPct)}`,
+    `*Term*\n${esc(s.term || '—')}`,
+    `*Customer size*\n${esc([s.band, s.seats != null ? `${s.seats.toLocaleString('en-US')} employees` : null].filter(Boolean).join(', ') || '—')}`,
+    `*HubSpot deal*\n${deal}`,
+  ];
+  return [
+    { type: 'header', text: { type: 'plain_text', text: `Deal Review: ${s.customerName}`.slice(0, 150) } },
+    { type: 'section', fields: fields.map((text) => ({ type: 'mrkdwn', text })) },
+    ...(s.reviewReason
+      ? [{ type: 'section', text: { type: 'mrkdwn', text: `*Why it needs review*\n${esc(s.reviewReason)}` } }]
+      : []),
+    {
+      type: 'context',
+      elements: [{ type: 'mrkdwn', text: `<${appUrl}/executive|Open in the Executive Dashboard>` }],
+    },
+  ];
+}
+
+export function dealReviewBlocks(quote: QuoteRecord, appUrl: string) {
+  const s = summarizeForExec(quote);
+  const blocks: unknown[] = summaryBlocks(quote, s, appUrl);
+  const decision = decisionOf(quote);
+  if (decision) {
+    const icon = decision.approved ? ':white_check_mark: *Approved*' : ':x: *Declined*';
+    blocks.push({
+      type: 'section',
+      text: { type: 'mrkdwn', text: `${icon} by ${esc(decision.by)} on ${esc(decision.at)}${decision.note ? `\n> ${esc(decision.note)}` : ''}` },
+    });
+  } else {
+    blocks.push({
+      type: 'actions',
+      block_id: 'deal_review',
+      elements: [
+        {
+          type: 'button',
+          action_id: APPROVE_ACTION,
+          style: 'primary',
+          text: { type: 'plain_text', text: 'Approve' },
+          value: quote.id,
+          confirm: confirmDialog('Approve this Deal Review?', `${s.customerName}, ${money(s.finalPrice, s.currency)} Year 1.`, 'Approve'),
+        },
+        {
+          type: 'button',
+          action_id: DECLINE_ACTION,
+          style: 'danger',
+          text: { type: 'plain_text', text: 'Decline' },
+          value: quote.id,
+          confirm: confirmDialog('Decline this Deal Review?', `${s.customerName}. The rep will see it as Not approved.`, 'Decline'),
+        },
+      ],
+    });
+  }
+  return blocks;
+}
+
+function confirmDialog(title: string, text: string, confirm: string) {
+  return {
+    title: { type: 'plain_text', text: title },
+    text: { type: 'plain_text', text: text.slice(0, 300) },
+    confirm: { type: 'plain_text', text: confirm },
+    deny: { type: 'plain_text', text: 'Cancel' },
+  };
+}
+
+function decisionOf(quote: QuoteRecord) {
+  if (quote.status !== 'APPROVED' && quote.status !== 'NOT APPROVED') return null;
+  const snap = quote.snapshot as { approval?: { by?: string; at?: string }; decision?: { by?: string; at?: string }; log?: { action?: string; note?: string }[] };
+  const d = quote.status === 'APPROVED' ? snap.approval : snap.decision;
+  const latest = (snap.log || []).find((e) => e.action === 'approved' || e.action === 'not-approved');
+  return { approved: quote.status === 'APPROVED', by: d?.by || 'someone', at: d?.at || '', note: latest?.note || '' };
+}
+
+const fallbackText = (quote: QuoteRecord) => `Deal Review: ${quote.customerName} (${quote.requestId} v${quote.version})`;
+
+// Posts the Deal Review message once per request version. Never throws: Slack being down must
+// not affect the lock.
+export async function postDealReview(recordId: string, appUrl: string) {
+  try {
+    if (!slackEnabled()) return;
+    const quote = await getQuoteById(recordId);
+    if (!quote || quote.status !== 'DEAL REVIEW' || quote.slack) return;
+    const res = await slackApi<{ channel: string; ts: string }>('chat.postMessage', {
+      channel: process.env.SLACK_DEAL_REVIEW_CHANNEL,
+      text: fallbackText(quote),
+      blocks: dealReviewBlocks(quote, appUrl),
+      unfurl_links: false,
+    });
+    await setQuoteSlack(quote.id, { channel: res.channel, ts: res.ts });
+  } catch (err) {
+    console.error(`[slack] posting the Deal Review for ${recordId} failed:`, err);
+  }
+}
+
+// Rewrites the posted message to match the request (e.g. after a decision, from Slack or the
+// Executive Dashboard). Never throws.
+export async function refreshDealReviewMessage(recordId: string, appUrl: string) {
+  try {
+    if (!slackEnabled()) return;
+    const quote = await getQuoteById(recordId);
+    if (!quote?.slack) return;
+    await slackApi('chat.update', {
+      channel: quote.slack.channel,
+      ts: quote.slack.ts,
+      text: fallbackText(quote),
+      blocks: dealReviewBlocks(quote, appUrl),
+    });
+  } catch (err) {
+    console.error(`[slack] updating the Deal Review message for ${recordId} failed:`, err);
+  }
+}
+
+// Who clicked, by their Slack profile name and email when the bot can read them.
+export async function slackUser(id: string, fallbackName: string) {
+  try {
+    const res = await slackApi<{ user?: { real_name?: string; profile?: { real_name?: string; display_name?: string; email?: string } } }>(
+      'users.info',
+      { user: id },
+      { form: true },
+    );
+    const p = res.user?.profile || {};
+    return { name: p.real_name || res.user?.real_name || p.display_name || fallbackName, email: p.email || `slack:${id}` };
+  } catch {
+    return { name: fallbackName, email: `slack:${id}` };
+  }
+}

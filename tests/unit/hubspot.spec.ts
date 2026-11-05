@@ -87,9 +87,9 @@ test.beforeEach(() => {
 });
 test.afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-function lockRequest(snapshot = snapshotFor()) {
-  const record = upsertQuote({ ownerId: 'u1', ownerEmail: 'avery@guardrail.tech', ownerName: 'Avery Rep', snapshot });
-  saveQuotePdf(record.id, new TextEncoder().encode('%PDF-1.7\nfake quote\n%%EOF\n'));
+async function lockRequest(snapshot = snapshotFor()) {
+  const record = await upsertQuote({ ownerId: 'u1', ownerEmail: 'avery@guardrail.tech', ownerName: 'Avery Rep', snapshot });
+  await saveQuotePdf(record.id, new TextEncoder().encode('%PDF-1.7\nfake quote\n%%EOF\n'));
   return record;
 }
 
@@ -117,7 +117,7 @@ test('prices are sent in the quote currency', () => {
 });
 
 test('a lock creates the quote, line items, deal update and PDF note', async () => {
-  const record = lockRequest();
+  const record = await lockRequest();
   const hs = fakeHubSpot();
   const client = createHubSpotClient({ token: 'test', fetch: hs.fetchFn, ...quiet });
   const res = await syncRequestToHubSpot(record.id, { client, now: new Date('2026-11-05T02:40:00Z') });
@@ -157,13 +157,13 @@ test('a lock creates the quote, line items, deal update and PDF note', async () 
   expect(nb.properties.hs_note_body).toContain('Pricing request GRT-TEST1 v1 locked by Avery Rep on 2026-11-04.');
   expect(nb.properties.hs_note_body).toContain('https://app-na2.hubspot.com/contacts/4242/record/0-14/q-1');
 
-  const saved = getQuoteById(record.id)!.hubspot!;
+  const saved = (await getQuoteById(record.id))!.hubspot!;
   expect(saved).toMatchObject({ status: 'synced', quoteId: 'q-1', fileId: 'file-1', noteId: 'note-1', error: null });
   expect(saved.quoteUrl).toBe('https://app-na2.hubspot.com/contacts/4242/record/0-14/q-1');
 });
 
 test('nothing executive-only is sent to HubSpot', async () => {
-  const record = lockRequest();
+  const record = await lockRequest();
   const hs = fakeHubSpot();
   await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: hs.fetchFn, ...quiet }) });
   const sent = JSON.stringify(hs.calls.map((c) => c.body));
@@ -172,10 +172,10 @@ test('nothing executive-only is sent to HubSpot', async () => {
 });
 
 test('syncing again updates the same quote instead of creating another', async () => {
-  const record = lockRequest();
+  const record = await lockRequest();
   const first = fakeHubSpot();
   await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: first.fetchFn, ...quiet }) });
-  const oldLineItems = getQuoteById(record.id)!.hubspot!.lineItemIds!;
+  const oldLineItems = (await getQuoteById(record.id))!.hubspot!.lineItemIds!;
 
   const second = fakeHubSpot();
   const res = await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: second.fetchFn, ...quiet }) });
@@ -188,11 +188,11 @@ test('syncing again updates the same quote instead of creating another', async (
   }
   expect(second.calls.some((c) => c.path === '/files/v3/files')).toBe(false);
   expect(second.calls.some((c) => c.method === 'PATCH' && c.path === '/crm/v3/objects/notes/note-1')).toBe(true);
-  expect(getQuoteById(record.id)!.hubspot!.attempts).toBe(2);
+  expect((await getQuoteById(record.id))!.hubspot!.attempts).toBe(2);
 });
 
 test('a 429 is retried with backoff', async () => {
-  const record = lockRequest();
+  const record = await lockRequest();
   const waits: number[] = [];
   let limited = 0;
   const hs = fakeHubSpot((call) => {
@@ -209,7 +209,7 @@ test('a 429 is retried with backoff', async () => {
 });
 
 test('a failure marks the request and keeps the lock', async () => {
-  const record = lockRequest();
+  const record = await lockRequest();
   const hs = fakeHubSpot((call) => (call.path === '/crm/v3/objects/quotes' && call.method === 'POST'
     ? new Response('{"message":"Template not found"}', { status: 400 })
     : undefined));
@@ -222,7 +222,7 @@ test('a failure marks the request and keeps the lock', async () => {
   } finally {
     console.error = origError;
   }
-  const saved = getQuoteById(record.id)!;
+  const saved = (await getQuoteById(record.id))!;
   expect(saved.status).toBe(record.status);
   expect(saved.hubspot).toMatchObject({ status: 'failed' });
   expect(saved.hubspot!.error).toContain('Template not found');
@@ -231,12 +231,12 @@ test('a failure marks the request and keeps the lock', async () => {
   const retry = fakeHubSpot();
   await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: retry.fetchFn, ...quiet }) });
   expect(retry.calls.some((c) => c.path === '/files/v3/files')).toBe(false);
-  expect(getQuoteById(record.id)!.hubspot!.status).toBe('synced');
+  expect((await getQuoteById(record.id))!.hubspot!.status).toBe('synced');
   expect(errors.length).toBe(1);
 });
 
 test('the deal property is created when missing', async () => {
-  const record = lockRequest();
+  const record = await lockRequest();
   const hs = fakeHubSpot((call) => (call.method === 'GET' && call.path.startsWith('/crm/v3/properties/deals/')
     ? new Response('{"message":"not found"}', { status: 404 })
     : undefined));
@@ -246,7 +246,7 @@ test('the deal property is created when missing', async () => {
 });
 
 test('dry run logs payloads and calls nothing', async () => {
-  const record = lockRequest();
+  const record = await lockRequest();
   const hs = fakeHubSpot();
   const logged: string[] = [];
   const client = createHubSpotClient({ dryRun: true, fetch: hs.fetchFn, log: (m) => { logged.push(m); } });
@@ -254,12 +254,12 @@ test('dry run logs payloads and calls nothing', async () => {
   expect(res.ok).toBe(true);
   expect(hs.calls.length).toBe(0);
   expect(logged.some((m) => m.startsWith('DRY RUN POST /crm/v3/objects/quotes'))).toBe(true);
-  expect(getQuoteById(record.id)!.hubspot!.status).toBe('synced');
+  expect((await getQuoteById(record.id))!.hubspot!.status).toBe('synced');
 });
 
 test('a request without a deal is not synced', async () => {
   const snap = { ...snapshotFor(), hubspotDeal: null, hubspotRecord: null };
-  const record = lockRequest(snap);
+  const record = await lockRequest(snap);
   const hs = fakeHubSpot();
   const res = await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: hs.fetchFn, ...quiet }) });
   expect(res.ok).toBe(false);

@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { store } from './store';
 
 export type HubSpotSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped';
 
@@ -35,87 +34,42 @@ export type QuoteRecord = {
   currency?: string | null;
   snapshot: Record<string, unknown>;
   hubspot?: HubSpotSync | null;
+  // The Deal Review message posted to Slack, so it can be updated once someone decides.
+  slack?: { channel: string; ts: string } | null;
   createdAt: string;
   updatedAt: string;
 };
 
-type StoreFile = { quotes: QuoteRecord[] };
-
-function dataDir() {
-  if (process.env.DATA_DIR) return process.env.DATA_DIR;
-  if (process.env.VERCEL) return '/tmp';
-  return path.join(process.cwd(), 'data');
-}
-
-function storePath() {
-  if (!process.env.DATA_DIR && process.env.VERCEL) return path.join('/tmp', 'grt-quotes.json');
-  return path.join(dataDir(), 'quotes.json');
-}
-
 // The customer quote PDF the calculator built at lock time, kept so the HubSpot sync (and a
 // retry) can upload the same file the rep downloads.
-function pdfPath(id: string) {
-  return path.join(dataDir(), 'quote-pdfs', `${id.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`);
+export async function saveQuotePdf(id: string, bytes: Uint8Array) {
+  await store().putPdf(id, bytes);
 }
 
-export function saveQuotePdf(id: string, bytes: Uint8Array) {
-  const file = pdfPath(id);
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, bytes);
+export async function readQuotePdf(id: string): Promise<Uint8Array | null> {
+  return store().getPdf(id);
 }
 
-export function readQuotePdf(id: string): Uint8Array | null {
-  try {
-    return readFileSync(pdfPath(id));
-  } catch {
-    return null;
-  }
+const byLockedDesc = (a: QuoteRecord, b: QuoteRecord) => String(b.lockedAt).localeCompare(String(a.lockedAt));
+
+export async function listQuotesForUser(ownerId: string) {
+  return (await store().all<QuoteRecord>()).filter((q) => q.ownerId === ownerId).sort(byLockedDesc);
 }
 
-function emptyStore(): StoreFile {
-  return { quotes: [] };
+export async function listAllQuotes() {
+  return (await store().all<QuoteRecord>()).sort(byLockedDesc);
 }
 
-function readStore(): StoreFile {
-  const file = storePath();
-  try {
-    if (!existsSync(file)) return emptyStore();
-    const raw = readFileSync(file, 'utf8');
-    const parsed = JSON.parse(raw) as StoreFile;
-    if (!Array.isArray(parsed.quotes)) return emptyStore();
-    return parsed;
-  } catch {
-    return emptyStore();
-  }
+export async function getQuoteById(id: string) {
+  return store().get<QuoteRecord>(id);
 }
 
-function writeStore(store: StoreFile) {
-  const file = storePath();
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(store, null, 2), 'utf8');
+export async function getQuoteForUser(ownerId: string, id: string) {
+  const quote = await getQuoteById(id);
+  return quote && quote.ownerId === ownerId ? quote : null;
 }
 
-export function listQuotesForUser(ownerId: string) {
-  const store = readStore();
-  return store.quotes
-    .filter((q) => q.ownerId === ownerId)
-    .sort((a, b) => String(b.lockedAt).localeCompare(String(a.lockedAt)));
-}
-
-export function listAllQuotes() {
-  const store = readStore();
-  return [...store.quotes].sort((a, b) => String(b.lockedAt).localeCompare(String(a.lockedAt)));
-}
-
-export function getQuoteById(id: string) {
-  return listAllQuotes().find((q) => q.id === id) || null;
-}
-
-export function getQuoteForUser(ownerId: string, id: string) {
-  return listQuotesForUser(ownerId).find((q) => q.id === id) || null;
-}
-
-export function upsertQuote(input: {
+export async function upsertQuote(input: {
   ownerId: string;
   ownerEmail: string;
   ownerName: string;
@@ -129,9 +83,8 @@ export function upsertQuote(input: {
   const customer = (snap.customer || {}) as Record<string, unknown>;
   const fx = (customer.fx || {}) as Record<string, unknown>;
   const now = new Date().toISOString();
-  const store = readStore();
 
-  const existing = store.quotes.find(
+  const existing = (await store().all<QuoteRecord>()).find(
     (q) => q.ownerId === input.ownerId && q.requestId === requestId && q.version === version,
   );
 
@@ -159,15 +112,12 @@ export function upsertQuote(input: {
     currency: typeof fx.currency === 'string' ? fx.currency : 'USD',
     snapshot: snap,
     hubspot,
+    slack: existing?.slack ?? null,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
 
-  store.quotes = [
-    record,
-    ...store.quotes.filter((q) => !(q.ownerId === input.ownerId && q.requestId === requestId && q.version === version)),
-  ];
-  writeStore(store);
+  await store().put(record);
   return record;
 }
 
@@ -184,19 +134,18 @@ function withLog(snapshot: Record<string, unknown>, entry: LogEntry) {
   return { ...snapshot, log: [entry, ...prev].slice(0, 50) };
 }
 
-export function approveQuote(id: string, approver: { name: string; email: string }, note?: string) {
+export async function approveQuote(id: string, approver: { name: string; email: string }, note?: string) {
   return decideQuote(id, approver, 'approve', note);
 }
 
-export function declineQuote(id: string, approver: { name: string; email: string }, note?: string) {
+export async function declineQuote(id: string, approver: { name: string; email: string }, note?: string) {
   return decideQuote(id, approver, 'decline', note);
 }
 
-export function addQuoteLog(id: string, approver: { name: string; email: string }, note: string) {
+export async function addQuoteLog(id: string, approver: { name: string; email: string }, note: string) {
   const text = note.trim();
   if (!text) return null;
-  const store = readStore();
-  const quote = store.quotes.find((q) => q.id === id);
+  const quote = await getQuoteById(id);
   if (!quote) return null;
   const now = new Date().toISOString();
   quote.snapshot = withLog(quote.snapshot, {
@@ -207,18 +156,17 @@ export function addQuoteLog(id: string, approver: { name: string; email: string 
     note: text,
   });
   quote.updatedAt = now;
-  writeStore(store);
+  await store().put(quote);
   return quote;
 }
 
-function decideQuote(
+async function decideQuote(
   id: string,
   approver: { name: string; email: string },
   action: 'approve' | 'decline',
   note?: string,
 ) {
-  const store = readStore();
-  const quote = store.quotes.find((q) => q.id === id);
+  const quote = await getQuoteById(id);
   if (!quote) return null;
   const now = new Date().toISOString();
   const by = approver.name || approver.email;
@@ -241,27 +189,34 @@ function decideQuote(
     quote.status = 'NOT APPROVED';
   }
   quote.updatedAt = now;
-  writeStore(store);
+  await store().put(quote);
   return quote;
 }
 
-export function updateQuoteHubSpot(id: string, patch: Partial<HubSpotSync>) {
-  const store = readStore();
-  const quote = store.quotes.find((q) => q.id === id);
+// Re-reads the record right before writing so a background sync doesn't undo a decision
+// made in the meantime.
+export async function updateQuoteHubSpot(id: string, patch: Partial<HubSpotSync>) {
+  const quote = await getQuoteById(id);
   if (!quote) return null;
   const prev: HubSpotSync = quote.hubspot || { dealId: null, dealName: null, status: 'pending' };
   quote.hubspot = { ...prev, ...patch };
   quote.updatedAt = new Date().toISOString();
-  writeStore(store);
+  await store().put(quote);
   return quote;
 }
 
-export function deleteQuoteForUser(ownerId: string, id: string) {
-  const store = readStore();
-  const before = store.quotes.length;
-  store.quotes = store.quotes.filter((q) => !(q.ownerId === ownerId && q.id === id));
-  if (store.quotes.length === before) return false;
-  writeStore(store);
-  try { unlinkSync(pdfPath(id)); } catch { /* no PDF saved */ }
+export async function setQuoteSlack(id: string, slack: { channel: string; ts: string }) {
+  const quote = await getQuoteById(id);
+  if (!quote) return null;
+  quote.slack = slack;
+  await store().put(quote);
+  return quote;
+}
+
+export async function deleteQuoteForUser(ownerId: string, id: string) {
+  const quote = await getQuoteForUser(ownerId, id);
+  if (!quote) return false;
+  await store().remove(id);
+  await store().removePdf(id);
   return true;
 }

@@ -1,0 +1,23 @@
+# Slack app for Deal Review approvals. Create it at https://api.slack.com/apps → Create New App →
+# From a manifest, pick the Guardrail workspace and paste this file.
+display_information:
+  name: Guardrail Pricing
+  description: Approve or decline pricing Deal Reviews from the Guardrail pricing calculator.
+  background_color: "#1f3a5f"
+features:
+  bot_user:
+    display_name: Guardrail Pricing
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - users:read
+      - users:read.email
+settings:
+  interactivity:
+    is_enabled: true
+    request_url: https://pricing-calculator-xr2j.vercel.app/api/slack/interactions
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

@@ -2,12 +2,13 @@ import { after, NextResponse } from 'next/server';
 import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
 import { listQuotesForUser, saveQuotePdf, upsertQuote } from '@/lib/quotes';
 import { readSession } from '@/lib/session';
+import { postDealReview } from '@/lib/slack';
 
 export async function GET() {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
 
-  const quotes = listQuotesForUser(session.id).map((quote) => {
+  const quotes = (await listQuotesForUser(session.id)).map((quote) => {
     const { snapshot: _ignored, ...rest } = quote;
     void _ignored;
     return rest;
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     if (!snapshot || typeof snapshot !== 'object') {
       return NextResponse.json({ error: 'snapshot required' }, { status: 400 });
     }
-    const record = upsertQuote({
+    const record = await upsertQuote({
       ownerId: session.id,
       ownerEmail: session.email,
       ownerName: session.name,
@@ -33,9 +34,13 @@ export async function POST(request: Request) {
     });
     // The calculator sends the customer quote PDF it built, for the HubSpot sync to upload.
     const pdf = decodePdf(body?.pdf);
-    if (pdf) saveQuotePdf(record.id, pdf);
-    // Sync after the response: a HubSpot problem never blocks the lock.
+    if (pdf) await saveQuotePdf(record.id, pdf);
+    // Sync after the response: a HubSpot or Slack problem never blocks the lock.
     if (record.hubspot?.dealId) after(() => syncRequestToHubSpot(record.id));
+    if (record.status === 'DEAL REVIEW' && !record.slack) {
+      const appUrl = new URL(request.url).origin;
+      after(() => postDealReview(record.id, appUrl));
+    }
     const { snapshot: _ignored, ...summary } = record;
     void _ignored;
     return NextResponse.json({ quote: summary }, { status: 201 });

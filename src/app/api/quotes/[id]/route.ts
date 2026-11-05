@@ -9,7 +9,7 @@ export async function GET(_request: Request, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
 
   const { id } = await params;
-  const quote = getQuoteForUser(session.id, id);
+  const quote = await getQuoteForUser(session.id, id);
   if (!quote) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json({ quote });
 }
@@ -19,7 +19,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
 
   const { id } = await params;
-  const ok = deleteQuoteForUser(session.id, id);
+  const ok = await deleteQuoteForUser(session.id, id);
   if (!ok) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

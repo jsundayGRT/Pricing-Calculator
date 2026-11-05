@@ -33,28 +33,28 @@ export async function syncRequestToHubSpot(
   recordId: string,
   opts: { client?: HubSpotClient; now?: Date } = {},
 ): Promise<SyncResult> {
-  const record = getQuoteById(recordId);
+  const record = await getQuoteById(recordId);
   if (!record) return { ok: false, hubspot: null };
   const dealId = record.hubspot?.dealId;
   if (!dealId) return { ok: false, hubspot: record.hubspot ?? null };
   if (!opts.client && !hubspotEnabled()) {
-    const hs = updateQuoteHubSpot(recordId, { status: 'skipped', error: 'HubSpot is not configured (HUBSPOT_TOKEN is not set).' })?.hubspot;
+    const hs = (await updateQuoteHubSpot(recordId, { status: 'skipped', error: 'HubSpot is not configured (HUBSPOT_TOKEN is not set).' }))?.hubspot;
     return { ok: false, hubspot: hs ?? null };
   }
 
   const client = opts.client ?? createHubSpotClient();
   const now = opts.now ?? new Date();
   const attempts = (record.hubspot?.attempts ?? 0) + 1;
-  updateQuoteHubSpot(recordId, { attempts, lastAttemptAt: now.toISOString() });
+  await updateQuoteHubSpot(recordId, { attempts, lastAttemptAt: now.toISOString() });
 
   try {
     const done = await pushToHubSpot(client, record, dealId, now);
-    const hs = updateQuoteHubSpot(recordId, { ...done, status: 'synced', error: null, syncedAt: now.toISOString() })?.hubspot;
+    const hs = (await updateQuoteHubSpot(recordId, { ...done, status: 'synced', error: null, syncedAt: now.toISOString() }))?.hubspot;
     return { ok: true, hubspot: hs ?? null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[hubspot] sync failed for ${record.requestId} v${record.version} (${record.id}):`, err);
-    const hs = updateQuoteHubSpot(recordId, { status: 'failed', error: message.slice(0, 500) })?.hubspot;
+    const hs = (await updateQuoteHubSpot(recordId, { status: 'failed', error: message.slice(0, 500) }))?.hubspot;
     return { ok: false, hubspot: hs ?? null };
   }
 }
@@ -92,7 +92,7 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
   // Saved right away so a failure later in the sync doesn't upload it again on retry.
   let fileId = prev.fileId || null;
   if (!fileId) {
-    const pdf = readQuotePdf(record.id);
+    const pdf = await readQuotePdf(record.id);
     if (!pdf) throw new Error('No quote PDF was saved with this request. Lock it again from the calculator.');
     const form = new FormData();
     form.append('file', new Blob([new Uint8Array(pdf)],{ type: 'application/pdf' }), pdfFileName(record));
@@ -100,7 +100,7 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
     form.append('options', JSON.stringify({ access: 'PRIVATE', overwrite: false, duplicateValidationStrategy: 'NONE' }));
     const uploaded = await request<{ id: string }>('/files/v3/files', { method: 'POST', form });
     fileId = String(uploaded.id);
-    updateQuoteHubSpot(record.id, { fileId });
+    await updateQuoteHubSpot(record.id, { fileId });
   }
   const pdfUrl = `https://${account.uiDomain}/files/${account.portalId}/?showDetails=${fileId}`;
 

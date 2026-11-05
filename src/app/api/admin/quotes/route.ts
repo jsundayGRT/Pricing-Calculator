@@ -9,6 +9,6 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
   if (!isAdmin(session)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-  const quotes = sortExecQuotes(listAllQuotes().map(summarizeForExec));
+  const quotes = sortExecQuotes((await listAllQuotes()).map(summarizeForExec));
   return NextResponse.json({ quotes });
 }
