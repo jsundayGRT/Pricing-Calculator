@@ -75,26 +75,27 @@ p { margin: 0; }
   gap: 20px;
   padding: 0 max(24px, calc((100vw - 1240px) / 2 + 24px));
   height: 68px;
-  background: var(--nav);
-  color: #fff;
+  background: #fff;
+  color: var(--brand-navy);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 5;
 }
 .brand { display: flex; align-items: center; gap: 16px; font-weight: 700; }
-.brand img { height: 46px; width: auto; display: block; filter: brightness(0) invert(1); }
-.brand .brand-sep { width: 1px; height: 30px; background: rgba(160,196,214,.4); }
-.brand .brand-app { color: #fff; font-weight: 600; letter-spacing: -.01em; font-size: 21px; }
+.brand img { height: 46px; width: auto; display: block; }
+.brand .brand-sep { width: 1px; height: 30px; background: rgba(23,60,91,.18); }
+.brand .brand-app { color: var(--brand-navy); font-weight: 600; letter-spacing: -.01em; font-size: 21px; }
 .nav { display: flex; gap: 4px; flex: 1; }
 .nav a {
-  color: var(--nav-muted);
+  color: #5B6472;
   padding: 6px 10px;
   border-radius: 8px;
   white-space: nowrap;
 }
-.nav a:hover { background: rgba(255,255,255,.08); color: #fff; }
-.nav a.active { color: #fff; background: rgba(255,255,255,.12); font-weight: 600; }
-.nav a:focus-visible, .user-menu-btn:focus-visible, .user-menu-panel a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.nav a:hover { background: var(--brand-ice); color: var(--brand-navy); }
+.nav a.active { color: var(--brand-navy); background: var(--brand-ice); font-weight: 600; }
+.nav a:focus-visible, .user-menu-btn:focus-visible, .user-menu-panel a:focus-visible { outline: 2px solid var(--brand-navy); outline-offset: 2px; }
 .user-menu-panel a:focus-visible { outline-color: var(--accent); }
 .user-menu { position: relative; margin-left: auto; }
 .user-menu-btn {
@@ -103,14 +104,14 @@ p { margin: 0; }
   gap: 8px;
   border: 0;
   background: transparent;
-  color: #fff;
+  color: var(--brand-navy);
   font: inherit;
   font-weight: 600;
   border-radius: 999px;
   padding: 4px 8px 4px 4px;
   cursor: pointer;
 }
-.user-menu-btn:hover, .user-menu-btn[aria-expanded="true"] { background: rgba(255,255,255,.1); }
+.user-menu-btn:hover, .user-menu-btn[aria-expanded="true"] { background: var(--brand-ice); }
 .user-avatar {
   width: 32px;
   height: 32px;
