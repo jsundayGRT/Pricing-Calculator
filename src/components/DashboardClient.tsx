@@ -84,13 +84,11 @@ export function DashboardClient({ userName }: { userName: string }) {
       <div className="page-head">
         <div>
           <h1>Dashboard</h1>
-          <p className="sub">Locked requests for {userName}</p>
         </div>
         <a className="btn primary" href="/calculator">New pricing request</a>
       </div>
 
       <div className="hero">
-        <small>Guardrail Pricing</small>
         <div className="amount">Welcome back, {userName}</div>
       </div>
 
