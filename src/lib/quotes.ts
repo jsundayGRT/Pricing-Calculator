@@ -1,6 +1,24 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+
+export type HubSpotSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped';
+
+// What the HubSpot sync knows about a request. Only IDs and links: nothing priced lives here.
+export type HubSpotSync = {
+  dealId: string | null;
+  dealName: string | null;
+  status: HubSpotSyncStatus;
+  quoteId?: string | null;
+  quoteUrl?: string | null;
+  fileId?: string | null;
+  noteId?: string | null;
+  lineItemIds?: string[];
+  error?: string | null;
+  attempts?: number;
+  lastAttemptAt?: string | null;
+  syncedAt?: string | null;
+};
 
 export type QuoteRecord = {
   id: string;
@@ -16,15 +34,42 @@ export type QuoteRecord = {
   finalPrice?: number | null;
   currency?: string | null;
   snapshot: Record<string, unknown>;
+  hubspot?: HubSpotSync | null;
   createdAt: string;
   updatedAt: string;
 };
 
 type StoreFile = { quotes: QuoteRecord[] };
 
+function dataDir() {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  if (process.env.VERCEL) return '/tmp';
+  return path.join(process.cwd(), 'data');
+}
+
 function storePath() {
-  if (process.env.VERCEL) return path.join('/tmp', 'grt-quotes.json');
-  return path.join(process.cwd(), 'data', 'quotes.json');
+  if (!process.env.DATA_DIR && process.env.VERCEL) return path.join('/tmp', 'grt-quotes.json');
+  return path.join(dataDir(), 'quotes.json');
+}
+
+// The customer quote PDF the calculator built at lock time, kept so the HubSpot sync (and a
+// retry) can upload the same file the rep downloads.
+function pdfPath(id: string) {
+  return path.join(dataDir(), 'quote-pdfs', `${id.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`);
+}
+
+export function saveQuotePdf(id: string, bytes: Uint8Array) {
+  const file = pdfPath(id);
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, bytes);
+}
+
+export function readQuotePdf(id: string): Uint8Array | null {
+  try {
+    return readFileSync(pdfPath(id));
+  } catch {
+    return null;
+  }
 }
 
 function emptyStore(): StoreFile {
@@ -90,6 +135,15 @@ export function upsertQuote(input: {
     (q) => q.ownerId === input.ownerId && q.requestId === requestId && q.version === version,
   );
 
+  const deal = (snap.hubspotDeal || {}) as Record<string, unknown>;
+  const dealId = deal.id ? String(deal.id) : null;
+  const dealName = deal.name ? String(deal.name) : null;
+  // Re-saving the same version keeps its HubSpot quote (the sync updates it instead of
+  // creating a duplicate) unless the deal changed.
+  const hubspot: HubSpotSync | null = existing?.hubspot && existing.hubspot.dealId === dealId
+    ? { ...existing.hubspot, dealName }
+    : dealId ? { dealId, dealName, status: 'pending' } : null;
+
   const record: QuoteRecord = {
     id: existing?.id || randomUUID(),
     ownerId: input.ownerId,
@@ -104,6 +158,7 @@ export function upsertQuote(input: {
     finalPrice: typeof customer.finalPrice === 'number' ? customer.finalPrice : null,
     currency: typeof fx.currency === 'string' ? fx.currency : 'USD',
     snapshot: snap,
+    hubspot,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
@@ -190,11 +245,23 @@ function decideQuote(
   return quote;
 }
 
+export function updateQuoteHubSpot(id: string, patch: Partial<HubSpotSync>) {
+  const store = readStore();
+  const quote = store.quotes.find((q) => q.id === id);
+  if (!quote) return null;
+  const prev: HubSpotSync = quote.hubspot || { dealId: null, dealName: null, status: 'pending' };
+  quote.hubspot = { ...prev, ...patch };
+  quote.updatedAt = new Date().toISOString();
+  writeStore(store);
+  return quote;
+}
+
 export function deleteQuoteForUser(ownerId: string, id: string) {
   const store = readStore();
   const before = store.quotes.length;
   store.quotes = store.quotes.filter((q) => !(q.ownerId === ownerId && q.id === id));
   if (store.quotes.length === before) return false;
   writeStore(store);
+  try { unlinkSync(pdfPath(id)); } catch { /* no PDF saved */ }
   return true;
 }

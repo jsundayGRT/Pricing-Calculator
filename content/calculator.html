@@ -516,6 +516,12 @@ a.btn { text-decoration: none; display: inline-block; }
 @media (max-width: 760px) { .approve-card .row3 { grid-template-columns: 1fr; } }
 body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 
+.deal-field { position: relative; }
+.deal-list { position: absolute; z-index: 20; left: 0; right: 0; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); max-height: 240px; overflow-y: auto; }
+.deal-list li { padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+.deal-list li small { display: block; color: var(--muted); font-size: 12px; }
+.deal-list li[aria-selected="true"], .deal-list li:hover { background: var(--surface-2); }
+.deal-list li.empty { cursor: default; color: var(--muted); background: none; }
 </style>
 <style>html.embedded .topbar, html.embedded #auth-boot { display: none !important; }</style>
 <script>if (window.self !== window.top) document.documentElement.classList.add("embedded");</script>
@@ -628,7 +634,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
           <div class="field"><label class="label" for="cname">Customer or opportunity</label><input id="cname" type="text" maxlength="200" placeholder="Customer name" aria-describedby="lockerr"></div>
         </div>
         <div class="row2">
-          <div class="field"><label class="label" for="hubspot">HubSpot record</label><input id="hubspot" type="text" maxlength="500" placeholder="Paste the deal link"></div>
+          <div class="field deal-field"><label class="label" for="hubspot">HubSpot deal</label><input id="hubspot" type="text" maxlength="100" placeholder="Search deals by name" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="deal-list" aria-describedby="deal-hint lockerr"><ul class="deal-list hidden" id="deal-list" role="listbox" aria-label="HubSpot deals"></ul><div class="hint" id="deal-hint"></div></div>
           <div class="field"><label class="label" for="stage">Stage</label>
             <div class="select-wrap"><select id="stage">
               <option>Confirmed</option><option>Revised</option><option>Final (Pilot)</option><option>Final (Contract)</option>
@@ -1825,7 +1831,7 @@ const pdfStr = (s) => '<' + pdfCodes(s).map((c) => c.toString(16).padStart(2, '0
 const pdfRgb = (hex) => [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) / 255).toFixed(3)).join(' ');
 
 // The fields a locked request carries; nothing internal is ever written into the PDF.
-const PDF_REQUEST_FIELDS = ['schema', 'requestId', 'version', 'stage', 'hubspotRecord', 'approval', 'customerName', 'rep', 'lockedAt', 'assumptionsVersion', 'assumptionsNote', 'assumptionsHash', 'status', 'inputs', 'customer'];
+const PDF_REQUEST_FIELDS = ['schema', 'requestId', 'version', 'stage', 'hubspotRecord', 'hubspotDeal', 'approval', 'customerName', 'rep', 'lockedAt', 'assumptionsVersion', 'assumptionsNote', 'assumptionsHash', 'status', 'inputs', 'customer'];
 function quoteFileName(v) { return `Guardrail Quote - ${String(v.customerName).replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60)} - ${v.requestId}-v${v.version}.pdf`; }
 
 function buildQuotePdf(v, { attachRequest = true } = {}) {
@@ -2320,15 +2326,70 @@ async function readRequestFile(f) {
   function readApprovals() { try { return JSON.parse(localStorage.getItem(APPROVALS_KEY) || '{}'); } catch { return {}; } }
   function approvalFor(s) { return s.approval || readApprovals()[approvalKey(s)] || null; }
   function withApproval(s) { const a = approvalFor(s); return a ? { ...s, approval: a } : s; }
+  // ---- HubSpot deal picker: searches the Guardrail Sales Pipeline through the server
+  let pickedDeal = null, hubspotOff = false, dealHits = [], dealActive = -1, dealTimer = 0, dealSeq = 0;
+  const OFF_HINT = 'HubSpot is not connected, so this request locks without a deal.';
+  function setDeal(d) {
+    pickedDeal = d ? { id: String(d.id), name: String(d.name) } : null;
+    $('#hubspot').value = pickedDeal ? pickedDeal.name : '';
+    $('#deal-hint').textContent = pickedDeal ? `Deal ${pickedDeal.id}` : (hubspotOff ? OFF_HINT : '');
+    closeDeals();
+  }
+  function closeDeals() { $('#deal-list').classList.add('hidden'); $('#hubspot').setAttribute('aria-expanded', 'false'); $('#hubspot').removeAttribute('aria-activedescendant'); dealActive = -1; }
+  function renderDeals(msg) {
+    const ul = $('#deal-list');
+    ul.innerHTML = msg ? `<li class="empty" role="option" aria-disabled="true">${esc(msg)}</li>`
+      : dealHits.map((d, k) => `<li role="option" id="deal-opt-${k}" data-k="${k}" aria-selected="${k === dealActive}">${esc(d.name)}${d.amount != null ? `<small>${fmtMoney(d.amount)}</small>` : ''}</li>`).join('');
+    ul.classList.remove('hidden'); $('#hubspot').setAttribute('aria-expanded', 'true');
+    if (dealActive >= 0) $('#hubspot').setAttribute('aria-activedescendant', `deal-opt-${dealActive}`);
+  }
+  async function findDeals(q) {
+    const seq = ++dealSeq;
+    try {
+      const res = await fetch('/api/hubspot/deals?q=' + encodeURIComponent(q), { credentials: 'same-origin', cache: 'no-store' });
+      if (seq !== dealSeq) return;
+      if (res.status === 503) { hubspotOff = true; closeDeals(); $('#deal-hint').textContent = OFF_HINT; return; }
+      if (!res.ok) throw new Error();
+      dealHits = (await res.json()).deals || []; dealActive = -1;
+      renderDeals(dealHits.length ? '' : 'No deals in the Guardrail Sales Pipeline match.');
+    } catch { if (seq === dealSeq) { dealHits = []; renderDeals('Could not reach HubSpot. Try again.'); } }
+  }
+  $('#hubspot').addEventListener('input', () => {
+    pickedDeal = null; $('#deal-hint').textContent = hubspotOff ? OFF_HINT : '';
+    clearTimeout(dealTimer);
+    const q = $('#hubspot').value.trim();
+    if (q.length < 2) { dealSeq++; closeDeals(); return; }
+    dealTimer = setTimeout(() => findDeals(q), 250);
+  });
+  $('#hubspot').addEventListener('keydown', (e) => {
+    if ($('#deal-list').classList.contains('hidden') || !dealHits.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      dealActive = (dealActive + (e.key === 'ArrowDown' ? 1 : -1) + dealHits.length) % dealHits.length;
+      renderDeals('');
+    } else if (e.key === 'Enter' && dealActive >= 0) { e.preventDefault(); setDeal(dealHits[dealActive]); }
+    else if (e.key === 'Escape') closeDeals();
+  });
+  $('#deal-list').addEventListener('mousedown', (e) => {
+    const li = e.target.closest('li[data-k]'); if (!li) return;
+    e.preventDefault(); setDeal(dealHits[Number(li.dataset.k)]);
+  });
+  $('#hubspot').addEventListener('blur', () => setTimeout(closeDeals, 120));
+  function bytesToBase64(bytes) {
+    let bin = ''; for (let k = 0; k < bytes.length; k += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(k, k + 0x8000));
+    return btoa(bin);
+  }
+
   $('#lockbtn').addEventListener('click', () => {
     const name = $('#cname').value.trim(), rep = $('#repname').value.trim();
-    const hubspot = $('#hubspot').value.trim(), stage = $('#stage').value;
+    const stage = $('#stage').value;
     $('#lockerr').textContent = '';
     $('#repname').removeAttribute('aria-invalid');
     $('#cname').removeAttribute('aria-invalid');
     if (!rep) { $('#lockerr').textContent = 'Enter the rep name.'; $('#repname').setAttribute('aria-invalid', 'true'); $('#repname').focus(); return; }
     if (!name) { $('#lockerr').textContent = 'Enter the customer or opportunity name to lock this request.'; $('#cname').setAttribute('aria-invalid', 'true'); $('#cname').focus(); return; }
-    if (hubspot && /^[a-z]+:/i.test(hubspot) && !/^https:\/\/([a-z0-9-]+\.)*hubspot\.com\//i.test(hubspot)) { $('#lockerr').textContent = 'The HubSpot record should be a hubspot.com link (or just the record ID).'; $('#hubspot').focus(); return; }
+    $('#hubspot').removeAttribute('aria-invalid');
+    if (!pickedDeal && !hubspotOff) { $('#lockerr').textContent = 'Choose the HubSpot deal for this request.'; $('#hubspot').setAttribute('aria-invalid', 'true'); $('#hubspot').focus(); return; }
     if (!lastResult) return;
     if (lockedSinceChange) { $('#lockerr').textContent = 'Already locked. Change something to save a new version.'; return; }
     const fx = lastResult.customer.fx;
@@ -2336,7 +2397,8 @@ async function readRequestFile(f) {
     const requestId = reviseOf ? reviseOf.requestId : newRequestId();
     const version = reviseOf ? reviseOf.version + 1 : 1;
     const snap = {
-      schema: 'grt-pricing-request/1', requestId, version, customerName: name, rep, stage, hubspotRecord: hubspot || null,
+      schema: 'grt-pricing-request/1', requestId, version, customerName: name, rep, stage,
+      hubspotRecord: pickedDeal ? pickedDeal.id : null, hubspotDeal: pickedDeal ? { ...pickedDeal } : null,
       lockedAt: new Date().toISOString(), assumptionsVersion: store.version, assumptionsNote: store.note, assumptionsHash: configHash(cfg),
       status: lastResult.customer.dealStatus, inputs: lastResult.inputs,
       customer: lastResult.customer,
@@ -2344,7 +2406,7 @@ async function readRequestFile(f) {
       internal: lastResult.internal,
     };
     deepFreeze(snap);
-    reviseOf = { requestId, version, customerName: name, hubspotRecord: hubspot || null };
+    reviseOf = { requestId, version, customerName: name, hubspotDeal: pickedDeal };
     lockedSinceChange = true; lastLocked = snap;
     if (stage === 'Confirmed') $('#stage').value = 'Revised';
     const review = snap.status === 'DEAL REVIEW';
@@ -2362,7 +2424,7 @@ async function readRequestFile(f) {
     b.innerHTML = justLocked
       ? `<span><b>Locked:</b> ${esc(s.requestId)} “${esc(s.customerName)}”, version ${s.version}. Further changes lock as version ${s.version + 1}.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`
       : `<span><b>Revising</b> ${esc(s.requestId)} “${esc(s.customerName)}” (latest version ${s.version}). Locking saves version ${s.version + 1}; earlier versions stay as they are.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`;
-    $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; $('#hubspot').value = ''; $('#stage').value = 'Confirmed'; recalc(); };
+    $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; setDeal(null); $('#stage').value = 'Confirmed'; recalc(); };
   }
 
   function loadForRevision(s) {
@@ -2376,7 +2438,8 @@ async function readRequestFile(f) {
     });
     reviseOf = { requestId: s.requestId, version: s.version, customerName: s.customerName };
     $('#cname').value = s.customerName;
-    $('#hubspot').value = s.hubspotRecord || '';
+    // requests locked before the deal picker only have a pasted link: the rep picks the deal again
+    setDeal(s.hubspotDeal && s.hubspotDeal.id ? s.hubspotDeal : null);
     $('#stage').value = s.stage === 'Final (Pilot)' || s.stage === 'Final (Contract)' ? s.stage : 'Revised';
     sync(); recalc(); showBanner(s, false);
   }
@@ -2386,12 +2449,15 @@ async function readRequestFile(f) {
   function readHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } }
   function saveHistory(snap) {
     try { const h = readHistory().filter((x) => !(x.requestId === snap.requestId && x.version === snap.version)); h.unshift(snap); localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 50))); } catch { /* storage unavailable */ }
-    // Persist to the signed-in user's server dashboard (best-effort).
+    // Persist to the signed-in user's server dashboard (best-effort), with the customer quote
+    // PDF so the server can attach it to the HubSpot deal.
+    let pdf = null;
+    try { pdf = bytesToBase64(buildQuotePdf(withApproval(snap))); } catch { /* save without the PDF */ }
     fetch('/api/quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
       credentials: 'same-origin',
-      body: JSON.stringify({ snapshot: snap }),
+      body: JSON.stringify({ snapshot: snap, pdf }),
     }).catch(() => { /* offline / signed out */ });
   }
   function renderHistory() { /* Locked requests are listed on the dashboard. */ }
@@ -2409,6 +2475,10 @@ async function readRequestFile(f) {
 
   // ---------------------------------------------------------------- start
   buildControls(); sync(); renderVer(); recalc(); renderHistory();
+  // Without HubSpot configured the deal can't be required (the server answers 503).
+  fetch('/api/hubspot/deals?q=', { credentials: 'same-origin', cache: 'no-store' })
+    .then((res) => { if (res.status === 503) { hubspotOff = true; if (!pickedDeal) $('#deal-hint').textContent = OFF_HINT; } })
+    .catch(() => { /* offline: the deal stays required */ });
   (async function loadDashboardRevise() {
     const id = new URLSearchParams(location.search).get('revise');
     if (!id) return;
