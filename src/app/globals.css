@@ -236,7 +236,8 @@ html, body { overflow-x: clip; }
   font-weight: 600;
 }
 .pill.standard { background: var(--ok-soft); color: var(--ok); }
-.pill.review { background: #9B2C28; color: #fff; }
+.pill.review { background: var(--warn-soft); color: var(--warn); }
+.pill.declined { background: #9B2C28; color: #fff; }
 .empty {
   padding: 36px 20px;
   text-align: center;
@@ -334,10 +335,10 @@ table.exec th {
 }
 table.exec tbody tr { cursor: pointer; }
 table.exec tbody tr:hover { background: var(--accent-soft, #EAF6FE); }
-table.exec tr.review {
-  background: var(--bad-soft);
-}
-table.exec tr.review:hover { background: color-mix(in srgb, var(--bad-soft) 80%, #fff); }
+table.exec tr.review { background: var(--warn-soft); }
+table.exec tr.review:hover { background: color-mix(in srgb, var(--warn-soft) 80%, #fff); }
+table.exec tr.declined { background: var(--bad-soft); }
+table.exec tr.declined:hover { background: color-mix(in srgb, var(--bad-soft) 80%, #fff); }
 table.exec .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 table.exec .reason { color: var(--bad); font-size: 12px; margin-top: 4px; }
 
@@ -364,6 +365,7 @@ table.exec .reason { color: var(--bad); font-size: 12px; margin-top: 4px; }
 .neg { color: var(--bad); }
 .pos { color: var(--ok); }
 .flag.bad { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+.flag.warn { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
 .flag.ok { background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
 .review-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .log-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }

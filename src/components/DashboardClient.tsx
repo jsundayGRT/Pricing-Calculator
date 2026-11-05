@@ -123,7 +123,7 @@ export function DashboardClient({ userName }: { userName: string }) {
             return (
               <article key={q.id} className="card quote-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                  <span className={`pill ${review || declined ? 'review' : 'standard'}`}>
+                  <span className={`pill ${review ? 'review' : declined ? 'declined' : 'standard'}`}>
                     {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                   </span>
                   <span className="quote-meta">v{q.version}</span>

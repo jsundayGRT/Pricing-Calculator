@@ -196,12 +196,12 @@ table.grid td.wrap { white-space: normal; min-width: 160px; }
 table.grid tr:last-child td { border-bottom: 0; }
 table.grid tbody tr { cursor: pointer; }
 table.grid tbody tr:hover td { background: var(--surface-2); }
-table.grid tr.review td { background: var(--bad-soft); }
-table.grid tr.review:hover td { background: var(--bad-soft); filter: brightness(.98); }
-table.grid tr.review td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+table.grid tr.review td { background: var(--warn-soft); }
+table.grid tr.review:hover td { background: var(--warn-soft); filter: brightness(.98); }
+table.grid tr.review td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
 table.grid th.num, table.grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-.pill.review { background: var(--bad); color: #fff; }
+.pill.review { background: var(--warn-soft); color: var(--warn); }
 .pill.standard { background: var(--ok-soft); color: var(--ok); }
 .pill.placeholder { background: var(--warn-soft); color: var(--warn); }
 .neg { color: var(--bad-text); }
@@ -334,7 +334,7 @@ body.sales .row2 { gap: 14px; }
 .status-row { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; padding: 10px 12px; border-radius: 10px; margin-bottom: 14px; line-height: 1.4; }
 .status-row .pill { flex: none; }
 .status-row.standard { background: var(--ok-soft); }
-.status-row.review { background: var(--bad-soft); }
+.status-row.review { background: var(--warn-soft); }
 body.sales .hero { border-radius: 14px; padding: 18px 20px 14px; margin-bottom: 12px; }
 body.sales .hero .amount { font-size: 38px; margin: 2px 0 12px; }
 .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; border-top: 1px solid rgba(255,255,255,.18); padding-top: 12px; }
@@ -440,8 +440,9 @@ body.sales input[type=text], body.sales input[type=number], body.sales select { 
 .status-row.standard { background: var(--ok-soft); color: var(--ok); border-color: rgba(114,187,111,.45); }
 .status-row.standard svg { color: var(--brand-green); }
 .status-row.standard span { color: var(--text); }
-.status-row.review { background: var(--bad); color: #fff; border-color: var(--bad); box-shadow: 0 6px 18px rgba(210,79,71,.28); }
-.status-row.review span { color: #fff; opacity: .92; }
+.status-row.review { background: var(--warn-soft); color: var(--warn); border-color: rgba(230,164,68,.55); }
+.status-row.review svg { color: var(--warn); }
+.status-row.review span { color: var(--text); opacity: 1; }
 
 /* final price change */
 .hero .amount { font-variant-numeric: tabular-nums; }
@@ -493,7 +494,7 @@ body.sales .hero::after { content: ""; position: absolute; right: -60px; top: -6
 body.sales .hero > * { position: relative; z-index: 1; }
 h2 > .num { background: var(--brand-navy); color: #fff; }
 .disc-val.neg { color: var(--bad-text); }
-.pill.review { background: var(--bad); }
+.pill.review { background: var(--warn-soft); color: var(--warn); }
 .pill.standard { background: var(--ok-soft); color: var(--ok); }
 .flag.warn { border-left: 3px solid var(--brand-amber); }
 .hint:empty { display: none; }

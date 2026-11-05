@@ -32,9 +32,13 @@ test('an executive can choose not to approve a deal review', async ({ page, cont
     const declineColor = await decline.evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(declineColor).toBe(approveColor);
 
+    const waiting = page.locator('.pill.review', { hasText: 'Deal Review' });
+    await expect(waiting).toBeVisible();
+    expect(await waiting.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(252, 243, 227)');
+
     await decline.click();
     await expect(page.getByText('Not approved by Jared Sunday')).toBeVisible();
-    const pill = page.locator('.pill.review', { hasText: 'Not approved' });
+    const pill = page.locator('.pill.declined', { hasText: 'Not approved' });
     await expect(pill).toBeVisible();
     expect(await pill.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(155, 44, 40)');
 

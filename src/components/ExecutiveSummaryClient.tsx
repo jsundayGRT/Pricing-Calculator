@@ -293,7 +293,7 @@ export function ExecutiveSummaryClient() {
                 return (
                   <tr
                     key={q.id}
-                    className={review ? 'review' : undefined}
+                    className={review ? 'review' : declined ? 'declined' : undefined}
                     onClick={() => setSelectedId(q.id)}
                   >
                     <td>{fmtDate(q.lockedAt)}</td>
@@ -316,7 +316,7 @@ export function ExecutiveSummaryClient() {
                     <td className="num">{money(q.finalPrice, q.currency)}</td>
                     <td className="num">{money(q.year1Due, q.currency)}</td>
                     <td>
-                      <span className={`pill ${review || declined ? 'review' : 'standard'}`}>
+                      <span className={`pill ${review ? 'review' : declined ? 'declined' : 'standard'}`}>
                         {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                       </span>
                       {review && q.reviewReason ? <div className="reason">{q.reviewReason}</div> : null}
@@ -350,7 +350,7 @@ export function ExecutiveSummaryClient() {
             ) : (
               <>
                 {detail.summary.status === 'DEAL REVIEW' ? (
-                  <div className="flag bad">
+                  <div className="flag warn">
                     Deal Review
                     {detail.summary.reviewReason ? `: ${detail.summary.reviewReason}` : ''}
                     {detail.summary.dealNote ? ` — ${detail.summary.dealNote}` : ''}
