@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getBaseUrl } from '@/lib/auth-config';
-import { isAdmin } from '@/lib/admin';
 import { buildAuthorizeUrl, createPkcePair, createState } from '@/lib/oauth';
 import {
   OAUTH_COOKIE,
@@ -17,7 +16,7 @@ function redirectTo(request: Request, path: string) {
 export async function GET(request: Request) {
   try {
     const session = await readSession();
-    if (session) return redirectTo(request, isAdmin(session) ? '/executive' : '/');
+    if (session) return redirectTo(request, '/');
 
     const state = createState();
     const { verifier, challenge } = createPkcePair();

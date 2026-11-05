@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { getBaseUrl } from '@/lib/auth-config';
-import { isAdmin } from '@/lib/admin';
 import {
   assertAllowedUser,
   claimsFromIdToken,
@@ -52,7 +51,8 @@ export async function GET(request: Request) {
     assertAllowedUser(user);
 
     const sessionToken = await createSessionToken(user);
-    const destination = isAdmin(user) ? '/executive' : '/';
+    // Everyone, admins included, lands on the Dashboard welcome screen.
+    const destination = '/';
     // 200 page, not a redirect. Browsers often drop a cookie set on the
     // cross-site bounce back from Microsoft, so the next tab looks signed out.
     const response = new NextResponse(signedInHtml(destination), {

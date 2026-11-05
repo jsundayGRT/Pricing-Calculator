@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
-import { isAdmin } from '@/lib/admin';
 import { readSession } from '@/lib/session';
 
 export default async function LoginPage({
@@ -9,7 +8,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const user = await readSession();
-  if (user && !((await searchParams).error)) redirect(isAdmin(user) ? '/executive' : '/');
+  if (user && !((await searchParams).error)) redirect('/');
   const params = await searchParams;
   const error = params.error || '';
 
