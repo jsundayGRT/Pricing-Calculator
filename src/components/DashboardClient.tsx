@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-html-link-for-pages */
 import { useEffect, useMemo, useState } from 'react';
-import type { HubSpotSync } from '@/lib/quotes';
+import type { Decision, HubSpotSync } from '@/lib/quotes';
 import { HubSpotSyncLine } from './HubSpotSyncLine';
 
 type QuoteSummary = {
@@ -16,7 +16,27 @@ type QuoteSummary = {
   finalPrice?: number | null;
   currency?: string | null;
   hubspot?: HubSpotSync | null;
+  decision?: Decision | null;
 };
+
+function fmtDay(day: string) {
+  // decision dates are calendar days (YYYY-MM-DD); show them without a time-zone shift
+  const [y, m, d] = day.split('-').map(Number);
+  if (!y || !m || !d) return day;
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function DecisionLine({ decision }: { decision?: Decision | null }) {
+  if (!decision) return null;
+  const approved = decision.outcome === 'approved';
+  return (
+    <div className={`decision ${approved ? 'ok' : 'bad'}`}>
+      <b>{approved ? 'Approved' : 'Not approved'}</b> by {decision.by}
+      {decision.at ? ` · ${fmtDay(decision.at)}` : ''}
+      {decision.note ? <div className="decision-note">{approved ? decision.note : `Reason: ${decision.note}`}</div> : null}
+    </div>
+  );
+}
 
 function money(amount?: number | null, currency?: string | null) {
   if (amount == null) return '—';
@@ -130,6 +150,7 @@ export function DashboardClient({ userName }: { userName: string }) {
                 </div>
                 <h3>{q.customerName}</h3>
                 <div className="quote-meta">
+                  <DecisionLine decision={q.decision} />
                   <div>{q.requestId}</div>
                   <div>{fmtDate(q.lockedAt)}</div>
                   <div><b style={{ color: 'var(--text)' }}>{money(q.finalPrice, q.currency)}</b> · Year 1</div>

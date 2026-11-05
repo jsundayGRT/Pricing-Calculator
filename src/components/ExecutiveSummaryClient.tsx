@@ -46,8 +46,9 @@ function pts(v?: number | null) {
 }
 
 function decisionBy(snapshot: Record<string, unknown>, key: 'approval' | 'decision') {
-  const record = snapshot[key] as { by?: string } | undefined;
-  return record?.by ? ` by ${record.by}` : '';
+  const record = snapshot[key] as { by?: string; note?: string } | undefined;
+  const by = record?.by ? ` by ${record.by}` : '';
+  return key === 'decision' && record?.note ? `${by}: ${record.note}` : by;
 }
 
 function logLabel(action?: string) {
@@ -105,6 +106,11 @@ export function ExecutiveSummaryClient() {
   const [logNote, setLogNote] = useState('');
 
   async function decide(id: string, action: 'approve' | 'decline') {
+    if (action === 'decline' && !logNote.trim()) {
+      setError('Write the reason in the Update box, then choose Do not approve.');
+      document.getElementById('log-note')?.focus();
+      return;
+    }
     setApproving(true);
     setError('');
     try {
@@ -394,7 +400,7 @@ export function ExecutiveSummaryClient() {
                       id="log-note"
                       value={logNote}
                       maxLength={500}
-                      placeholder="Add a note for this request"
+                      placeholder="Add a note, or the reason you're not approving (required to not approve)"
                       onChange={(event) => setLogNote(event.target.value)}
                     />
                     <div className="review-actions" style={{ marginTop: 0 }}>

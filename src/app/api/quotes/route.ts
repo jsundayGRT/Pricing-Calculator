@@ -1,6 +1,6 @@
 import { after, NextResponse } from 'next/server';
 import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
-import { listQuotesForUser, saveQuotePdf, upsertQuote } from '@/lib/quotes';
+import { decisionOf, listQuotesForUser, saveQuotePdf, upsertQuote } from '@/lib/quotes';
 import { readSession } from '@/lib/session';
 import { postDealReview } from '@/lib/slack';
 
@@ -11,7 +11,8 @@ export async function GET() {
   const quotes = (await listQuotesForUser(session.id)).map((quote) => {
     const { snapshot: _ignored, ...rest } = quote;
     void _ignored;
-    return rest;
+    // Who approved or declined it, and why: the rep sees this on their dashboard.
+    return { ...rest, decision: decisionOf(quote) };
   });
   return NextResponse.json({ quotes });
 }

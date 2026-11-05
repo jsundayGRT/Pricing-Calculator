@@ -143,6 +143,28 @@ export async function declineQuote(id: string, approver: { name: string; email: 
   return decideQuote(id, approver, 'decline', note);
 }
 
+export type Decision = { outcome: 'approved' | 'not-approved'; by: string; at: string; note: string };
+
+// Who approved or declined a request, when, and the note they left (the reason, for a decline).
+export function decisionOf(quote: QuoteRecord): Decision | null {
+  if (quote.status !== 'APPROVED' && quote.status !== 'NOT APPROVED') return null;
+  const snap = quote.snapshot as {
+    approval?: { by?: string; at?: string; note?: string };
+    decision?: { by?: string; at?: string; note?: string };
+    log?: { action?: string; note?: string }[];
+  };
+  const approved = quote.status === 'APPROVED';
+  const d = approved ? snap.approval : snap.decision;
+  // Decisions made before the note was kept on the decision itself: use the latest log entry.
+  const logged = (snap.log || []).find((e) => e.action === (approved ? 'approved' : 'not-approved'));
+  return {
+    outcome: approved ? 'approved' : 'not-approved',
+    by: d?.by || 'someone',
+    at: d?.at || '',
+    note: d?.note ?? logged?.note ?? '',
+  };
+}
+
 export async function addQuoteLog(id: string, approver: { name: string; email: string }, note: string) {
   const text = note.trim();
   if (!text) return null;
@@ -172,7 +194,13 @@ async function decideQuote(
   const now = new Date().toISOString();
   const by = approver.name || approver.email;
   const text = note?.trim() || '';
-  const decision = { by, email: approver.email, at: now.slice(0, 10), outcome: action === 'approve' ? 'approved' : 'not-approved' };
+  const decision = {
+    by,
+    email: approver.email,
+    at: now.slice(0, 10),
+    outcome: action === 'approve' ? 'approved' : 'not-approved',
+    ...(text ? { note: text } : {}),
+  };
   const entry: LogEntry = {
     at: now,
     by,

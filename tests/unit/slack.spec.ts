@@ -3,11 +3,15 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { approveQuote, declineQuote, getQuoteById, upsertQuote } from '../../src/lib/quotes';
+import { approveQuote, decisionOf, declineQuote, getQuoteById, upsertQuote } from '../../src/lib/quotes';
 import {
   APPROVE_ACTION,
   DECLINE_ACTION,
+  DECLINE_MODAL,
   dealReviewBlocks,
+  declineModal,
+  declineReason,
+  openDeclineModal,
   postDealReview,
   refreshDealReviewMessage,
   setSlackFetchForTests,
@@ -136,4 +140,36 @@ test('only correctly signed, recent Slack requests are accepted', () => {
   expect(verifySlackSignature(body, ts, sig.replace(/.$/, '0'))).toBe(false);
   expect(verifySlackSignature(body, String(Number(ts) - 600), sig)).toBe(false);
   expect(verifySlackSignature(body, ts, null)).toBe(false);
+});
+
+test('Decline asks for a reason in a pop-up before declining', async () => {
+  const record = await lock('DEAL REVIEW');
+  // The Decline button opens the pop-up instead of a yes/no confirm.
+  const decline = (dealReviewBlocks(record, 'https://calc.example') as { type: string; elements?: { action_id: string; confirm?: unknown }[] }[])
+    .find((b) => b.type === 'actions')!.elements!.find((e) => e.action_id === DECLINE_ACTION)!;
+  expect(decline.confirm).toBeUndefined();
+
+  await openDeclineModal('trigger-1', record);
+  const open = calls.find((c) => c.method === 'views.open')!.body as { trigger_id: string; view: ReturnType<typeof declineModal> };
+  expect(open.trigger_id).toBe('trigger-1');
+  expect(open.view.callback_id).toBe(DECLINE_MODAL);
+  expect(open.view.private_metadata).toBe(record.id);
+  expect(JSON.stringify(open.view.blocks)).toContain('Why is it not approved?');
+
+  // What Slack sends back when the pop-up is submitted.
+  const submitted = { state: { values: { reason: { reason_input: { value: '  Margin too thin for a pilot  ' } } } } };
+  expect(declineReason(submitted)).toBe('Margin too thin for a pilot');
+  expect(declineReason({ state: { values: { reason: { reason_input: { value: '   ' } } } } })).toBe('');
+  // Nothing is decided until the pop-up is submitted.
+  expect((await getQuoteById(record.id))!.status).toBe('DEAL REVIEW');
+});
+
+test('the dashboard sees who decided and the reason', async () => {
+  const record = await lock('DEAL REVIEW');
+  const declined = (await declineQuote(record.id, { name: 'Susan Landaluce', email: 's@guardrail.tech' }, 'Margin too thin'))!;
+  expect(decisionOf(declined)).toMatchObject({ outcome: 'not-approved', by: 'Susan Landaluce', note: 'Margin too thin' });
+
+  const approved = (await approveQuote(record.id, { name: 'Dena Lumbang', email: 'd@guardrail.tech' }, 'Approved in Slack'))!;
+  expect(decisionOf(approved)).toMatchObject({ outcome: 'approved', by: 'Dena Lumbang', note: 'Approved in Slack' });
+  expect(decisionOf({ ...approved, status: 'DEAL REVIEW' })).toBeNull();
 });

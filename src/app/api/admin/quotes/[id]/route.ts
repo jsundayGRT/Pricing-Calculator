@@ -40,6 +40,10 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ summary: summarizeForExec(quote), quote });
   }
   const note = typeof body?.note === 'string' ? body.note : '';
+  // Not approving always needs a reason: the rep sees it on their dashboard.
+  if (body?.action === 'decline' && !note.trim()) {
+    return NextResponse.json({ error: 'reason required' }, { status: 400 });
+  }
   const quote = body?.action === 'approve'
     ? await approveQuote(id, actor, note)
     : body?.action === 'decline'

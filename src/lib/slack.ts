@@ -7,11 +7,13 @@
 // invited to the channel.
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { getQuoteById, setQuoteSlack, type QuoteRecord } from './quotes';
+import { decisionOf, getQuoteById, setQuoteSlack, type QuoteRecord } from './quotes';
 import { summarizeForExec, type ExecQuoteSummary } from './quote-view';
 
 export const APPROVE_ACTION = 'deal_review_approve';
 export const DECLINE_ACTION = 'deal_review_decline';
+// The pop-up that asks for the reason when someone clicks Decline.
+export const DECLINE_MODAL = 'deal_review_decline_reason';
 
 export function slackEnabled() {
   return !!process.env.SLACK_BOT_TOKEN && !!process.env.SLACK_DEAL_REVIEW_CHANNEL;
@@ -102,7 +104,7 @@ export function dealReviewBlocks(quote: QuoteRecord, appUrl: string) {
   const blocks: unknown[] = summaryBlocks(quote, s, appUrl);
   const decision = decisionOf(quote);
   if (decision) {
-    const icon = decision.approved ? ':white_check_mark: *Approved*' : ':x: *Declined*';
+    const icon = decision.outcome === 'approved' ? ':white_check_mark: *Approved*' : ':x: *Declined*';
     blocks.push({
       type: 'section',
       text: { type: 'mrkdwn', text: `${icon} by ${esc(decision.by)} on ${esc(decision.at)}${decision.note ? `\n> ${esc(decision.note)}` : ''}` },
@@ -126,7 +128,7 @@ export function dealReviewBlocks(quote: QuoteRecord, appUrl: string) {
           style: 'danger',
           text: { type: 'plain_text', text: 'Decline' },
           value: quote.id,
-          confirm: confirmDialog('Decline this Deal Review?', `${s.customerName}. The rep will see it as Not approved.`, 'Decline'),
+          // No confirm here: Decline opens a pop-up asking for the reason, which is the confirmation.
         },
       ],
     });
@@ -143,12 +145,36 @@ function confirmDialog(title: string, text: string, confirm: string) {
   };
 }
 
-function decisionOf(quote: QuoteRecord) {
-  if (quote.status !== 'APPROVED' && quote.status !== 'NOT APPROVED') return null;
-  const snap = quote.snapshot as { approval?: { by?: string; at?: string }; decision?: { by?: string; at?: string }; log?: { action?: string; note?: string }[] };
-  const d = quote.status === 'APPROVED' ? snap.approval : snap.decision;
-  const latest = (snap.log || []).find((e) => e.action === 'approved' || e.action === 'not-approved');
-  return { approved: quote.status === 'APPROVED', by: d?.by || 'someone', at: d?.at || '', note: latest?.note || '' };
+export function declineModal(quote: QuoteRecord) {
+  return {
+    type: 'modal',
+    callback_id: DECLINE_MODAL,
+    private_metadata: quote.id,
+    title: { type: 'plain_text', text: 'Decline Deal Review' },
+    submit: { type: 'plain_text', text: 'Decline' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks: [
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*${esc(quote.customerName)}* · ${esc(quote.requestId)} v${quote.version}\nThe rep sees this reason on their dashboard.` },
+      },
+      {
+        type: 'input',
+        block_id: 'reason',
+        label: { type: 'plain_text', text: 'Why is it not approved?' },
+        element: { type: 'plain_text_input', action_id: 'reason_input', multiline: true, max_length: 500 },
+      },
+    ],
+  };
+}
+
+export async function openDeclineModal(triggerId: string, quote: QuoteRecord) {
+  await slackApi('views.open', { trigger_id: triggerId, view: declineModal(quote) });
+}
+
+type ModalState = { state?: { values?: Record<string, Record<string, { value?: string | null }>> } };
+export function declineReason(view: ModalState) {
+  return (view.state?.values?.reason?.reason_input?.value || '').trim();
 }
 
 const fallbackText = (quote: QuoteRecord) => `Deal Review: ${quote.customerName} (${quote.requestId} v${quote.version})`;

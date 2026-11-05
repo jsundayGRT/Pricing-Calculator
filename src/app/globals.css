@@ -239,6 +239,10 @@ html, body { overflow-x: clip; }
 .pill.standard { background: var(--ok-soft); color: var(--ok); }
 .pill.review { background: var(--warn-soft); color: var(--warn); }
 .pill.declined { background: #9B2C28; color: #fff; }
+.decision { padding: 6px 8px; border-radius: 6px; font-size: 13px; }
+.decision.ok { background: var(--ok-soft); color: var(--ok); }
+.decision.bad { background: var(--bad-soft); color: var(--bad); }
+.decision-note { margin-top: 2px; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 .empty {
   padding: 36px 20px;
   text-align: center;
