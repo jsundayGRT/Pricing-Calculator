@@ -103,12 +103,21 @@ export function ExecutiveSummaryClient() {
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [logNote, setLogNote] = useState('');
+  // Decision panel: Edit reopens Approve/Decline on a decided request; Decline asks for the reason.
+  const [editing, setEditing] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState('');
+
+  function resetDecisionForm() {
+    setEditing(false);
+    setDeclining(false);
+    setReason('');
+  }
 
   async function decide(id: string, action: 'approve' | 'decline') {
-    if (action === 'decline' && !logNote.trim()) {
-      setError('Write the reason in the Update box, then choose Do not approve.');
-      document.getElementById('log-note')?.focus();
+    const note = action === 'decline' ? reason.trim() : '';
+    if (action === 'decline' && !note) {
+      setError('Give the reason it is not approved.');
       return;
     }
     setApproving(true);
@@ -117,13 +126,13 @@ export function ExecutiveSummaryClient() {
       const res = await fetch(`/api/admin/quotes/${encodeURIComponent(id)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, note: logNote }),
+        body: JSON.stringify({ action, note }),
       });
       if (!res.ok) throw new Error(action === 'approve' ? 'Could not approve this request' : 'Could not decline this request');
       const data = await res.json();
       setDetail(data);
       setQuotes((prev) => (prev || []).map((q) => (q.id === id ? data.summary : q)));
-      setLogNote('');
+      resetDecisionForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save this decision');
     } finally {
@@ -144,28 +153,6 @@ export function ExecutiveSummaryClient() {
       setDetail(await res.json());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not retry the HubSpot sync');
-    } finally {
-      setApproving(false);
-    }
-  }
-
-  async function addLog(id: string) {
-    const note = logNote.trim();
-    if (!note) return;
-    setApproving(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/admin/quotes/${encodeURIComponent(id)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'log', note }),
-      });
-      if (!res.ok) throw new Error('Could not update the log');
-      const data = await res.json();
-      setDetail(data);
-      setLogNote('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update the log');
     } finally {
       setApproving(false);
     }
@@ -193,6 +180,7 @@ export function ExecutiveSummaryClient() {
   useEffect(() => { void load(); }, []);
 
   useEffect(() => {
+    resetDecisionForm();
     if (!selectedId) { setDetail(null); return; }
     let cancelled = false;
     (async () => {
@@ -393,28 +381,55 @@ export function ExecutiveSummaryClient() {
                 ) : null}
 
                 <div className="card" style={{ marginBottom: 16 }}>
-                  <h2>Log</h2>
-                  <form className="log-form" onSubmit={(event) => { event.preventDefault(); void addLog(detail.summary.id); }}>
-                    <label htmlFor="log-note">Update</label>
-                    <textarea
-                      id="log-note"
-                      value={logNote}
-                      maxLength={500}
-                      placeholder="Add a note, or the reason you're not approving (required to not approve)"
-                      onChange={(event) => setLogNote(event.target.value)}
-                    />
-                    <div className="review-actions" style={{ marginTop: 0 }}>
-                      <button className="btn primary" type="button" disabled={approving || detail.summary.status === 'APPROVED'} onClick={() => void decide(detail.summary.id, 'approve')}>
-                        {approving ? 'Saving…' : 'Approve'}
-                      </button>
-                      <button className="btn primary" type="button" disabled={approving || detail.summary.status === 'NOT APPROVED'} onClick={() => void decide(detail.summary.id, 'decline')}>
-                        Do not approve
-                      </button>
-                      <button className="btn primary" type="submit" disabled={approving || !logNote.trim()}>
-                        Add update
-                      </button>
-                    </div>
-                  </form>
+                  <h2>Decision</h2>
+                  {(() => {
+                    const status = detail.summary.status;
+                    const decided = status === 'APPROVED' || status === 'NOT APPROVED';
+                    if (decided && !editing) {
+                      return (
+                        <div className="review-actions" style={{ marginTop: 0 }}>
+                          <button className="btn small" type="button" onClick={() => setEditing(true)}>Edit decision</button>
+                        </div>
+                      );
+                    }
+                    if (declining) {
+                      return (
+                        <form className="log-form" onSubmit={(event) => { event.preventDefault(); void decide(detail.summary.id, 'decline'); }}>
+                          <label htmlFor="decline-reason">Why is it not approved?</label>
+                          <textarea
+                            id="decline-reason"
+                            value={reason}
+                            maxLength={500}
+                            autoFocus
+                            placeholder="The rep sees this reason on their dashboard"
+                            onChange={(event) => setReason(event.target.value)}
+                          />
+                          <div className="review-actions" style={{ marginTop: 0 }}>
+                            <button className="btn decline" type="submit" disabled={approving || !reason.trim()}>
+                              {approving ? 'Saving…' : 'Decline'}
+                            </button>
+                            <button className="btn small" type="button" disabled={approving} onClick={() => setDeclining(false)}>Cancel</button>
+                          </div>
+                        </form>
+                      );
+                    }
+                    return (
+                      <div className="review-actions" style={{ marginTop: 0 }}>
+                        {status !== 'APPROVED' ? (
+                          <button className="btn approve" type="button" disabled={approving} onClick={() => void decide(detail.summary.id, 'approve')}>
+                            {approving ? 'Saving…' : 'Approve'}
+                          </button>
+                        ) : null}
+                        {status !== 'NOT APPROVED' ? (
+                          <button className="btn decline" type="button" disabled={approving} onClick={() => setDeclining(true)}>Decline</button>
+                        ) : null}
+                        {decided ? (
+                          <button className="btn small" type="button" disabled={approving} onClick={resetDecisionForm}>Cancel</button>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
+                  <h2 style={{ marginTop: 16 }}>History</h2>
                   <RequestLog snapshot={detail.quote.snapshot} />
                 </div>
 

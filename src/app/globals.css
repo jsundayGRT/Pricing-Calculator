@@ -211,6 +211,11 @@ html, body { overflow-x: clip; }
 .btn.primary:hover { background: var(--accent); border-color: var(--accent); }
 .btn.small { padding: 5px 10px; font-weight: 500; font-size: 13px; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
+/* Approve / Decline, in Slack's colours */
+.btn.approve { background: #007A5A; border-color: #007A5A; color: #fff; }
+.btn.approve:hover { background: #148567; border-color: #148567; }
+.btn.decline { background: #E01E5A; border-color: #E01E5A; color: #fff; }
+.btn.decline:hover { background: #C4174C; border-color: #C4174C; }
 
 .grid {
   display: grid;
