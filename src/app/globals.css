@@ -235,6 +235,8 @@ html, body { overflow-x: clip; }
   padding: 3px 9px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .pill.standard { background: var(--ok-soft); color: var(--ok); }
 .pill.review { background: var(--warn-soft); color: var(--warn); }
