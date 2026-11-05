@@ -357,6 +357,13 @@ details.grp .lines td { padding: 4px 0; font-size: 13.5px; }
 body.sales .lock h2 { margin-bottom: 12px; }
 .btn.grow { flex: 1; }
 .btn.ghost { background: transparent; }
+label.revise-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--primary); color: #fff; border: 1px solid var(--primary);
+  border-radius: 10px; padding: 10px 16px; font-weight: 600; font-size: 14px;
+  cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,.12); line-height: 1.2;
+}
+label.revise-btn:hover { background: var(--accent); border-color: var(--accent); }
 body.sales .btn.primary { box-shadow: 0 1px 2px rgba(16,24,40,.12); }
 body.sales .btn.primary:hover { filter: brightness(1.06); }
 body.sales .empty { padding: 8px 4px 4px; text-align: left; color: var(--text); }
@@ -527,7 +534,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
       <h1>Pricing calculator</h1>
       <p class="sub">The total updates as you change the quote. A 1-year term and AI Command Center start on.</p>
     </div>
-    <label class="btn small ghost" for="openlocked">Revise a locked request</label><input id="openlocked" type="file" accept=".pdf,application/pdf,.json,application/json" class="hidden">
+    <label class="revise-btn" for="openlocked">Revise a locked request</label><input id="openlocked" type="file" accept=".pdf,application/pdf,.json,application/json" class="hidden">
   </div>
   <div id="revise-banner" class="banner hidden"></div>
   <div class="calc">

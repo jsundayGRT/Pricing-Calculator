@@ -43,6 +43,33 @@ function decisionBy(snapshot: Record<string, unknown>, key: 'approval' | 'decisi
   return record?.by ? ` by ${record.by}` : '';
 }
 
+function logLabel(action?: string) {
+  if (action === 'approved') return 'Approved';
+  if (action === 'not-approved') return 'Not approved';
+  return 'Note';
+}
+
+function RequestLog({ snapshot }: { snapshot: Record<string, unknown> }) {
+  const log = Array.isArray(snapshot.log)
+    ? snapshot.log as Array<{ at?: string; by?: string; action?: string; note?: string }>
+    : [];
+  if (!log.length) return <p className="sub" style={{ marginTop: 12 }}>No updates yet.</p>;
+  return (
+    <ol className="log-list">
+      {log.map((entry, index) => (
+        <li key={`${entry.at || 'log'}-${index}`}>
+          <strong>{logLabel(entry.action)}</strong>
+          <span className="quote-meta">
+            {entry.by ? ` · ${entry.by}` : ''}
+            {entry.at ? ` · ${fmtDate(entry.at)}` : ''}
+          </span>
+          {entry.note ? <p>{entry.note}</p> : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function fmtDate(iso: string) {
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -68,6 +95,7 @@ export function ExecutiveSummaryClient() {
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [logNote, setLogNote] = useState('');
 
   async function decide(id: string, action: 'approve' | 'decline') {
     setApproving(true);
@@ -76,14 +104,37 @@ export function ExecutiveSummaryClient() {
       const res = await fetch(`/api/admin/quotes/${encodeURIComponent(id)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, note: logNote }),
       });
       if (!res.ok) throw new Error(action === 'approve' ? 'Could not approve this request' : 'Could not decline this request');
       const data = await res.json();
       setDetail(data);
       setQuotes((prev) => (prev || []).map((q) => (q.id === id ? data.summary : q)));
+      setLogNote('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save this decision');
+    } finally {
+      setApproving(false);
+    }
+  }
+
+  async function addLog(id: string) {
+    const note = logNote.trim();
+    if (!note) return;
+    setApproving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/quotes/${encodeURIComponent(id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'log', note }),
+      });
+      if (!res.ok) throw new Error('Could not update the log');
+      const data = await res.json();
+      setDetail(data);
+      setLogNote('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update the log');
     } finally {
       setApproving(false);
     }
@@ -300,25 +351,41 @@ export function ExecutiveSummaryClient() {
               <>
                 {detail.summary.status === 'DEAL REVIEW' ? (
                   <div className="flag bad">
-                    <div>
-                      Deal Review
-                      {detail.summary.reviewReason ? `: ${detail.summary.reviewReason}` : ''}
-                      {detail.summary.dealNote ? ` — ${detail.summary.dealNote}` : ''}
-                    </div>
-                    <div className="review-actions">
-                      <button className="btn primary" type="button" disabled={approving} onClick={() => void decide(detail.summary.id, 'approve')}>
-                        {approving ? 'Saving…' : 'Approve'}
-                      </button>
-                      <button className="btn" type="button" disabled={approving} onClick={() => void decide(detail.summary.id, 'decline')}>
-                        Do not approve
-                      </button>
-                    </div>
+                    Deal Review
+                    {detail.summary.reviewReason ? `: ${detail.summary.reviewReason}` : ''}
+                    {detail.summary.dealNote ? ` — ${detail.summary.dealNote}` : ''}
                   </div>
                 ) : detail.summary.status === 'APPROVED' ? (
                   <div className="flag ok">Approved{decisionBy(detail.quote.snapshot, 'approval')}</div>
                 ) : detail.summary.status === 'NOT APPROVED' ? (
                   <div className="flag bad">Not approved{decisionBy(detail.quote.snapshot, 'decision')}</div>
                 ) : null}
+
+                <div className="card" style={{ marginBottom: 16 }}>
+                  <h2>Log</h2>
+                  <form className="log-form" onSubmit={(event) => { event.preventDefault(); void addLog(detail.summary.id); }}>
+                    <label htmlFor="log-note">Update</label>
+                    <textarea
+                      id="log-note"
+                      value={logNote}
+                      maxLength={500}
+                      placeholder="Add a note for this request"
+                      onChange={(event) => setLogNote(event.target.value)}
+                    />
+                    <div className="review-actions" style={{ marginTop: 0 }}>
+                      <button className="btn primary" type="button" disabled={approving || detail.summary.status === 'APPROVED'} onClick={() => void decide(detail.summary.id, 'approve')}>
+                        {approving ? 'Saving…' : 'Approve'}
+                      </button>
+                      <button className="btn primary" type="button" disabled={approving || detail.summary.status === 'NOT APPROVED'} onClick={() => void decide(detail.summary.id, 'decline')}>
+                        Do not approve
+                      </button>
+                      <button className="btn primary" type="submit" disabled={approving || !logNote.trim()}>
+                        Add update
+                      </button>
+                    </div>
+                  </form>
+                  <RequestLog snapshot={detail.quote.snapshot} />
+                </div>
 
                 <div className="card" style={{ marginBottom: 16 }}>
                   <h2>Customer view</h2>

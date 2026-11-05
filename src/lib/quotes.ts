@@ -116,28 +116,73 @@ export function upsertQuote(input: {
   return record;
 }
 
-export function approveQuote(id: string, approver: { name: string; email: string }) {
-  return decideQuote(id, approver, 'approve');
+type LogEntry = {
+  at: string;
+  by: string;
+  email: string;
+  action: 'approved' | 'not-approved' | 'note';
+  note?: string;
+};
+
+function withLog(snapshot: Record<string, unknown>, entry: LogEntry) {
+  const prev = Array.isArray(snapshot.log) ? snapshot.log : [];
+  return { ...snapshot, log: [entry, ...prev].slice(0, 50) };
 }
 
-export function declineQuote(id: string, approver: { name: string; email: string }) {
-  return decideQuote(id, approver, 'decline');
+export function approveQuote(id: string, approver: { name: string; email: string }, note?: string) {
+  return decideQuote(id, approver, 'approve', note);
 }
 
-function decideQuote(id: string, approver: { name: string; email: string }, action: 'approve' | 'decline') {
+export function declineQuote(id: string, approver: { name: string; email: string }, note?: string) {
+  return decideQuote(id, approver, 'decline', note);
+}
+
+export function addQuoteLog(id: string, approver: { name: string; email: string }, note: string) {
+  const text = note.trim();
+  if (!text) return null;
+  const store = readStore();
+  const quote = store.quotes.find((q) => q.id === id);
+  if (!quote) return null;
+  const now = new Date().toISOString();
+  quote.snapshot = withLog(quote.snapshot, {
+    at: now,
+    by: approver.name || approver.email,
+    email: approver.email,
+    action: 'note',
+    note: text,
+  });
+  quote.updatedAt = now;
+  writeStore(store);
+  return quote;
+}
+
+function decideQuote(
+  id: string,
+  approver: { name: string; email: string },
+  action: 'approve' | 'decline',
+  note?: string,
+) {
   const store = readStore();
   const quote = store.quotes.find((q) => q.id === id);
   if (!quote) return null;
   const now = new Date().toISOString();
   const by = approver.name || approver.email;
+  const text = note?.trim() || '';
   const decision = { by, email: approver.email, at: now.slice(0, 10), outcome: action === 'approve' ? 'approved' : 'not-approved' };
+  const entry: LogEntry = {
+    at: now,
+    by,
+    email: approver.email,
+    action: action === 'approve' ? 'approved' : 'not-approved',
+    ...(text ? { note: text } : {}),
+  };
   if (action === 'approve') {
-    quote.snapshot = { ...quote.snapshot, approval: decision, status: 'APPROVED' };
+    quote.snapshot = withLog({ ...quote.snapshot, approval: decision, status: 'APPROVED' }, entry);
     quote.status = 'APPROVED';
   } else {
     const { approval: _removed, ...rest } = quote.snapshot;
     void _removed;
-    quote.snapshot = { ...rest, decision, status: 'NOT APPROVED' };
+    quote.snapshot = withLog({ ...rest, decision, status: 'NOT APPROVED' }, entry);
     quote.status = 'NOT APPROVED';
   }
   quote.updatedAt = now;

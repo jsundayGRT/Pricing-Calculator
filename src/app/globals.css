@@ -236,7 +236,7 @@ html, body { overflow-x: clip; }
   font-weight: 600;
 }
 .pill.standard { background: var(--ok-soft); color: var(--ok); }
-.pill.review { background: var(--warn-soft); color: var(--warn); }
+.pill.review { background: #9B2C28; color: #fff; }
 .empty {
   padding: 36px 20px;
   text-align: center;
@@ -366,3 +366,11 @@ table.exec .reason { color: var(--bad); font-size: 12px; margin-top: 4px; }
 .flag.bad { background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
 .flag.ok { background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
 .review-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.log-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.log-list li { border-top: 1px solid var(--border); padding-top: 10px; }
+.log-list p { margin: 4px 0 0; }
+.log-form { display: grid; gap: 8px; }
+.log-form textarea {
+  font: inherit; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%; min-height: 72px;
+}
