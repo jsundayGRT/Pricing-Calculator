@@ -24,9 +24,6 @@ export function AppHeader({
               </span>
               <h1 className="brand-title">Guardrail Pricing Calculator</h1>
             </div>
-            <p className="tagline">
-              Price a request, lock it, and send Deal Reviews for approval. Approved quotes go to HubSpot.
-            </p>
           </div>
           {user ? (
             <div className="chips">
