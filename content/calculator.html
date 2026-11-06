@@ -1426,7 +1426,7 @@ function customerLinesHtml(c, { forCustomer = false } = {}) {
   for (const x of sel) h += r(esc(x.name.replace('Traffic Light for ', '')), m(x.price), 'sub');
   if (L.modulesSelected > 1) h += r(`Bundle discount (${L.modulesSelected} modules, ${fmtPct(L.bundleDiscountPct, 0)}${V.customerSuccessFoldedInto === 'modules' ? ' of list price' : ''})`, '−' + m(D.bundle), 'sub discount');
   h += r('AI Command Center', L.commandCenter ? m(V.commandCenter) : '—');
-  if (L.premiumSupport) h += r('Premium support and named Customer Success', m(L.premiumSupport));
+  if (L.premiumSupport) h += r('Premium support', m(L.premiumSupport));
   // Customer Success is never called out: it is shown together with Inference
   h += r('Inference & infrastructure', m((V.customerSuccess || 0) + (L.inference || 0)));
   if (L.dedicatedTenant || c.onPremNote) h += r('Dedicated SaaS tenant / Security (scoped)', L.dedicatedTenant ? m(L.dedicatedTenant) : 'To be scoped');
@@ -1778,7 +1778,7 @@ function salesSummaryHtml(c, fxBox, inputs) {
   for (const x of sel) b += row(esc(x.name.replace('Traffic Light for ', '')), m(x.price), 'sub');
   if (L.modulesSelected > 1) b += row(`Bundle discount · ${L.modulesSelected} modules, ${fmtPct(L.bundleDiscountPct, 0)}${V.customerSuccessFoldedInto === 'modules' ? ' of list price' : ''}`, neg(D.bundle), 'sub discount');
   b += row('AI Command Center', L.commandCenter ? m(V.commandCenter) : '—');
-  if (L.premiumSupport) b += row('Premium support and named CS', m(L.premiumSupport));
+  if (L.premiumSupport) b += row('Premium support', m(L.premiumSupport));
   b += row('Inference & infrastructure', m((V.customerSuccess || 0) + (L.inference || 0)));
   if (L.dedicatedTenant || c.onPremNote) b += row('Dedicated tenant / security', L.dedicatedTenant ? m(L.dedicatedTenant) : '<span class="muted">to be scoped</span>');
   b += row('Annual recurring price', m(c.annualRecurringPrice), 'total');

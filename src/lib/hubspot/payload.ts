@@ -62,7 +62,7 @@ export function buildQuotePricing(snapshot: Obj): QuotePricing {
     if (amount > 0) raw.push({ name, list: amount, afterBundle: amount, recurring, description });
   };
   add('AI Command Center', num(view.commandCenter), true, 'Annual platform fee');
-  add('Premium support and named Customer Success', num(lines.premiumSupport), true, 'Annual');
+  add('Premium support', num(lines.premiumSupport), true, 'Annual');
   // Customer Success is never called out: it is quoted together with Inference
   add('Inference & infrastructure', num(view.customerSuccess) + num(lines.inference), true, 'Annual');
   add('Dedicated SaaS tenant / Security (scoped)', num(lines.dedicatedTenant), true, 'Annual');
