@@ -108,7 +108,6 @@ p { margin: 0; }
   padding: 3px 12px 3px 3px;
   cursor: pointer;
 }
-.user-menu-btn:hover, .user-menu-btn[aria-expanded="true"] { background: rgba(139, 147, 248, .10); border-color: rgba(139, 147, 248, .45); }
 .user-avatar {
   width: 28px; height: 28px; border-radius: 50%;
   display: grid; place-items: center;
@@ -544,8 +543,6 @@ select option { background: #111827; color: var(--text); }
 }
 [data-theme="light"] .brand-title { background-image: linear-gradient(90deg, #173C5B 0%, #3730A3 55%, #4F46E5 100%); }
 [data-theme="light"] .nav a.active { color: var(--text); }
-[data-theme="light"] .info-chip, [data-theme="light"] .user-menu-btn, [data-theme="light"] .theme-btn { background: var(--surface); }
-[data-theme="light"] .user-menu-btn:hover, [data-theme="light"] .user-menu-btn[aria-expanded="true"] { background: var(--accent-soft); border-color: rgba(79, 70, 229, .4); }
 [data-theme="light"] .user-menu-panel {
   --menu-bg: #FFFFFF; --menu-hover: rgba(15, 23, 42, .045); --menu-red: #DC2626;
   border-color: rgba(15, 23, 42, .09);
@@ -599,6 +596,17 @@ select option { background: #111827; color: var(--text); }
   background: rgba(255, 255, 255, .02);
   color: var(--text); cursor: pointer;
 }
-.theme-btn:hover { border-color: var(--accent); color: var(--accent); }
 .theme-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .theme-btn svg { width: 16px; height: 16px; }
+
+/* Header pills (sun/moon, Role, account): soft fills instead of outlines */
+:root { --pill-bg: rgba(255, 255, 255, .06); --pill-hover: rgba(255, 255, 255, .10); --pill-open: rgba(139, 147, 248, .18); }
+:root[data-theme="light"] { --pill-bg: rgba(15, 23, 42, .05); --pill-hover: rgba(15, 23, 42, .08); --pill-open: rgba(79, 70, 229, .12); }
+.theme-btn, .info-chip, .user-menu-btn {
+  background: var(--pill-bg); border-color: transparent;
+  transition: background-color .15s ease, color .15s ease;
+}
+.theme-btn:hover, .user-menu-btn:hover { background: var(--pill-hover); }
+.theme-btn:hover { color: var(--accent); }
+.user-menu-btn[aria-expanded="true"] { background: var(--pill-open); }
+@media (prefers-reduced-motion: reduce) { .theme-btn, .info-chip, .user-menu-btn { transition: none; } }
