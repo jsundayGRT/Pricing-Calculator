@@ -146,10 +146,10 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .btn { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
 .btn.primary:hover { background: var(--accent); border-color: var(--accent); }
-/* Download quote PDF: green, like the "Locked" message, so the next step after locking stands out. */
-.btn.download { background: #059669; border-color: #059669; color: #fff; display: inline-flex; align-items: center; gap: 8px; }
-.btn.download:hover { background: #047857; border-color: #047857; }
-.btn.download svg { width: 16px; height: 16px; flex: none; }
+/* Icon-only button (Download quote PDF); the label shows on hover. */
+.btn.icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 9px 12px; }
+.btn.icon-btn svg { width: 18px; height: 18px; flex: none; }
+.btn.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn.small { padding: 5px 10px; font-weight: 500; font-size: 13px; }
 .btn.link { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 500; }
@@ -674,10 +674,10 @@ html.embedded .mbar { background: #0D1322; border-top: 1px solid var(--border); 
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary grow" id="lockbtn" type="button">Lock in pricing request</button>
-          <button class="btn download hidden" id="printbtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Download quote PDF</button>
+          <button class="btn icon-btn hidden" id="printbtn" type="button" title="Download quote PDF" aria-label="Download quote PDF"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
         <div class="err" id="lockerr" role="alert"></div>
-        <div class="hint">Locking saves the request to your dashboard. Download the quote PDF when you are ready. A Deal Review is approved on the Executive Dashboard. Later changes save as the next version.</div>
+        <div class="hint">Locking saves the request to your dashboard. Download the quote PDF with the download icon once it is locked. A Deal Review can be downloaded after it is approved (on the Executive Dashboard or in Slack); open it from your dashboard. Later changes save as the next version.</div>
       </div>
     </aside>
   </div>
@@ -2358,6 +2358,9 @@ async function readRequestFile(f) {
   function readApprovals() { try { return JSON.parse(localStorage.getItem(APPROVALS_KEY) || '{}'); } catch { return {}; } }
   function approvalFor(s) { return s.approval || readApprovals()[approvalKey(s)] || null; }
   function withApproval(s) { const a = approvalFor(s); return a ? { ...s, approval: a } : s; }
+  // The quote PDF is only for pricing that stands: a Standard request, or a Deal Review once
+  // approved. A Deal Review that is waiting (or was declined) has no download.
+  function canDownload(s) { return !!s && s.status !== 'DEAL REVIEW' && s.status !== 'NOT APPROVED'; }
   // ---- HubSpot deal picker: searches the Guardrail Sales Pipeline through the server
   let pickedDeal = null, hubspotOff = false, dealHits = [], dealActive = -1, dealTimer = 0, dealSeq = 0;
   const OFF_HINT = 'HubSpot is not connected, so this request locks without a deal.';
@@ -2444,9 +2447,9 @@ async function readRequestFile(f) {
     const review = snap.status === 'DEAL REVIEW';
     showBanner(snap, true);
     saveHistory(snap); renderHistory();
-    $('#printbtn').classList.remove('hidden');
+    $('#printbtn').classList.toggle('hidden', !canDownload(snap));
     toast(review
-      ? `Locked ${requestId}, version ${version}. Sent to the Executive Dashboard for approval.`
+      ? `Locked ${requestId}, version ${version}. Sent for approval; the quote PDF is available once it's approved.`
       : `Locked ${requestId}, version ${version}.`, 'ok');
   });
   $('#printbtn').addEventListener('click', () => { if (lastLocked) downloadQuotePdf(withApproval(lastLocked)); });
@@ -2474,6 +2477,10 @@ async function readRequestFile(f) {
     setDeal(s.hubspotDeal && s.hubspotDeal.id ? s.hubspotDeal : null);
     $('#stage').value = s.stage === 'Final (Pilot)' || s.stage === 'Final (Contract)' ? s.stage : 'Revised';
     sync(); recalc(); showBanner(s, false);
+    // Opening an approved (or Standard) request from the dashboard offers its quote PDF until
+    // anything is changed; recalc() hides it again on the next edit.
+    lastLocked = s;
+    $('#printbtn').classList.toggle('hidden', !canDownload(s));
   }
 
   // ---- this browser's locked requests (a convenience; the quote PDFs are the record)
