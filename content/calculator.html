@@ -363,13 +363,6 @@ details.grp .lines td { padding: 4px 0; font-size: 13.5px; }
 body.sales .lock h2 { margin-bottom: 12px; }
 .btn.grow { flex: 1; }
 .btn.ghost { background: transparent; }
-label.revise-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--primary); color: #fff; border: 1px solid var(--primary);
-  border-radius: 10px; padding: 10px 16px; font-weight: 600; font-size: 14px;
-  cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,.12); line-height: 1.2;
-}
-label.revise-btn:hover { background: var(--accent); border-color: var(--accent); }
 body.sales .btn.primary { box-shadow: 0 1px 2px rgba(16,24,40,.12); }
 body.sales .btn.primary:hover { filter: brightness(1.06); }
 body.sales .empty { padding: 8px 4px 4px; text-align: left; color: var(--text); }
@@ -570,7 +563,6 @@ html.embedded .mbar { background: #0D1322; border-top: 1px solid var(--border); 
     <div>
       <h1>Pricing calculator</h1>
     </div>
-    <label class="revise-btn" for="openlocked">Revise a locked request</label><input id="openlocked" type="file" accept=".pdf,application/pdf,.json,application/json" class="hidden">
   </div>
   <div id="revise-banner" class="banner hidden"></div>
   <div class="calc">
@@ -2145,38 +2137,6 @@ function downloadQuotePdf(v, opts) {
   return bytes;
 }
 
-// Read the locked request back out of a quote PDF (also copes with a PDF re-saved by another app).
-async function readRequestFromPdf(bytes) {
-  let s = ''; for (let k = 0; k < bytes.length; k += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(k, k + 0x8000));
-  if (!s.startsWith('%PDF')) throw new Error('not a PDF');
-  const inflate = async (data) => new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
-  const re = /stream\r?\n/g; let m;
-  while ((m = re.exec(s))) {
-    const start = m.index + m[0].length;
-    const objAt = s.lastIndexOf(' obj', m.index); if (objAt < 0) continue;
-    const dict = s.slice(objAt, m.index);
-    if (!/EmbeddedFile/.test(dict) && !/FlateDecode/.test(dict) && s[start] !== '{') continue;
-    const lm = /\/Length\s+(\d+)(?!\s+\d+\s+R)/.exec(dict);
-    let end = lm ? start + Number(lm[1]) : s.indexOf('endstream', start);
-    if (end < start || end > s.length) end = s.indexOf('endstream', start);
-    let data = bytes.subarray(start, end);
-    try {
-      if (/FlateDecode/.test(dict)) data = await inflate(data);
-      const t = new TextDecoder().decode(data).trim();
-      if (t[0] !== '{') continue;
-      const o = JSON.parse(t);
-      if (o && o.schema === 'grt-pricing-request/1') return o;
-    } catch { /* not this stream */ }
-  }
-  throw new Error('no locked request inside this PDF. Use the quote PDF the calculator downloaded when the request was locked.');
-}
-// A request file: a quote PDF (current) or a .json request file (earlier versions of the calculator).
-async function readRequestFile(f) {
-  const bytes = new Uint8Array(await f.arrayBuffer());
-  const s = bytes[0] === 0x25 && bytes[1] === 0x50 ? await readRequestFromPdf(bytes) : JSON.parse(new TextDecoder().decode(bytes));
-  if (s.schema !== 'grt-pricing-request/1' || !s.requestId || !s.inputs || !s.customer) throw new Error('not a pricing request');
-  return s;
-}
 
 
 // ===== Sales calculator (one page, no tabs). Uses Engine (src/engine.js), Schema (src/config-schema.js)
@@ -2608,17 +2568,6 @@ async function readRequestFile(f) {
     }).catch(() => { /* offline / signed out */ });
   }
   function renderHistory() { /* Locked requests are listed on the dashboard. */ }
-
-  // ---- revise a locked request: open the quote PDF the rep saved
-  $('#openlocked').addEventListener('change', async (e) => {
-    const f = e.target.files[0]; e.target.value = '';
-    if (!f) return;
-    try {
-      const s = await readRequestFile(f).catch((err) => { throw new Error(`${f.name}: ${err.message}`); });
-      loadForRevision(s);
-      toast(`Loaded ${s.requestId} version ${s.version}. Locking saves version ${s.version + 1}.`);
-    } catch (err) { toast(err.message); }
-  });
 
   // ---------------------------------------------------------------- start
   buildControls(); sync(); renderVer(); recalc(); renderHistory();

@@ -54,11 +54,9 @@ test('an executive can decline a deal review, with a reason', async ({ page, con
   }
 });
 
-test('revise a locked request is a solid button', async ({ page, context }) => {
+test('the calculator has no upload button for revising', async ({ page, context }) => {
   await signIn(context);
   const frame = await openCalculator(page);
-  const button = frame.locator('label.revise-btn');
-  await expect(button).toHaveText('Revise a locked request');
-  // the app's indigo primary colour inside the dark theme
-  expect(await button.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(99, 102, 241)');
+  // revising starts from the dashboard's Open / revise instead
+  await expect(frame.getByText('Revise a locked request')).toHaveCount(0);
 });
