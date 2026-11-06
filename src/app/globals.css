@@ -277,8 +277,8 @@ html, body { overflow-x: clip; }
 }
 /* The whole sign-in page is this one card: logo + title, divider, then the sign-in action. */
 .login-card {
-  width: min(520px, 100%);
-  padding: 44px 44px 36px;
+  width: min(600px, 100%);
+  padding: 56px 56px 44px;
   text-align: center;
   border-color: rgba(139, 147, 248, .24);
   background:
@@ -287,18 +287,21 @@ html, body { overflow-x: clip; }
     var(--surface);
   box-shadow: 0 0 0 1px rgba(139, 147, 248, .06), 0 40px 80px rgba(0, 0, 0, .45);
 }
-.login-brand { display: grid; justify-items: center; gap: 16px; }
-.login-shield { width: 50px; height: 55px; }
-.login-shield img { height: 55px; }
-.login-name { font-size: 30px; line-height: 1.15; }
-.login-divider { height: 1px; background: var(--border); margin: 30px 0 26px; }
-.login-title { font-size: 22px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 8px; font-weight: 700; }
-.login-copy { color: var(--muted); font-size: 15px; margin: 0 auto 26px; max-width: 380px; }
+.login-brand { display: grid; justify-items: center; gap: 20px; }
+.login-shield { width: 62px; height: 68px; }
+.login-shield img { height: 68px; }
+.login-name { font-size: 36px; line-height: 1.15; }
+.login-divider { height: 1px; background: var(--border); margin: 36px 0 32px; }
+.login-title { font-size: 26px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 10px; font-weight: 700; }
+.login-copy { color: var(--muted); font-size: 17px; margin: 0 auto 30px; max-width: 440px; }
 .login-card .err { text-align: left; }
-.login-btn { width: 100%; padding: 14px 16px; font-size: 15px; border-radius: 10px; }
+.login-btn { width: 100%; padding: 17px 18px; font-size: 17px; border-radius: 12px; }
+.login-btn .ms-icon { width: 23px; height: 23px; }
+.login-card .fine { font-size: 13px; margin-top: 20px; }
 @media (max-width: 560px) {
-  .login-card { padding: 32px 22px 26px; }
-  .login-name { font-size: 24px; }
+  .login-card { padding: 36px 24px 28px; }
+  .login-name { font-size: 27px; }
+  .login-copy { font-size: 16px; }
 }
 .ms-icon { width: 21px; height: 21px; display: block; flex: none; }
 .fine { margin-top: 18px; color: var(--muted); font-size: 12px; text-align: center; }
