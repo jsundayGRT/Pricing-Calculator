@@ -57,7 +57,6 @@ p { margin: 0; }
 .topbar { border-bottom: 1px solid var(--border); }
 .topbar-inner { max-width: 1240px; margin: 0 auto; padding: 22px 24px 0; }
 .topbar-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px 24px; flex-wrap: wrap; }
-.eyebrow { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 10px; }
 .brand { display: flex; align-items: center; gap: 14px; }
 .shield { width: 31px; height: 34px; overflow: hidden; flex: none; }
 .shield img { height: 34px; width: auto; display: block; filter: invert(1); }

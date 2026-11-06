@@ -17,7 +17,6 @@ export function AppHeader({
       <div className="topbar-inner">
         <div className="topbar-row">
           <div>
-            <div className="eyebrow">Guardrail Technologies · Pricing</div>
             <div className="brand">
               <span className="shield">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
