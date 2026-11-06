@@ -33,7 +33,8 @@ function DecisionLine({ decision }: { decision?: Decision | null }) {
     <div className={`decision ${approved ? 'ok' : 'bad'}`}>
       <b>{approved ? 'Approved' : 'Not approved'}</b> by {decision.by}
       {decision.at ? ` · ${fmtDay(decision.at)}` : ''}
-      {decision.note ? <div className="decision-note">{approved ? decision.note : `Reason: ${decision.note}`}</div> : null}
+      {/* Only a decline's reason is shown; approvals just say who and when. */}
+      {!approved && decision.note ? <div className="decision-note">Reason: {decision.note}</div> : null}
     </div>
   );
 }

@@ -245,7 +245,9 @@ table.grid th.num, table.grid td.num { text-align: right; font-variant-numeric: 
 .login { max-width: 360px; margin: 12vh auto; }
 .login .card { padding: 28px; }
 .err { color: var(--bad-text); font-size: 13px; min-height: 18px; margin-top: 8px; font-weight: 600; }
-.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px; z-index: 40; font-size: 13px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1F2937; color: #F9FAFB; padding: 10px 16px; border-radius: 8px; z-index: 40; font-size: 13px; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+/* Success (e.g. a lock went through): green, readable on both themes. */
+.toast.ok { background: #059669; color: #fff; font-weight: 600; }
 .empty { padding: 32px; text-align: center; color: var(--muted); }
 
 table.grid td.status-col { white-space: normal; min-width: 150px; max-width: 190px; }
@@ -1355,8 +1357,8 @@ const fmtNum = (v) => (v == null ? '—' : Number(v).toLocaleString('en-US', { m
 const fmtDate = (iso) => new Date(iso).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function toast(msg) {
-  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+function toast(msg, kind) {
+  const t = document.createElement('div'); t.className = kind ? `toast ${kind}` : 'toast'; t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
 }
 
@@ -2441,7 +2443,7 @@ async function readRequestFile(f) {
     $('#printbtn').classList.remove('hidden');
     toast(review
       ? `Locked ${requestId}, version ${version}. Sent to the Executive Dashboard for approval.`
-      : `Locked ${requestId}, version ${version}.`);
+      : `Locked ${requestId}, version ${version}.`, 'ok');
   });
   $('#printbtn').addEventListener('click', () => { if (lastLocked) downloadQuotePdf(withApproval(lastLocked)); });
 
