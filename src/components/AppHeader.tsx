@@ -20,7 +20,7 @@ export function AppHeader({
             <div className="brand">
               <span className="shield">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/shield.png" alt="Guardrail" />
+                <img src="/shield-white.png" alt="Guardrail" />
               </span>
               <h1 className="brand-title">Guardrail Pricing Calculator</h1>
             </div>
