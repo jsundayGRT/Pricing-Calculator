@@ -174,6 +174,9 @@ html, body { overflow-x: clip; }
 }
 .hero small { color: var(--on-hero); display: block; }
 .hero .amount { font-size: 34px; font-weight: 750; letter-spacing: -1px; margin: 4px 0; }
+.hero.compact { padding: 14px 20px; }
+.hero.compact .amount { font-size: 24px; letter-spacing: -.5px; margin: 0; }
+.hero.compact small { margin-top: 2px; font-size: 14px; }
 
 .btn {
   font: inherit;
@@ -191,7 +194,7 @@ html, body { overflow-x: clip; }
 }
 .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
 .btn.primary:hover { background: #7C7FF5; border-color: #7C7FF5; }
-.btn:not(.primary):not(.approve):not(.decline):hover { border-color: var(--border-strong); background: rgba(255, 255, 255, .04); }
+.btn:not(.primary):not(.approve):not(.decline):not(.danger):hover { border-color: var(--border-strong); background: rgba(255, 255, 255, .04); }
 .btn.small { padding: 5px 10px; font-weight: 500; font-size: 13px; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 /* Approve / Decline, in Slack's colours */
@@ -216,6 +219,12 @@ html, body { overflow-x: clip; }
 .quote-card h3 { margin: 0 0 6px; font-size: 17px; letter-spacing: -.01em; }
 .quote-meta { color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
 .quote-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.quote-price { font-size: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--text); margin: 0 0 10px; }
+.quote-price span { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
+.meta-line { font-size: 12.5px; }
+.meta-line.hs > div { display: inline; }
+.btn.small.danger { color: #F87171; border-color: rgba(248, 113, 113, .45); background: transparent; }
+.btn.small.danger:hover { color: #fff; background: #E01E5A; border-color: #E01E5A; }
 .pill {
   display: inline-flex;
   align-items: center;
@@ -281,6 +290,31 @@ html, body { overflow-x: clip; }
 }
 .stat.total span, .stat.standard span, .stat.review span { color: var(--tone); }
 @media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
+/* Dashboard stat boxes are buttons that filter the list */
+.stat-btn { font: inherit; color: var(--text); text-align: left; cursor: pointer; transition: border-color .15s, transform .15s; }
+.stat-btn:hover { border-color: color-mix(in srgb, var(--tone) 55%, transparent); }
+.stat-btn.active { border-color: var(--tone); box-shadow: 0 0 0 1px var(--tone) inset; }
+.stat-btn:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.list-head h2 { margin: 0; }
+.list-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.search {
+  font: inherit; font-size: 13px; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 12px; width: 260px; max-width: 100%;
+}
+.search::placeholder { color: var(--muted); opacity: .7; }
+.search:focus { outline: none; border-color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+.seg button {
+  font: inherit; font-size: 13px; font-weight: 500; color: var(--muted); background: transparent;
+  border: 0; padding: 7px 12px; cursor: pointer; white-space: nowrap;
+}
+.seg button + button { border-left: 1px solid var(--border-strong); }
+.seg button:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
+.seg button.active { color: #fff; background: var(--primary); }
+.seg .count { opacity: .7; margin-left: 2px; }
+@media (max-width: 640px) { .list-tools, .search { width: 100%; } }
 
 .login-shell {
   min-height: 100vh;

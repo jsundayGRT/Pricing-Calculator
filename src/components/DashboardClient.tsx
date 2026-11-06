@@ -55,10 +55,20 @@ function fmtDate(iso: string) {
   }
 }
 
+function fmtShort(iso: string) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+type Filter = 'all' | 'standard' | 'review';
+const isReview = (q: QuoteSummary) => q.status === 'DEAL REVIEW';
+
 export function DashboardClient({ userName }: { userName: string }) {
   const [quotes, setQuotes] = useState<QuoteSummary[] | null>(null);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
 
   async function load() {
     setError('');
@@ -81,13 +91,32 @@ export function DashboardClient({ userName }: { userName: string }) {
 
   const stats = useMemo(() => {
     const list = quotes || [];
-    const review = list.filter((q) => q.status === 'DEAL REVIEW').length;
+    const review = list.filter(isReview).length;
+    const last = list.reduce<string | null>((max, q) => (!max || q.lockedAt > max ? q.lockedAt : max), null);
     return {
       total: list.length,
       review,
       standard: list.length - review,
+      last,
     };
   }, [quotes]);
+
+  const shown = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (quotes || []).filter((q) => {
+      if (filter === 'review' && !isReview(q)) return false;
+      if (filter === 'standard' && isReview(q)) return false;
+      if (!term) return true;
+      return [q.customerName, q.requestId, q.stage, q.hubspot?.dealName]
+        .some((v) => v && v.toLowerCase().includes(term));
+    });
+  }, [quotes, filter, search]);
+
+  const filters: { key: Filter; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: stats.total },
+    { key: 'standard', label: 'Standard', count: stats.standard },
+    { key: 'review', label: 'Deal Review', count: stats.review },
+  ];
 
   async function removeQuote(id: string) {
     if (!confirm('Remove this quote from your dashboard?')) return;
@@ -112,19 +141,65 @@ export function DashboardClient({ userName }: { userName: string }) {
         <a className="btn primary" href="/calculator">New pricing request</a>
       </div>
 
-      <div className="hero">
+      <div className="hero compact">
         <div className="amount">Welcome back, {userName}</div>
+        {quotes && stats.total ? (
+          <small>
+            {stats.total} locked request{stats.total === 1 ? '' : 's'}
+            {stats.last ? ` · last on ${fmtShort(stats.last)}` : ''}
+          </small>
+        ) : null}
       </div>
 
+      {/* The stat boxes double as filters for the list below */}
       <div className="stats">
-        <div className="stat total"><span>Your quotes</span><b>{quotes ? stats.total : '—'}</b></div>
-        <div className="stat standard"><span>Standard</span><b>{quotes ? stats.standard : '—'}</b></div>
-        <div className="stat review"><span>Deal review</span><b>{quotes ? stats.review : '—'}</b></div>
+        {([
+          ['total', 'all', 'Your quotes', stats.total],
+          ['standard', 'standard', 'Standard', stats.standard],
+          ['review', 'review', 'Deal review', stats.review],
+        ] as const).map(([tone, key, label, count]) => (
+          <button
+            key={key}
+            type="button"
+            className={`stat ${tone} stat-btn${filter === key ? ' active' : ''}`}
+            aria-pressed={filter === key}
+            onClick={() => setFilter(key)}
+          >
+            <span>{label}</span><b>{quotes ? count : '—'}</b>
+          </button>
+        ))}
       </div>
 
       <div className="err" role="alert">{error}</div>
 
-      <h2 style={{ marginBottom: 12 }}>Locked requests</h2>
+      <div className="list-head">
+        <h2>Locked requests</h2>
+        {quotes && quotes.length > 0 ? (
+          <div className="list-tools">
+            <input
+              type="search"
+              className="search"
+              placeholder="Search customer, request ID or deal"
+              aria-label="Search locked requests"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <div className="seg" role="group" aria-label="Filter by type">
+              {filters.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  aria-pressed={filter === f.key}
+                  className={filter === f.key ? 'active' : ''}
+                  onClick={() => setFilter(f.key)}
+                >
+                  {f.label} <span className="count">{f.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
       {!quotes ? (
         <div className="empty">Loading your quotes…</div>
       ) : quotes.length === 0 ? (
@@ -135,10 +210,19 @@ export function DashboardClient({ userName }: { userName: string }) {
             <a className="btn primary" href="/calculator">Open calculator</a>
           </div>
         </div>
+      ) : shown.length === 0 ? (
+        <div className="empty">
+          <p>No requests match.</p>
+          <div style={{ marginTop: 12 }}>
+            <button type="button" className="btn small" onClick={() => { setSearch(''); setFilter('all'); }}>
+              Clear filters
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="grid">
-          {quotes.map((q) => {
-            const review = q.status === 'DEAL REVIEW';
+          {shown.map((q) => {
+            const review = isReview(q);
             const approved = q.status === 'APPROVED';
             const declined = q.status === 'NOT APPROVED';
             return (
@@ -150,21 +234,27 @@ export function DashboardClient({ userName }: { userName: string }) {
                   {q.version > 1 ? <span className="quote-meta">v{q.version}</span> : null}
                 </div>
                 <h3>{q.customerName}</h3>
+                <div className="quote-price">
+                  {money(q.finalPrice, q.currency)} <span>Year 1</span>
+                </div>
                 <div className="quote-meta">
                   <DecisionLine decision={q.decision} />
-                  <div>{q.requestId}</div>
-                  <div>{fmtDate(q.lockedAt)}</div>
-                  <div><b style={{ color: 'var(--text)' }}>{money(q.finalPrice, q.currency)}</b> · Year 1</div>
-                  {q.stage ? <div>Stage: {q.stage}</div> : null}
-                  {q.hubspot?.dealName ? <div>Deal: {q.hubspot.dealName}</div> : null}
-                  <HubSpotSyncLine hubspot={q.hubspot} status={q.status} />
+                  <div className="meta-line">
+                    {[fmtDate(q.lockedAt), q.requestId, q.stage].filter(Boolean).join(' · ')}
+                  </div>
+                  {q.hubspot?.dealId ? (
+                    <div className="meta-line hs">
+                      {q.hubspot.dealName ? <>Deal: {q.hubspot.dealName} · </> : null}
+                      <HubSpotSyncLine hubspot={q.hubspot} status={q.status} />
+                    </div>
+                  ) : null}
                 </div>
                 <div className="quote-actions">
                   <a className="btn small" href={`/calculator?revise=${encodeURIComponent(q.id)}`}>
                     Open / revise
                   </a>
                   <button
-                    className="btn small"
+                    className="btn small danger"
                     type="button"
                     disabled={busyId === q.id}
                     onClick={() => void removeQuote(q.id)}
