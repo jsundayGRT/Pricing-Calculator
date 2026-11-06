@@ -99,6 +99,7 @@ export function ExecutiveSummaryClient() {
   const [rep, setRep] = useState('ALL');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -202,10 +203,13 @@ export function ExecutiveSummaryClient() {
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [quotes]);
 
-  const filtered = useMemo(() => {
+  // Everything but the status filter, so the stat boxes keep their counts while one is selected
+  const scoped = useMemo(() => {
     const list = quotes || [];
+    const term = search.trim().toLowerCase();
     return list.filter((q) => {
-      if (status !== 'ALL' && q.status !== status) return false;
+      if (term && ![q.customerName, q.requestId, q.rep, q.stage, q.dealNote]
+        .some((v) => v && v.toLowerCase().includes(term))) return false;
       if (rep !== 'ALL' && q.rep !== rep) return false;
       if (from) {
         const t = new Date(q.lockedAt).getTime();
@@ -217,12 +221,32 @@ export function ExecutiveSummaryClient() {
       }
       return true;
     });
-  }, [quotes, status, rep, from, to]);
+  }, [quotes, rep, from, to, search]);
+
+  const filtered = useMemo(
+    () => (status === 'ALL' ? scoped : scoped.filter((q) => q.status === status)),
+    [scoped, status],
+  );
 
   const stats = useMemo(() => {
-    const review = filtered.filter((q) => q.status === 'DEAL REVIEW').length;
-    return { total: filtered.length, review, standard: filtered.length - review };
-  }, [filtered]);
+    const totals = new Map<string, number>();
+    for (const q of filtered) {
+      if (q.finalPrice == null) continue;
+      const cur = q.currency || 'USD';
+      totals.set(cur, (totals.get(cur) || 0) + q.finalPrice);
+    }
+    return {
+      review: scoped.filter((q) => q.status === 'DEAL REVIEW').length,
+      standard: scoped.filter((q) => q.status === 'STANDARD').length,
+      value: totals.size ? [...totals].map(([cur, amt]) => money(amt, cur)).join(' + ') : money(0),
+    };
+  }, [scoped, filtered]);
+
+  const filtersOn = status !== 'ALL' || rep !== 'ALL' || !!from || !!to || !!search.trim();
+  function clearFilters() {
+    setStatus('ALL'); setRep('ALL'); setFrom(''); setTo(''); setSearch('');
+  }
+  const toggleStatus = (value: string) => setStatus((cur) => (cur === value ? 'ALL' : value));
 
   const snap = detail?.quote.snapshot || null;
   const inputs = (snap?.inputs || {}) as Record<string, unknown>;
@@ -242,14 +266,41 @@ export function ExecutiveSummaryClient() {
         <button className="btn small" type="button" onClick={() => void load()}>Refresh</button>
       </div>
 
+      {/* Needs decision and Standard filter the table; click again to show all */}
       <div className="stats">
-        <div className="stat total"><span>Shown</span><b>{quotes ? stats.total : '—'}</b></div>
-        <div className="stat review"><span>Deal review</span><b>{quotes ? stats.review : '—'}</b></div>
-        <div className="stat standard"><span>Standard</span><b>{quotes ? stats.standard : '—'}</b></div>
+        <button
+          type="button"
+          className={`stat review stat-btn${status === 'DEAL REVIEW' ? ' active' : ''}`}
+          aria-pressed={status === 'DEAL REVIEW'}
+          onClick={() => toggleStatus('DEAL REVIEW')}
+        >
+          <span>Needs decision</span><b>{quotes ? stats.review : '—'}</b>
+        </button>
+        <button
+          type="button"
+          className={`stat standard stat-btn${status === 'STANDARD' ? ' active' : ''}`}
+          aria-pressed={status === 'STANDARD'}
+          onClick={() => toggleStatus('STANDARD')}
+        >
+          <span>Standard</span><b>{quotes ? stats.standard : '—'}</b>
+        </button>
+        <div className="stat total">
+          <span>Total value · Year 1</span><b>{quotes ? stats.value : '—'}</b>
+        </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card filter-card">
         <div className="filters">
+          <div className="f-search">
+            <label htmlFor="f-search">Search</label>
+            <input
+              id="f-search"
+              type="search"
+              placeholder="Customer, request ID, rep or deal"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <div>
             <label htmlFor="f-status">Status</label>
             <select id="f-status" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -275,6 +326,9 @@ export function ExecutiveSummaryClient() {
             <label htmlFor="f-to">To</label>
             <input id="f-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
+          {filtersOn ? (
+            <button type="button" className="btn small clear-filters" onClick={clearFilters}>Clear filters</button>
+          ) : null}
         </div>
       </div>
 
@@ -282,9 +336,18 @@ export function ExecutiveSummaryClient() {
 
       {!quotes ? (
         <div className="empty">Loading locked requests…</div>
+      ) : quotes.length === 0 ? (
+        <div className="empty">No locked requests yet. They show here as soon as a rep locks one.</div>
       ) : filtered.length === 0 ? (
-        <div className="empty">No locked requests match these filters.</div>
+        <div className="empty">
+          <p>No requests match.</p>
+          <div style={{ marginTop: 12 }}>
+            <button type="button" className="btn small" onClick={clearFilters}>Clear filters</button>
+          </div>
+        </div>
       ) : (
+        <>
+        <h2 className="table-count">{filtered.length} request{filtered.length === 1 ? '' : 's'}</h2>
         <div className="table-wrap">
           <table className="exec">
             <thead>
@@ -344,6 +407,7 @@ export function ExecutiveSummaryClient() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {selectedId ? (
