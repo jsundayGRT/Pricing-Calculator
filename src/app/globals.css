@@ -57,6 +57,8 @@ p { margin: 0; }
 .topbar { border-bottom: 1px solid var(--border); }
 .topbar-inner { max-width: 1240px; margin: 0 auto; padding: 22px 24px 0; }
 .topbar-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px 24px; flex-wrap: wrap; }
+/* Sign-in page: no menu or tabs, so the title sits centred over the sign-in card. */
+.topbar.signed-out .topbar-row { justify-content: center; }
 .brand { display: flex; align-items: center; gap: 14px; }
 .shield { width: 31px; height: 34px; overflow: hidden; flex: none; }
 .shield img { height: 34px; width: auto; display: block; filter: invert(1); }

@@ -13,7 +13,7 @@ export function AppHeader({
   const admin = isAdmin(user);
 
   return (
-    <header className="topbar">
+    <header className={user ? 'topbar' : 'topbar signed-out'}>
       <div className="topbar-inner">
         <div className="topbar-row">
           <div>
