@@ -60,8 +60,18 @@ p { margin: 0; }
 /* Sign-in page: no menu or tabs, so the title sits centred over the sign-in card. */
 .topbar.signed-out .topbar-row { justify-content: center; }
 .brand { display: flex; align-items: center; gap: 14px; }
-.shield { width: 31px; height: 34px; overflow: hidden; flex: none; }
-.shield img { height: 34px; width: auto; display: block; filter: invert(1); }
+/* Full-colour Guardrail shield (navy + blue) on a light tile, so the navy reads on the dark theme. */
+.shield {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #FFFFFF, #E8ECFF);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .5), 0 6px 18px rgba(99, 102, 241, .35);
+}
+.shield img { height: 32px; width: auto; display: block; }
 .brand-title {
   margin: 0;
   font-size: 26px;
@@ -288,8 +298,8 @@ html, body { overflow-x: clip; }
   box-shadow: 0 0 0 1px rgba(139, 147, 248, .06), 0 40px 80px rgba(0, 0, 0, .45);
 }
 .login-brand { display: grid; justify-items: center; gap: 20px; }
-.login-shield { width: 62px; height: 68px; }
-.login-shield img { height: 68px; }
+.login-shield { width: 92px; height: 92px; border-radius: 24px; }
+.login-shield img { height: 66px; }
 .login-name { font-size: 36px; line-height: 1.15; }
 .login-divider { height: 1px; background: var(--border); margin: 36px 0 32px; }
 .login-title { font-size: 26px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 10px; font-weight: 700; }
