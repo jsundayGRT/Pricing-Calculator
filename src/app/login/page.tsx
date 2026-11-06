@@ -17,8 +17,10 @@ export default async function LoginPage({
       <div className="card login-card">
         <div className="login-brand">
           <span className="shield login-shield">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/shield-white.png" alt="Guardrail" />
+            {/* eslint-disable @next/next/no-img-element */}
+            <img className="logo-dark" src="/shield-white.png" alt="Guardrail" />
+            <img className="logo-light" src="/shield.png" alt="Guardrail" />
+            {/* eslint-enable @next/next/no-img-element */}
           </span>
           <h1 className="brand-title login-name">Guardrail Pricing Calculator</h1>
         </div>

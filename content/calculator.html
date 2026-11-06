@@ -526,7 +526,7 @@ body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 <style>
 /* Inside the app: match its dark "lab" theme (deep navy, indigo accents, soft glass cards).
    Colours only; the print sheet / quote PDF keep their own white styles. */
-html.embedded {
+html.embedded:not(.light) {
   --bg: transparent; --surface: #111827; --surface-2: #0F1626;
   --border: rgba(148, 163, 184, .16);
   --text: #E6EAF2; --muted: #CDD5E3;
@@ -542,14 +542,40 @@ html.embedded {
   color-scheme: dark;
 }
 html.embedded body { background: transparent; }
-html.embedded .card { background: linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 40%), var(--surface); }
-html.embedded .hero { background: radial-gradient(600px 200px at 0% 0%, rgba(99, 102, 241, .35), transparent 70%), linear-gradient(135deg, var(--hero-a), var(--hero-b)); border: 1px solid rgba(139, 147, 248, .25); }
-html.embedded .btn.primary:hover { background: #7C7FF5; border-color: #7C7FF5; }
+html.embedded:not(.light) .card { background: linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 40%), var(--surface); }
+html.embedded:not(.light) .hero { background: radial-gradient(600px 200px at 0% 0%, rgba(99, 102, 241, .35), transparent 70%), linear-gradient(135deg, var(--hero-a), var(--hero-b)); border: 1px solid rgba(139, 147, 248, .25); }
+html.embedded:not(.light) .btn.primary:hover { background: #7C7FF5; border-color: #7C7FF5; }
 html.embedded h2 > .num { background: var(--primary); }
-html.embedded select option { background: #111827; color: var(--text); }
-html.embedded .mbar { background: #0D1322; border-top: 1px solid var(--border); }
+html.embedded:not(.light) select option { background: #111827; color: var(--text); }
+html.embedded:not(.light) .mbar { background: #0D1322; border-top: 1px solid var(--border); }
+/* Light mode (picked in the app header or user menu): the app's light colours */
+html.embedded.light {
+  --bg: transparent; --surface: #FFFFFF; --surface-2: #F1F4F9;
+  --border: rgba(15, 23, 42, .10);
+  --text: #0F172A; --muted: #475569;
+  --accent: #4F46E5; --accent-ink: #FFFFFF; --accent-soft: rgba(79, 70, 229, .10);
+  --primary: #4F46E5; --nav: #FFFFFF; --nav-muted: #475569;
+  --hero-a: #3730A3; --hero-b: #6366F1; --on-hero: #E0E7FF;
+  --ok: #047857; --ok-soft: rgba(16, 185, 129, .10);
+  --bad: #B91C1C; --bad-text: #B91C1C; --bad-soft: rgba(239, 68, 68, .08);
+  --warn: #B45309; --warn-soft: rgba(245, 158, 11, .12);
+  --placeholder: #64748B;
+  --radius: 20px;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 10px 30px rgba(15, 23, 42, .06);
+  color-scheme: light;
+}
+html.embedded.light .hero { background: radial-gradient(600px 200px at 0% 0%, rgba(165, 180, 252, .35), transparent 70%), linear-gradient(135deg, var(--hero-a), var(--hero-b)); border: 0; }
+html.embedded.light .btn.primary:hover { background: #4338CA; border-color: #4338CA; }
+html.embedded.light h2 > .num { background: var(--primary); }
+html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--border); }
 </style>
-<script>if (window.self !== window.top) document.documentElement.classList.add("embedded");</script>
+<script>if (window.self !== window.top) document.documentElement.classList.add("embedded");
+// light or dark, as chosen in the app; follows a switch made while this page is open
+(function () {
+  const set = (v) => document.documentElement.classList.toggle('light', v === 'light');
+  try { set(localStorage.getItem('grt-theme')); } catch (e) { /* no storage: stay dark */ }
+  window.addEventListener('storage', (e) => { if (e.key === 'grt-theme') set(e.newValue); });
+})();</script>
 </head>
 <body class="sales">
 <header class="topbar">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { MoonIcon, SunIcon, useTheme } from './theme';
 
 function initials(name: string, email: string) {
   const parts = name.split(/\s+/).filter(Boolean).slice(0, 2);
@@ -21,6 +22,7 @@ export function UserMenu({
   const root = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const label = name || email;
+  const [theme, toggleTheme] = useTheme();
 
   useEffect(() => {
     if (!open) return;
@@ -61,6 +63,11 @@ export function UserMenu({
             {email ? <span>{email}</span> : null}
             {admin ? <span className="user-role">Admin</span> : null}
           </div>
+          <button type="button" role="menuitem" className="theme-row" onClick={toggleTheme}>
+            {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+            {theme === 'light' ? 'Dark mode' : 'Light mode'}
+            <span>{theme === 'light' ? 'Light' : 'Dark'} now</span>
+          </button>
           <a role="menuitem" href="/api/auth/logout">Sign out</a>
         </div>
       ) : null}

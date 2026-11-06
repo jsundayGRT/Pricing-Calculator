@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { THEME_BOOT } from '@/components/theme';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

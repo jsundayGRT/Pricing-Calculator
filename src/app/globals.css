@@ -468,3 +468,96 @@ table.exec .reason { color: var(--bad); font-size: 12px; margin-top: 4px; }
 .err { border: 1px solid rgba(248, 113, 113, .35); }
 select option { background: #111827; color: var(--text); }
 ::selection { background: rgba(139, 147, 248, .35); }
+
+/* ---- Light mode: <html data-theme="light">, chosen in the header or the user menu ---- */
+:root[data-theme="light"] {
+  --bg: #F4F6FB;
+  --surface: #FFFFFF;
+  --surface-2: #F1F4F9;
+  --border: rgba(15, 23, 42, .10);
+  --border-strong: rgba(15, 23, 42, .18);
+  --text: #0F172A;
+  --muted: #475569;
+  --accent: #4F46E5;
+  --accent-soft: rgba(79, 70, 229, .10);
+  --primary: #4F46E5;
+  --hero-a: #3730A3;
+  --hero-b: #6366F1;
+  --on-hero: #E0E7FF;
+  --ok: #047857;
+  --ok-soft: rgba(16, 185, 129, .10);
+  --ok-line: rgba(4, 120, 87, .35);
+  --bad: #B91C1C;
+  --bad-soft: rgba(239, 68, 68, .08);
+  --warn: #B45309;
+  --warn-soft: rgba(245, 158, 11, .12);
+  --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 10px 30px rgba(15, 23, 42, .06);
+  color-scheme: light;
+}
+[data-theme="light"] body {
+  background:
+    radial-gradient(900px 420px at 18% -8%, rgba(79, 70, 229, .08), transparent 60%),
+    radial-gradient(800px 380px at 85% 0%, rgba(14, 165, 233, .06), transparent 60%),
+    var(--bg);
+}
+[data-theme="light"] .brand-title { background-image: linear-gradient(90deg, #173C5B 0%, #3730A3 55%, #4F46E5 100%); }
+[data-theme="light"] .nav a.active { color: var(--text); }
+[data-theme="light"] .info-chip, [data-theme="light"] .user-menu-btn, [data-theme="light"] .theme-btn { background: var(--surface); }
+[data-theme="light"] .user-menu-btn:hover, [data-theme="light"] .user-menu-btn[aria-expanded="true"] { background: var(--accent-soft); border-color: rgba(79, 70, 229, .4); }
+[data-theme="light"] .user-menu-panel { background: var(--surface); box-shadow: 0 20px 40px rgba(15, 23, 42, .14); }
+[data-theme="light"] .card { background: var(--surface); }
+[data-theme="light"] .stat.total { --tone: #4F46E5; }
+[data-theme="light"] .stat.standard { --tone: #059669; }
+[data-theme="light"] .stat.review { --tone: #D97706; }
+[data-theme="light"] .stat.total, [data-theme="light"] .stat.standard, [data-theme="light"] .stat.review {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 8%, transparent), transparent 75%), var(--surface);
+}
+[data-theme="light"] .stat b { color: var(--text); }
+[data-theme="light"] .btn:not(.primary):not(.approve):not(.decline):not(.danger):hover,
+[data-theme="light"] .seg button:hover { background: rgba(15, 23, 42, .04); }
+[data-theme="light"] .btn.primary:hover { background: #4338CA; border-color: #4338CA; }
+[data-theme="light"] .btn.small.danger { color: #B91C1C; border-color: rgba(185, 28, 28, .4); }
+[data-theme="light"] .pill.declined, [data-theme="light"] .decision.bad, [data-theme="light"] .flag.bad, [data-theme="light"] .err { border-color: rgba(185, 28, 28, .3); }
+[data-theme="light"] .pill.review, [data-theme="light"] .flag.warn { border-color: rgba(180, 83, 9, .3); }
+[data-theme="light"] .login-card {
+  border-color: rgba(79, 70, 229, .18);
+  background: radial-gradient(420px 180px at 50% 0%, rgba(99, 102, 241, .10), transparent 70%), var(--surface);
+  box-shadow: 0 30px 60px rgba(15, 23, 42, .10);
+}
+[data-theme="light"] table.exec tbody tr:hover { background: rgba(79, 70, 229, .05); }
+[data-theme="light"] table.exec tr.standard { background: rgba(16, 185, 129, .09); }
+[data-theme="light"] table.exec tr.standard:hover { background: rgba(16, 185, 129, .15); }
+[data-theme="light"] table.exec tr.review { background: rgba(245, 158, 11, .11); }
+[data-theme="light"] table.exec tr.review:hover { background: rgba(245, 158, 11, .18); }
+[data-theme="light"] table.exec tr.declined { background: rgba(239, 68, 68, .09); }
+[data-theme="light"] table.exec tr.declined:hover { background: rgba(239, 68, 68, .15); }
+[data-theme="light"] table.exec tr.standard td:first-child { box-shadow: inset 4px 0 0 #10B981; }
+[data-theme="light"] table.exec tr.review td:first-child { box-shadow: inset 4px 0 0 #F59E0B; }
+[data-theme="light"] table.exec tr.declined td:first-child { box-shadow: inset 4px 0 0 #EF4444; }
+[data-theme="light"] .drawer-bg { background: rgba(15, 23, 42, .35); }
+[data-theme="light"] .drawer { background: var(--bg); box-shadow: -12px 0 40px rgba(15, 23, 42, .15); }
+[data-theme="light"] select option { background: #FFFFFF; }
+[data-theme="light"] ::selection { background: rgba(79, 70, 229, .2); }
+/* the white shield on dark, the navy one on light */
+.logo-light { display: none !important; }
+[data-theme="light"] .logo-dark { display: none !important; }
+[data-theme="light"] .logo-light { display: block !important; }
+
+/* theme switch: a round button left of the Role chip, and a row in the user menu */
+.theme-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, .02);
+  color: var(--text); cursor: pointer;
+}
+.theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+.theme-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-btn svg, .user-menu-panel .theme-row svg { width: 16px; height: 16px; }
+.user-menu-panel .theme-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: 0; color: var(--text); font: inherit; font-size: 14px; text-align: left;
+  padding: 9px 10px; border-radius: 8px; cursor: pointer;
+}
+.user-menu-panel .theme-row:hover, .user-menu-panel .theme-row:focus-visible { background: var(--accent-soft); outline: none; }
+.user-menu-panel .theme-row span { margin-left: auto; color: var(--muted); font-size: 12px; }

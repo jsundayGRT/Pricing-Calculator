@@ -2,6 +2,7 @@
 import { isAdmin } from '@/lib/admin';
 import type { SessionUser } from '@/lib/session';
 import { UserMenu } from '@/components/UserMenu';
+import { ThemeToggle } from '@/components/theme';
 
 export function AppHeader({
   user,
@@ -19,14 +20,17 @@ export function AppHeader({
           <div>
             <div className="brand">
               <span className="shield">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/shield-white.png" alt="Guardrail" />
+                {/* eslint-disable @next/next/no-img-element */}
+                <img className="logo-dark" src="/shield-white.png" alt="Guardrail" />
+                <img className="logo-light" src="/shield.png" alt="Guardrail" />
+                {/* eslint-enable @next/next/no-img-element */}
               </span>
               <h1 className="brand-title">Guardrail Pricing Calculator</h1>
             </div>
           </div>
           {user ? (
             <div className="chips">
+              <ThemeToggle />
               <span className="info-chip">Role <b>{admin ? 'Admin' : 'Rep'}</b></span>
               <UserMenu name={user.name} email={user.email} admin={admin} />
             </div>
