@@ -137,7 +137,8 @@ test('only correctly signed, recent Slack requests are accepted', () => {
   const sig = `v0=${createHmac('sha256', 'shh').update(`v0:${ts}:${body}`).digest('hex')}`;
   expect(verifySlackSignature(body, ts, sig)).toBe(true);
   expect(verifySlackSignature(body + 'x', ts, sig)).toBe(false);
-  expect(verifySlackSignature(body, ts, sig.replace(/.$/, '0'))).toBe(false);
+  // change the last character (to one it isn't already)
+  expect(verifySlackSignature(body, ts, sig.slice(0, -1) + (sig.endsWith('0') ? '1' : '0'))).toBe(false);
   expect(verifySlackSignature(body, String(Number(ts) - 600), sig)).toBe(false);
   expect(verifySlackSignature(body, ts, null)).toBe(false);
 });

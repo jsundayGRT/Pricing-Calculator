@@ -45,13 +45,14 @@ Each locked version gets its own HubSpot quote. Syncing a version again (a retry
 
 The sync runs after the lock is saved. If HubSpot fails, the lock still stands and the request shows **HubSpot sync failed**. HubSpot rate limits (429) are retried with backoff.
 
-The pricing request form has a required **HubSpot deal** search box limited to the Guardrail Sales Pipeline. If HubSpot isn't configured, the box says so and requests lock without a deal.
+The pricing request form has a required **HubSpot deal** dropdown listing the open deals the signed-in rep owns in the Guardrail Sales Pipeline (matched to their HubSpot user by email). Admins can also search every deal in the pipeline. If the HubSpot key can't read owners, everyone gets the search box instead. If HubSpot isn't configured, the field says so and requests lock without a deal.
 
 ### Create the private app
 
 1. In HubSpot go to **Settings → Integrations → Private Apps → Create a private app**, name it *Guardrail Pricing Calculator*.
 2. On **Scopes**, add:
    - `crm.objects.deals.read`, `crm.objects.deals.write`
+   - `crm.objects.owners.read` (to list each rep's own deals)
    - `crm.objects.line_items.write`
    - `crm.objects.quotes.write`
    - `crm.objects.contacts.read`, `crm.objects.companies.read`

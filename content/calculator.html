@@ -516,6 +516,9 @@ a.btn { text-decoration: none; display: inline-block; }
 body.sales .approve-card { margin-bottom: 14px; max-width: none; }
 
 .deal-field { position: relative; }
+.deal-search { position: relative; }
+.link-btn { background: none; border: 0; padding: 0; margin-top: 4px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--accent); cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
 .deal-list { position: absolute; z-index: 20; left: 0; right: 0; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); max-height: 240px; overflow-y: auto; }
 .deal-list li { padding: 7px 10px; border-radius: 6px; cursor: pointer; }
 .deal-list li small { display: block; color: var(--muted); font-size: 12px; }
@@ -688,7 +691,7 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
           <div class="field"><label class="label" for="cname">Customer or opportunity</label><input id="cname" type="text" maxlength="200" placeholder="Customer name" aria-describedby="lockerr"></div>
         </div>
         <div class="row2">
-          <div class="field deal-field"><label class="label" for="hubspot">HubSpot deal</label><input id="hubspot" type="text" maxlength="100" placeholder="Search deals by name" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="deal-list" aria-describedby="deal-hint lockerr"><ul class="deal-list hidden" id="deal-list" role="listbox" aria-label="HubSpot deals"></ul><div class="hint" id="deal-hint"></div></div>
+          <div class="field deal-field"><label class="label" for="hubspot">HubSpot deal</label><div class="select-wrap" id="deal-pick"><select id="hubspot" aria-describedby="deal-hint lockerr"><option value="">Loading your deals…</option></select></div><div class="deal-search hidden" id="deal-search-wrap"><input id="deal-search" type="text" maxlength="100" placeholder="Search all deals by name" autocomplete="off" role="combobox" aria-label="Search all HubSpot deals" aria-autocomplete="list" aria-expanded="false" aria-controls="deal-list" aria-describedby="deal-hint lockerr"><ul class="deal-list hidden" id="deal-list" role="listbox" aria-label="HubSpot deals"></ul></div><div class="hint" id="deal-hint"></div><button type="button" class="link-btn hidden" id="deal-mode"></button></div>
           <div class="field"><label class="label" for="stage">Stage</label>
             <div class="select-wrap"><select id="stage">
               <option>Confirmed</option><option>Revised</option><option>Final (Pilot)</option><option>Final (Contract)</option>
@@ -2479,42 +2482,95 @@ function downloadQuotePdf(v, opts) {
   // The quote PDF is only for pricing that stands: a Standard request, or a Deal Review once
   // approved. A Deal Review that is waiting (or was declined) has no download.
   function canDownload(s) { return !!s && s.status !== 'DEAL REVIEW' && s.status !== 'NOT APPROVED'; }
-  // ---- HubSpot deal picker: searches the Guardrail Sales Pipeline through the server
+  // ---- HubSpot deal picker: a dropdown of the open deals the rep owns in the Guardrail Sales
+  // Pipeline (matched by their email). Admins can switch to searching every deal in the pipeline.
   let pickedDeal = null, hubspotOff = false, dealHits = [], dealActive = -1, dealTimer = 0, dealSeq = 0;
+  let myDeals = [], dealAdmin = false, searchMode = false;
   const OFF_HINT = 'HubSpot is not connected, so this request locks without a deal.';
+  const MINE_HINT = 'Your open deals in the Guardrail Sales Pipeline.';
+  const dealLabel = (d) => d.name + (d.stage ? ` · ${d.stage}` : '');
+  function fillMyDeals(placeholder) {
+    const sel = $('#hubspot');
+    sel.innerHTML = `<option value="">${esc(placeholder)}</option>` + myDeals.map((d) => `<option value="${esc(d.id)}">${esc(dealLabel(d))}</option>`).join('');
+    // a deal picked earlier (a revision, or a search) that isn't one of the rep's open deals
+    if (pickedDeal && !myDeals.some((d) => d.id === pickedDeal.id)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(pickedDeal.id)}">${esc(pickedDeal.name)}</option>`);
+    sel.value = pickedDeal ? pickedDeal.id : '';
+  }
+  function showDealHint() {
+    $('#deal-hint').textContent = hubspotOff ? OFF_HINT : searchMode ? (pickedDeal ? `Deal ${pickedDeal.id}` : 'Every deal in the Guardrail Sales Pipeline.') : dealHintText;
+  }
+  let dealHintText = '';
+  function setSearchMode(on) {
+    searchMode = on;
+    $('#deal-pick').classList.toggle('hidden', on);
+    $('#deal-search-wrap').classList.toggle('hidden', !on);
+    $('#deal-mode').textContent = on ? 'Show my deals' : 'Search all deals';
+    $('#deal-mode').classList.toggle('hidden', !dealAdmin);
+    if (on) $('#deal-search').value = pickedDeal ? pickedDeal.name : '';
+    else fillMyDeals(myDeals.length ? 'Choose one of your deals' : 'No open deals');
+    showDealHint();
+  }
   function setDeal(d) {
     pickedDeal = d ? { id: String(d.id), name: String(d.name) } : null;
-    $('#hubspot').value = pickedDeal ? pickedDeal.name : '';
-    $('#deal-hint').textContent = pickedDeal ? `Deal ${pickedDeal.id}` : (hubspotOff ? OFF_HINT : '');
+    $('#deal-search').value = pickedDeal ? pickedDeal.name : '';
+    if (!searchMode) fillMyDeals(myDeals.length ? 'Choose one of your deals' : 'No open deals');
+    showDealHint();
     closeDeals();
   }
-  function closeDeals() { $('#deal-list').classList.add('hidden'); $('#hubspot').setAttribute('aria-expanded', 'false'); $('#hubspot').removeAttribute('aria-activedescendant'); dealActive = -1; }
+  $('#hubspot').addEventListener('change', (e) => {
+    const id = e.target.value;
+    const d = myDeals.find((x) => x.id === id) || (pickedDeal && pickedDeal.id === id ? pickedDeal : null);
+    pickedDeal = d ? { id: String(d.id), name: String(d.name) } : null;
+    $('#hubspot').removeAttribute('aria-invalid');
+  });
+  $('#deal-mode').addEventListener('click', () => setSearchMode(!searchMode));
+  async function loadMyDeals() {
+    try {
+      const res = await fetch('/api/hubspot/deals', { credentials: 'same-origin', cache: 'no-store' });
+      if (res.status === 503) { hubspotOff = true; fillMyDeals('HubSpot is not connected'); $('#hubspot').disabled = true; showDealHint(); return; }
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      dealAdmin = !!data.admin; myDeals = data.deals || [];
+      if (data.status === 'owners-unavailable') {
+        // the HubSpot key can't match people to owners: fall back to searching every deal
+        dealHintText = ''; dealAdmin = false; setSearchMode(true); return;
+      }
+      dealHintText = data.status === 'no-owner'
+        ? 'Your email isn\'t a HubSpot user, so there are no deals to choose. Ask a HubSpot admin to add you.'
+        : myDeals.length ? MINE_HINT : 'You have no open deals in the Guardrail Sales Pipeline. Create the deal in HubSpot, then reload this page.';
+      setSearchMode(false);
+    } catch {
+      dealHintText = 'Could not load your HubSpot deals. Reload the page to try again.';
+      fillMyDeals('Could not load deals'); showDealHint();
+    }
+  }
+  function closeDeals() { $('#deal-list').classList.add('hidden'); $('#deal-search').setAttribute('aria-expanded', 'false'); $('#deal-search').removeAttribute('aria-activedescendant'); dealActive = -1; }
   function renderDeals(msg) {
     const ul = $('#deal-list');
     ul.innerHTML = msg ? `<li class="empty" role="option" aria-disabled="true">${esc(msg)}</li>`
-      : dealHits.map((d, k) => `<li role="option" id="deal-opt-${k}" data-k="${k}" aria-selected="${k === dealActive}">${esc(d.name)}${d.amount != null ? `<small>${fmtMoney(d.amount)}</small>` : ''}</li>`).join('');
-    ul.classList.remove('hidden'); $('#hubspot').setAttribute('aria-expanded', 'true');
-    if (dealActive >= 0) $('#hubspot').setAttribute('aria-activedescendant', `deal-opt-${dealActive}`);
+      : dealHits.map((d, k) => `<li role="option" id="deal-opt-${k}" data-k="${k}" aria-selected="${k === dealActive}">${esc(d.name)}${d.amount != null || d.stage ? `<small>${[d.stage, d.amount != null ? fmtMoney(d.amount) : ''].filter(Boolean).map(esc).join(' · ')}</small>` : ''}</li>`).join('');
+    ul.classList.remove('hidden'); $('#deal-search').setAttribute('aria-expanded', 'true');
+    if (dealActive >= 0) $('#deal-search').setAttribute('aria-activedescendant', `deal-opt-${dealActive}`);
   }
   async function findDeals(q) {
     const seq = ++dealSeq;
     try {
       const res = await fetch('/api/hubspot/deals?q=' + encodeURIComponent(q), { credentials: 'same-origin', cache: 'no-store' });
       if (seq !== dealSeq) return;
-      if (res.status === 503) { hubspotOff = true; closeDeals(); $('#deal-hint').textContent = OFF_HINT; return; }
+      if (res.status === 503) { hubspotOff = true; closeDeals(); showDealHint(); return; }
       if (!res.ok) throw new Error();
       dealHits = (await res.json()).deals || []; dealActive = -1;
       renderDeals(dealHits.length ? '' : 'No deals in the Guardrail Sales Pipeline match.');
     } catch { if (seq === dealSeq) { dealHits = []; renderDeals('Could not reach HubSpot. Try again.'); } }
   }
-  $('#hubspot').addEventListener('input', () => {
-    pickedDeal = null; $('#deal-hint').textContent = hubspotOff ? OFF_HINT : '';
+  $('#deal-search').addEventListener('input', () => {
+    pickedDeal = null; showDealHint();
     clearTimeout(dealTimer);
-    const q = $('#hubspot').value.trim();
+    const q = $('#deal-search').value.trim();
     if (q.length < 2) { dealSeq++; closeDeals(); return; }
     dealTimer = setTimeout(() => findDeals(q), 250);
   });
-  $('#hubspot').addEventListener('keydown', (e) => {
+  $('#deal-search').addEventListener('keydown', (e) => {
     if ($('#deal-list').classList.contains('hidden') || !dealHits.length) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -2527,7 +2583,7 @@ function downloadQuotePdf(v, opts) {
     const li = e.target.closest('li[data-k]'); if (!li) return;
     e.preventDefault(); setDeal(dealHits[Number(li.dataset.k)]);
   });
-  $('#hubspot').addEventListener('blur', () => setTimeout(closeDeals, 120));
+  $('#deal-search').addEventListener('blur', () => setTimeout(closeDeals, 120));
   function bytesToBase64(bytes) {
     let bin = ''; for (let k = 0; k < bytes.length; k += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(k, k + 0x8000));
     return btoa(bin);
@@ -2541,8 +2597,9 @@ function downloadQuotePdf(v, opts) {
     $('#cname').removeAttribute('aria-invalid');
     if (!rep) { $('#lockerr').textContent = 'Enter the rep name.'; $('#repname').setAttribute('aria-invalid', 'true'); $('#repname').focus(); return; }
     if (!name) { $('#lockerr').textContent = 'Enter the customer or opportunity name to lock this request.'; $('#cname').setAttribute('aria-invalid', 'true'); $('#cname').focus(); return; }
-    $('#hubspot').removeAttribute('aria-invalid');
-    if (!pickedDeal && !hubspotOff) { $('#lockerr').textContent = 'Choose the HubSpot deal for this request.'; $('#hubspot').setAttribute('aria-invalid', 'true'); $('#hubspot').focus(); return; }
+    const dealInput = searchMode ? $('#deal-search') : $('#hubspot');
+    dealInput.removeAttribute('aria-invalid');
+    if (!pickedDeal && !hubspotOff) { $('#lockerr').textContent = 'Choose the HubSpot deal for this request.'; dealInput.setAttribute('aria-invalid', 'true'); dealInput.focus(); return; }
     if (!lastResult) return;
     if (lockedSinceChange) { $('#lockerr').textContent = 'Already locked. Change something to save a new version.'; return; }
     const fx = lastResult.customer.fx;
@@ -2623,9 +2680,7 @@ function downloadQuotePdf(v, opts) {
   // ---------------------------------------------------------------- start
   buildControls(); sync(); renderVer(); recalc(); renderHistory();
   // Without HubSpot configured the deal can't be required (the server answers 503).
-  fetch('/api/hubspot/deals?q=', { credentials: 'same-origin', cache: 'no-store' })
-    .then((res) => { if (res.status === 503) { hubspotOff = true; if (!pickedDeal) $('#deal-hint').textContent = OFF_HINT; } })
-    .catch(() => { /* offline: the deal stays required */ });
+  loadMyDeals();
   (async function loadDashboardRevise() {
     const id = new URLSearchParams(location.search).get('revise');
     if (!id) return;

@@ -100,8 +100,9 @@ function dryRunResponse(method: string, path: string, n: number): unknown {
   const id = `dry-run-${n}`;
   if (path.startsWith('/account-info')) return { portalId: 0, uiDomain: 'app.hubspot.com', timeZone: 'US/Eastern' };
   if (path.startsWith('/crm/v3/pipelines/deals')) {
-    return { results: [{ id: 'default', label: 'Guardrail Sales Pipeline' }] };
+    return { results: [{ id: process.env.HUBSPOT_PIPELINE_ID || 'default', label: 'Guardrail Sales Pipeline', stages: [{ id: 'appointmentscheduled', label: 'Discovery' }, { id: 'qualifiedtobuy', label: 'Proposal' }] }] };
   }
+  if (path.startsWith('/crm/v3/owners')) return { results: [{ id: '42', email: decodeURIComponent(path.match(/email=([^&]*)/)?.[1] || '') }] };
   if (path === '/crm/v3/objects/deals/search') {
     return {
       results: [
