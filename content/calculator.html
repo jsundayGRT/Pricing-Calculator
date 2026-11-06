@@ -558,7 +558,7 @@ html.embedded.light {
   --hero-a: #3730A3; --hero-b: #6366F1; --on-hero: #E0E7FF;
   --ok: #047857; --ok-soft: rgba(16, 185, 129, .10);
   --bad: #B91C1C; --bad-text: #B91C1C; --bad-soft: rgba(239, 68, 68, .08);
-  --warn: #B45309; --warn-soft: rgba(245, 158, 11, .12);
+  --warn: #A16207; --warn-soft: rgba(251, 191, 36, .22);
   --placeholder: #64748B;
   --radius: 20px;
   --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 10px 30px rgba(15, 23, 42, .06);
@@ -567,6 +567,9 @@ html.embedded.light {
 html.embedded.light .hero { background: radial-gradient(600px 200px at 0% 0%, rgba(165, 180, 252, .35), transparent 70%), linear-gradient(135deg, var(--hero-a), var(--hero-b)); border: 0; }
 html.embedded.light .btn.primary:hover { background: #4338CA; border-color: #4338CA; }
 html.embedded.light h2 > .num { background: var(--primary); }
+/* tags use the same yellow as dark mode, as a fill with dark text so they stay readable */
+html.embedded.light .chip .chip-tag, html.embedded.light .pill.review { background: #FBBF24; color: #422006; }
+html.embedded.light .status-row.review { border-color: rgba(251, 191, 36, .7); }
 html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--border); }
 </style>
 <script>if (window.self !== window.top) document.documentElement.classList.add("embedded");
