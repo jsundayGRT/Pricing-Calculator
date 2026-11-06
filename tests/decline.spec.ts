@@ -33,7 +33,7 @@ test('an executive can decline a deal review, with a reason', async ({ page, con
     expect(await approve.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 122, 90)');
     expect(await decline.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(224, 30, 90)');
 
-    await expect(page.locator('.pill.review', { hasText: 'Deal Review' })).toBeVisible();
+    await expect(page.locator('tr', { hasText: customer }).locator('.pill.review', { hasText: 'Deal Review' })).toBeVisible();
 
     // Decline asks for the reason, and can't be sent without one
     await decline.click();
