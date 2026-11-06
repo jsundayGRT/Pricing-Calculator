@@ -873,12 +873,11 @@ function calculate(rawInputs, cfg) {
   // needs executive approval, so the deal goes to Deal Review even when the margin allows it.
   const repLimit = P.repDiscountLimit == null ? null : P.repDiscountLimit;
   const aboveRepLimit = repLimit != null && C90 > repLimit + EPS;
-  // Deal cap (not in the workbook): without approval reps can add up to the standard limit (7%),
-  // and never past what still meets the regional margin target (C97), rounded down to the
-  // slider's 0.5% step. Reps see the cap but never the margin. Above it, up to the rep limit
-  // (20%), the deal goes to Deal Review.
+  // Deal cap (not in the workbook): without approval reps can add up to the standard limit,
+  // the same 7% on every deal. Above it, up to the rep limit (20%), the deal goes to Deal Review.
+  // The workbook's margin floor still sends a deal to Deal Review on its own.
   const stdLimit = P.standardDiscountLimit == null ? (repLimit == null ? 1 : repLimit) : P.standardDiscountLimit;
-  const discountCap = Math.floor(Math.max(0, Math.min(C97, stdLimit)) * 200 + EPS) / 200;
+  const discountCap = stdLimit;
   const aboveCap = C90 > discountCap + EPS;
   const capText = `Considering this deal structure and volume, additional discount is capped at ${fmtPctPlain(discountCap)}.`;
   // Pilot policy (not in the workbook): only the standard pilot modules are offered without
@@ -900,9 +899,7 @@ function calculate(rawInputs, cfg) {
     else reviewReason = 'Discount at the margin floor';
   }
   if (aboveRepLimit) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(repLimit)} rep limit (needs approval)`;
-  else if (aboveCap) reviewReason = (reviewReason ? reviewReason + '; ' : '') + (discountCap < stdLimit - EPS
-    ? `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(discountCap)} cap that keeps the ${fmtPctPlain(C95)} regional margin target (needs approval)`
-    : `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(stdLimit)} standard limit (needs approval)`);
+  else if (aboveCap) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(stdLimit)} standard limit (needs approval)`;
   if (pilotNeedsApproval.length) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Non-standard pilot: ${pilotNeedsApproval.join(', ')} (needs approval)`;
 
   const C101 = C72 - C93;
@@ -1176,7 +1173,7 @@ const singles = [
   { group: 'Policy', path: 'policy.multiYearDiscount.2-Year', label: 'Multi-year discount, 2-Year', fmt: pct, max: 1 },
   { group: 'Policy', path: 'policy.multiYearDiscount.3+ Year', label: 'Multi-year discount, 3+ Year', fmt: pct, max: 1 },
   { group: 'Policy', path: 'policy.inferencePctOfArr', label: 'Inference charge, % of ARR excl. Inference (Micro-Corporate)', fmt: pct, note: 'Rounded to the nearest $1,000 in the calculation.' },
-  { group: 'Policy', path: 'policy.standardDiscountLimit', label: 'Additional discount reps can give without approval', fmt: pct, max: 1, note: 'Not in the workbook. Requests above this, or above what meets the regional margin target, go to Deal Review.' },
+  { group: 'Policy', path: 'policy.standardDiscountLimit', label: 'Additional discount reps can give without approval', fmt: pct, max: 1, note: 'Not in the workbook. The same on every deal; requests above it go to Deal Review.' },
   { group: 'Policy', path: 'policy.repDiscountLimit', label: 'Most additional discount a rep can request (slider maximum)', fmt: pct, max: 1, note: 'Not in the workbook. Above the limit without approval, requests go to Deal Review. The margin floor still applies.' },
   { group: 'Policy', path: 'policy.quoteValidDays', label: 'Quote valid for (days)', fmt: num, int: true, min: 1, max: 365, note: 'Shown on quotes, since converted prices follow the exchange rate.' },
   { group: 'Multi-year', path: 'policy.termYears.1-Year', label: 'Years in a 1-Year contract', fmt: num, int: true, min: 1, max: 10 },
@@ -2393,7 +2390,7 @@ function downloadQuotePdf(v, opts) {
       ? `<b>Already applied:</b> ${parts.map(([l, v, r]) => `${l} ${fmtPct(r, r * 100 % 1 ? 1 : 0)}`).join(' · ')} <span class="muted">= ${m(sofar)} (${fmtPct(sofar / c.totalMSRP, 1)} of list)</span>`
       : '<b>Already applied:</b> <span class="muted">no other discounts yet</span>';
   }
-  // the cap for this deal (from its margin target, which reps never see); above it is Deal Review
+  // the standard limit (the same on every deal); above it is Deal Review
   function showDiscountCap(c) {
     const el = $('#disc-cap'), cap = c && c.rates ? c.rates.discountCap : null;
     el.classList.toggle('hidden', cap == null);
