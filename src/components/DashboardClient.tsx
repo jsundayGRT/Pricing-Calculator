@@ -147,7 +147,7 @@ export function DashboardClient({ userName }: { userName: string }) {
                   <span className={`pill ${review ? 'review' : declined ? 'declined' : 'standard'}`}>
                     {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                   </span>
-                  <span className="quote-meta">v{q.version}</span>
+                  {q.version > 1 ? <span className="quote-meta">v{q.version}</span> : null}
                 </div>
                 <h3>{q.customerName}</h3>
                 <div className="quote-meta">

@@ -317,7 +317,7 @@ export function ExecutiveSummaryClient() {
                     <td>{q.rep}</td>
                     <td>
                       <b>{q.customerName}</b>
-                      <div className="quote-meta">{q.requestId} · v{q.version}</div>
+                      <div className="quote-meta">{q.requestId}{q.version > 1 ? ` · v${q.version}` : ''}</div>
                     </td>
                     <td>
                       {q.band || '—'}
@@ -355,7 +355,7 @@ export function ExecutiveSummaryClient() {
                 <h1 style={{ fontSize: 22 }}>{detail?.summary.customerName || 'Request detail'}</h1>
                 <p className="sub">
                   {detail
-                    ? `${detail.summary.requestId} · v${detail.summary.version} · ${fmtDate(detail.summary.lockedAt)} · ${detail.summary.rep}`
+                    ? `${detail.summary.requestId}${detail.summary.version > 1 ? ` · v${detail.summary.version}` : ''} · ${fmtDate(detail.summary.lockedAt)} · ${detail.summary.rep}`
                     : 'Loading…'}
                 </p>
               </div>

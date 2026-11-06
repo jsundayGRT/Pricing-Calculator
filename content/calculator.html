@@ -1864,7 +1864,7 @@ const pdfRgb = (hex) => [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) 
 
 // The fields a locked request carries; nothing internal is ever written into the PDF.
 const PDF_REQUEST_FIELDS = ['schema', 'requestId', 'version', 'stage', 'hubspotRecord', 'hubspotDeal', 'approval', 'customerName', 'rep', 'lockedAt', 'assumptionsVersion', 'assumptionsNote', 'assumptionsHash', 'status', 'inputs', 'customer'];
-function quoteFileName(v) { return `Guardrail Quote - ${String(v.customerName).replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60)} - ${v.requestId}-v${v.version}.pdf`; }
+function quoteFileName(v) { return `Guardrail Quote - ${String(v.customerName).replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60)} - ${v.requestId}${v.version > 1 ? `-v${v.version}` : ''}.pdf`; }
 
 function buildQuotePdf(v, { attachRequest = true } = {}) {
   const c = v.customer, i = v.inputs, fx = c.fx || { currency: 'USD', rate: 1 };
@@ -1878,7 +1878,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   const m = moneyFor(fx);
   const logo = typeof PDF_LOGO !== 'undefined' ? PDF_LOGO : null;
   const pages = []; let ops = null, y = 0;
-  const ref = `${v.requestId}-v${v.version}`;
+  const ref = v.version > 1 ? `${v.requestId}-v${v.version}` : v.requestId; // the first version has no suffix
 
   // ---- drawing primitives (y grows downward from the top of the page)
   const textW = (s, bold, size, sp = 0) => pdfWidth(s, bold, size) + sp * Math.max(0, pdfCodes(s).length - 1);
@@ -2551,21 +2551,21 @@ async function readRequestFile(f) {
     deepFreeze(snap);
     reviseOf = { requestId, version, customerName: name, hubspotDeal: pickedDeal };
     lockedSinceChange = true; lastLocked = snap;
-    if (stage === 'Confirmed') $('#stage').value = 'Revised';
     const review = snap.status === 'DEAL REVIEW';
     showBanner(snap, true);
     saveHistory(snap); renderHistory();
     $('#printbtn').classList.toggle('hidden', !canDownload(snap));
+    const label = version > 1 ? `${requestId}, version ${version}` : requestId;
     toast(review
-      ? `Locked ${requestId}, version ${version}. Sent for approval; the quote PDF is available once it's approved.`
-      : `Locked ${requestId}, version ${version}.`, 'ok');
+      ? `Locked ${label}. Sent for approval; the quote PDF is available once it's approved.`
+      : `Locked ${label}.`, 'ok');
   });
   $('#printbtn').addEventListener('click', () => { if (lastLocked) downloadQuotePdf(withApproval(lastLocked)); });
 
   function showBanner(s, justLocked) {
     const b = $('#revise-banner'); b.classList.remove('hidden');
     b.innerHTML = justLocked
-      ? `<span><b>Locked:</b> ${esc(s.requestId)} “${esc(s.customerName)}”, version ${s.version}. Further changes lock as version ${s.version + 1}.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`
+      ? `<span><b>Locked:</b> ${esc(s.requestId)} “${esc(s.customerName)}”${s.version > 1 ? `, version ${s.version}` : ''}. Further changes lock as version ${s.version + 1}.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`
       : `<span><b>Revising</b> ${esc(s.requestId)} “${esc(s.customerName)}” (latest version ${s.version}). Locking saves version ${s.version + 1}; earlier versions stay as they are.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`;
     $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; setDeal(null); $('#stage').value = 'Confirmed'; recalc(); };
   }
@@ -2583,7 +2583,8 @@ async function readRequestFile(f) {
     $('#cname').value = s.customerName;
     // requests locked before the deal picker only have a pasted link: the rep picks the deal again
     setDeal(s.hubspotDeal && s.hubspotDeal.id ? s.hubspotDeal : null);
-    $('#stage').value = s.stage === 'Final (Pilot)' || s.stage === 'Final (Contract)' ? s.stage : 'Revised';
+    // keep the stage the request was locked with (older requests without one start as Revised)
+    $('#stage').value = ['Confirmed', 'Revised', 'Final (Pilot)', 'Final (Contract)'].includes(s.stage) ? s.stage : 'Revised';
     sync(); recalc(); showBanner(s, false);
     // Opening an approved (or Standard) request from the dashboard offers its quote PDF until
     // anything is changed; recalc() hides it again on the next edit.

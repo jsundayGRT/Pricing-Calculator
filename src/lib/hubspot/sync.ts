@@ -68,7 +68,8 @@ export async function syncRequestToHubSpot(
 async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId: string, now: Date) {
   const { request } = client;
   const prev = record.hubspot || ({} as HubSpotSync);
-  const requestLabel = `${record.requestId} v${record.version}`;
+  // the first version is just the request ID; later ones add the version ("GRT-… v2")
+  const requestLabel = record.version > 1 ? `${record.requestId} v${record.version}` : record.requestId;
   const pricing = buildQuotePricing(record.snapshot);
 
   const deal = await request<{ properties?: Record<string, string> }>(
@@ -183,7 +184,7 @@ function expiryDays() {
 
 function pdfFileName(record: QuoteRecord) {
   const name = record.customerName.replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60);
-  return `Guardrail Quote - ${name} - ${record.requestId}-v${record.version}.pdf`;
+  return `Guardrail Quote - ${name} - ${record.requestId}${record.version > 1 ? `-v${record.version}` : ''}.pdf`;
 }
 
 function escapeHtml(s: string) {

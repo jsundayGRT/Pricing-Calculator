@@ -133,10 +133,10 @@ test('a lock creates the quote, line items, deal update and PDF note', async () 
   const quote = hs.calls.find((c) => c.method === 'POST' && c.path === '/crm/v3/objects/quotes')!;
   const qb = quote.body as { properties: Record<string, string>; associations: { to: { id: string }; types: { associationTypeId: number }[] }[] };
   expect(qb.properties).toMatchObject({
-    hs_title: 'Northwind – Platform – Pricing – GRT-TEST1 v1',
+    hs_title: 'Northwind – Platform – Pricing – GRT-TEST1',
     hs_status: 'DRAFT',
     hs_expiration_date: '2026-12-04',
-    hs_comments: 'Pricing calculator PDF (GRT-TEST1 v1, Guardrail team only): https://app-na2.hubspot.com/files/4242/?showDetails=file-1',
+    hs_comments: 'Pricing calculator PDF (GRT-TEST1, Guardrail team only): https://app-na2.hubspot.com/files/4242/?showDetails=file-1',
   });
   const linked = qb.associations.map((a) => `${a.types[0].associationTypeId}:${a.to.id}`);
   expect(linked).toEqual(expect.arrayContaining(['64:555', '286:tpl-9', '69:21', '71:12']));
@@ -144,7 +144,7 @@ test('a lock creates the quote, line items, deal update and PDF note', async () 
 
   const dealPatch = hs.calls.find((c) => c.method === 'PATCH' && c.path === '/crm/v3/objects/deals/555')!;
   expect(dealPatch.body).toEqual({
-    properties: { amount: buildQuotePricing(record.snapshot).total.toFixed(2), pricing_request_id: 'GRT-TEST1 v1' },
+    properties: { amount: buildQuotePricing(record.snapshot).total.toFixed(2), pricing_request_id: 'GRT-TEST1' },
   });
 
   const upload = hs.calls.find((c) => c.path === '/files/v3/files')!;
@@ -154,7 +154,7 @@ test('a lock creates the quote, line items, deal update and PDF note', async () 
   const note = hs.calls.find((c) => c.method === 'POST' && c.path === '/crm/v3/objects/notes')!;
   const nb = note.body as { properties: Record<string, string> };
   expect(nb.properties.hs_attachment_ids).toBe('file-1');
-  expect(nb.properties.hs_note_body).toContain('Pricing request GRT-TEST1 v1 locked by Avery Rep on 2026-11-04.');
+  expect(nb.properties.hs_note_body).toContain('Pricing request GRT-TEST1 locked by Avery Rep on 2026-11-04.');
   expect(nb.properties.hs_note_body).toContain('https://app-na2.hubspot.com/contacts/4242/quote/q-1');
 
   const saved = (await getQuoteById(record.id))!.hubspot!;
@@ -291,4 +291,12 @@ test('a declined Deal Review is never sent to HubSpot', async () => {
   const res = await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: hs.fetchFn, ...quiet }) });
   expect(res.ok).toBe(false);
   expect(hs.calls.length).toBe(0);
+});
+
+test('a revised version keeps its version number in HubSpot', async () => {
+  const record = await lockRequest({ ...snapshotFor(), version: 2 });
+  const hs = fakeHubSpot();
+  await syncRequestToHubSpot(record.id, { client: createHubSpotClient({ token: 'test', fetch: hs.fetchFn, ...quiet }) });
+  const quote = hs.calls.find((c) => c.method === 'POST' && c.path === '/crm/v3/objects/quotes')!;
+  expect((quote.body as { properties: Record<string, string> }).properties.hs_title).toBe('Northwind – Platform – Pricing – GRT-TEST1 v2');
 });
