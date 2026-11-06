@@ -244,6 +244,8 @@ html, body { overflow-x: clip; }
 .decision { padding: 6px 8px; border-radius: 6px; font-size: 13px; }
 .decision.ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-line); }
 .decision.bad { background: var(--bad-soft); color: var(--bad); border: 1px solid rgba(248, 113, 113, .35); }
+/* On a dashboard card the decision box gets room from the lines below it */
+.quote-meta .decision { margin-bottom: 8px; }
 .decision-note { margin-top: 2px; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 .empty {
   padding: 36px 20px;
