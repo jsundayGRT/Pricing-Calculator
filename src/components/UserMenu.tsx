@@ -96,7 +96,7 @@ export function UserMenu({
             <div className="user-menu-who">
               <strong>{label}</strong>
               {email ? <span className="user-menu-email">{email}</span> : null}
-              {admin ? <span className="user-role">Admin</span> : null}
+              <span className="user-role">{admin ? 'Admin' : 'Rep'}</span>
             </div>
           </div>
           <div className="user-menu-sep" role="separator" />

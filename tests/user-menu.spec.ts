@@ -12,8 +12,9 @@ test('account details and sign out live in the user menu', async ({ page, contex
 
   await menu.click();
   await expect(page.getByText('jared.sunday@guardrail.tech')).toBeVisible();
-  // inside the menu (the header's Role chip also says Admin)
+  // the role shows only in the menu, not in the header
   await expect(page.getByRole('menu').getByText('Admin', { exact: true })).toBeVisible();
+  await expect(page.getByText('Role', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('menuitem', { name: 'Sign out' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: 'Sign out' })).toHaveAttribute('href', '/api/auth/logout');
 

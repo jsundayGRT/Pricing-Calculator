@@ -31,7 +31,6 @@ export function AppHeader({
           {user ? (
             <div className="chips">
               <ThemeToggle />
-              <span className="info-chip">Role <b>{admin ? 'Admin' : 'Rep'}</b></span>
               <UserMenu name={user.name} email={user.email} admin={admin} />
             </div>
           ) : null}
