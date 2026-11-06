@@ -60,7 +60,7 @@ p { margin: 0; }
 /* Sign-in page: no menu or tabs, so the title sits centred over the sign-in card. */
 .topbar.signed-out .topbar-row { justify-content: center; }
 .brand { display: flex; align-items: center; gap: 14px; }
-/* Full-colour Guardrail shield (navy + blue) on a light tile, so the navy reads on the dark theme. */
+/* Full-colour Guardrail shield (navy + blue) on a white tile, so the navy reads on the dark theme. */
 .shield {
   flex: none;
   display: grid;
@@ -68,8 +68,8 @@ p { margin: 0; }
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: linear-gradient(180deg, #FFFFFF, #E8ECFF);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .5), 0 6px 18px rgba(99, 102, 241, .35);
+  background: #FFFFFF;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, .3);
 }
 .shield img { height: 32px; width: auto; display: block; }
 .brand-title {
