@@ -440,14 +440,15 @@ export function ExecutiveSummaryClient() {
                   <div className="flag ok">Approved{decisionBy(detail.quote.snapshot, 'approval')}</div>
                 ) : detail.summary.status === 'NOT APPROVED' ? (
                   <div className="flag bad">Not approved{decisionBy(detail.quote.snapshot, 'decision')}</div>
-                ) : null}
+                ) : (
+                  <div className="flag ok">Standard pricing · no approval needed</div>
+                )}
 
                 <div className="card" style={{ marginBottom: 16 }}>
-                  <h2>Decision</h2>
+                  {/* Only a Deal Review waits for Approve or Decline */}
+                  {detail.summary.status === 'DEAL REVIEW' ? <h2>Decision</h2> : null}
                   {(() => {
-                    const status = detail.summary.status;
-                    const decided = status === 'APPROVED' || status === 'NOT APPROVED';
-                    if (decided) return null;
+                    if (detail.summary.status !== 'DEAL REVIEW') return null;
                     if (declining) {
                       return (
                         <form className="log-form" onSubmit={(event) => { event.preventDefault(); void decide(detail.summary.id, 'decline'); }}>
@@ -478,7 +479,7 @@ export function ExecutiveSummaryClient() {
                       </div>
                     );
                   })()}
-                  <h2 style={{ marginTop: detail.summary.status === 'APPROVED' || detail.summary.status === 'NOT APPROVED' ? 0 : 16 }}>History</h2>
+                  <h2 style={{ marginTop: detail.summary.status === 'DEAL REVIEW' ? 16 : 0 }}>History</h2>
                   <RequestLog snapshot={detail.quote.snapshot} />
                 </div>
 

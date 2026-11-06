@@ -46,6 +46,10 @@ export async function POST(request: Request, { params }: Params) {
     if (current && (current.status === 'APPROVED' || current.status === 'NOT APPROVED')) {
       return NextResponse.json({ error: `already ${current.status === 'APPROVED' ? 'approved' : 'declined'}` }, { status: 409 });
     }
+    // Standard pricing needs no approval; only a Deal Review is decided.
+    if (current && current.status !== 'DEAL REVIEW') {
+      return NextResponse.json({ error: 'standard requests need no approval' }, { status: 409 });
+    }
   }
   // Not approving always needs a reason: the rep sees it on their dashboard.
   if (body?.action === 'decline' && !note.trim()) {
