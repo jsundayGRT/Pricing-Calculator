@@ -17,16 +17,13 @@ export default async function LoginPage({
       <AppHeader />
       <div className="login-shell">
         <div className="login-panel">
-          <div className="hero">
-            <small>Guardrail Technologies</small>
-            <div className="amount" style={{ fontSize: 28 }}>Pricing calculator</div>
-          </div>
-          <div className="card">
-            <div className="err" role="alert">{error}</div>
-            <p style={{ color: 'var(--muted)', marginBottom: 20 }}>
-              Sign in with your Guardrail Microsoft account to open your personal dashboard and pricing calculator.
+          <div className="card login-card">
+            <h2 className="login-title">Sign in</h2>
+            <p className="login-copy">
+              Use your Guardrail Microsoft account to open your dashboard and the pricing calculator.
             </p>
-            <a className="btn primary" href="/api/auth/login" style={{ width: '100%' }}>
+            <div className="err" role="alert">{error}</div>
+            <a className="btn primary login-btn" href="/api/auth/login">
               <svg className="ms-icon" viewBox="0 0 21 21" aria-hidden="true">
                 <rect x="1" y="1" width="9" height="9" fill="#f25022" />
                 <rect x="11" y="1" width="9" height="9" fill="#7fba00" />

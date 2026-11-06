@@ -267,14 +267,19 @@ html, body { overflow-x: clip; }
 @media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
 
 .login-shell {
-  min-height: calc(100vh - 220px);
+  min-height: calc(100vh - 90px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px 56px;
+  /* extra bottom padding sits the card a little above the middle */
+  padding: 32px 20px 14vh;
   background: transparent;
 }
 .login-panel { width: min(420px, 100%); }
+.login-card { padding: 28px; border-color: rgba(139, 147, 248, .22); box-shadow: 0 0 0 1px rgba(139, 147, 248, .06), 0 30px 60px rgba(0, 0, 0, .35); }
+.login-title { font-size: 20px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 6px; font-weight: 700; }
+.login-copy { color: var(--muted); margin-bottom: 22px; }
+.login-btn { width: 100%; padding: 11px 14px; }
 .ms-icon { width: 21px; height: 21px; display: block; flex: none; }
 .fine { margin-top: 16px; color: var(--muted); font-size: 12px; text-align: center; }
 .calc-frame {
