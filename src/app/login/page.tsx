@@ -24,9 +24,6 @@ export default async function LoginPage({
         </div>
         <div className="login-divider" />
         <h2 className="login-title">Sign in</h2>
-        <p className="login-copy">
-          Use your Guardrail Microsoft account to open your dashboard and the pricing calculator.
-        </p>
         <div className="err" role="alert">{error}</div>
         <a className="btn primary login-btn" href="/api/auth/login">
           <svg className="ms-icon" viewBox="0 0 21 21" aria-hidden="true">

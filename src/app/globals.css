@@ -339,8 +339,7 @@ html, body { overflow-x: clip; }
 .login-shield img { height: 76px; }
 .login-name { font-size: 36px; line-height: 1.15; }
 .login-divider { height: 1px; background: var(--border); margin: 36px 0 32px; }
-.login-title { font-size: 26px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 10px; font-weight: 700; }
-.login-copy { color: var(--muted); font-size: 17px; margin: 0 auto 30px; max-width: 440px; }
+.login-title { font-size: 26px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 24px; font-weight: 700; }
 .login-card .err { text-align: left; }
 .login-btn { width: 100%; padding: 17px 18px; font-size: 17px; border-radius: 12px; }
 .login-btn .ms-icon { width: 23px; height: 23px; }
@@ -348,7 +347,6 @@ html, body { overflow-x: clip; }
 @media (max-width: 560px) {
   .login-card { padding: 36px 24px 28px; }
   .login-name { font-size: 27px; }
-  .login-copy { font-size: 16px; }
 }
 .ms-icon { width: 21px; height: 21px; display: block; flex: none; }
 .fine { margin-top: 18px; color: var(--muted); font-size: 12px; text-align: center; }
