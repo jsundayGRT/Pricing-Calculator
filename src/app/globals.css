@@ -282,6 +282,8 @@ html, body { overflow-x: clip; }
 .pill.standard, .pill.review { border: 1px solid transparent; }
 .pill.standard { border-color: var(--ok-line); }
 .pill.review { border-color: rgba(251, 191, 36, .35); }
+/* Deal Review tags: a yellow fill with dark text, the same in light and dark mode */
+.pill.review { background: #FBBF24; color: #422006; border-color: #FBBF24; }
 .decision { padding: 6px 8px; border-radius: 6px; font-size: 13px; }
 .decision.ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-line); }
 .decision.bad { background: var(--bad-soft); color: var(--bad); border: 1px solid rgba(248, 113, 113, .35); }
@@ -563,8 +565,6 @@ select option { background: #111827; color: var(--text); }
 [data-theme="light"] .btn.primary:hover { background: #4338CA; border-color: #4338CA; }
 [data-theme="light"] .btn.small.danger { color: #B91C1C; border-color: rgba(185, 28, 28, .4); }
 [data-theme="light"] .pill.declined, [data-theme="light"] .decision.bad, [data-theme="light"] .flag.bad, [data-theme="light"] .err { border-color: rgba(185, 28, 28, .3); }
-/* same yellow as dark mode: tags are a yellow fill with dark text so they stay readable */
-[data-theme="light"] .pill.review { background: #FBBF24; color: #422006; border-color: #FBBF24; }
 [data-theme="light"] .flag.warn { border-color: rgba(251, 191, 36, .7); }
 [data-theme="light"] .login-card {
   border-color: rgba(79, 70, 229, .18);

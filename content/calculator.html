@@ -546,6 +546,8 @@ html.embedded:not(.light) .card { background: linear-gradient(180deg, rgba(255, 
 html.embedded:not(.light) .hero { background: radial-gradient(600px 200px at 0% 0%, rgba(99, 102, 241, .35), transparent 70%), linear-gradient(135deg, var(--hero-a), var(--hero-b)); border: 1px solid rgba(139, 147, 248, .25); }
 html.embedded:not(.light) .btn.primary:hover { background: #7C7FF5; border-color: #7C7FF5; }
 html.embedded h2 > .num { background: var(--primary); }
+/* Needs approval / Deal Review tags: a yellow fill with dark text, the same in light and dark mode */
+html.embedded .chip .chip-tag, html.embedded .pill.review { background: #FBBF24; color: #422006; }
 html.embedded:not(.light) select option { background: #111827; color: var(--text); }
 html.embedded:not(.light) .mbar { background: #0D1322; border-top: 1px solid var(--border); }
 /* Light mode (picked in the app header or user menu): the app's light colours */
@@ -567,8 +569,6 @@ html.embedded.light {
 html.embedded.light .hero { background: radial-gradient(600px 200px at 0% 0%, rgba(165, 180, 252, .35), transparent 70%), linear-gradient(135deg, var(--hero-a), var(--hero-b)); border: 0; }
 html.embedded.light .btn.primary:hover { background: #4338CA; border-color: #4338CA; }
 html.embedded.light h2 > .num { background: var(--primary); }
-/* tags use the same yellow as dark mode, as a fill with dark text so they stay readable */
-html.embedded.light .chip .chip-tag, html.embedded.light .pill.review { background: #FBBF24; color: #422006; }
 html.embedded.light .status-row.review { border-color: rgba(251, 191, 36, .7); }
 html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--border); }
 </style>
