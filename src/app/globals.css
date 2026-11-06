@@ -412,10 +412,16 @@ table.exec th {
 }
 table.exec tbody tr { cursor: pointer; }
 table.exec tbody tr:hover { background: rgba(139, 147, 248, .07); }
-table.exec tr.review { background: var(--warn-soft); }
-table.exec tr.review:hover { background: rgba(245, 158, 11, .16); }
-table.exec tr.declined { background: var(--bad-soft); }
-table.exec tr.declined:hover { background: rgba(239, 68, 68, .16); }
+/* Rows are tinted by status, with a coloured bar on the left: green Standard/Approved, yellow Deal Review, red Not approved */
+table.exec tr.standard { background: rgba(16, 185, 129, .12); }
+table.exec tr.standard:hover { background: rgba(16, 185, 129, .2); }
+table.exec tr.review { background: rgba(245, 158, 11, .13); }
+table.exec tr.review:hover { background: rgba(245, 158, 11, .21); }
+table.exec tr.declined { background: rgba(239, 68, 68, .13); }
+table.exec tr.declined:hover { background: rgba(239, 68, 68, .21); }
+table.exec tr.standard td:first-child { box-shadow: inset 4px 0 0 var(--ok); }
+table.exec tr.review td:first-child { box-shadow: inset 4px 0 0 var(--warn); }
+table.exec tr.declined td:first-child { box-shadow: inset 4px 0 0 var(--bad); }
 table.exec .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 table.exec .reason { color: var(--bad); font-size: 12px; margin-top: 4px; }
 

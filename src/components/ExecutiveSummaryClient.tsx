@@ -373,7 +373,7 @@ export function ExecutiveSummaryClient() {
                 return (
                   <tr
                     key={q.id}
-                    className={review ? 'review' : declined ? 'declined' : undefined}
+                    className={review ? 'review' : declined ? 'declined' : 'standard'}
                     onClick={() => setSelectedId(q.id)}
                   >
                     <td>{fmtDate(q.lockedAt)}</td>
