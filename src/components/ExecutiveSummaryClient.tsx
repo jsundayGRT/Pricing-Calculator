@@ -555,9 +555,8 @@ export function ExecutiveSummaryClient() {
                       <div>
                         <h3>Cost to serve</h3>
                         <table className="kv"><tbody>
-                          <tr><td>Inference, cloud, data, licenses</td><td className="num">{money(num(costs.inferenceCloudDataLicenses))}</td></tr>
+                          <tr><td>Inference &amp; infrastructure</td><td className="num">{money((num(costs.inferenceCloudDataLicenses) ?? 0) + (num(costs.customerSuccess) ?? 0))}</td></tr>
                           <tr><td>Command Center runtime</td><td className="num">{money(num(costs.commandCenterRuntime))}</td></tr>
-                          <tr><td>Customer success</td><td className="num">{money(num(costs.customerSuccess))}</td></tr>
                           <tr><td>Technical support</td><td className="num">{money(num(costs.technicalSupport))}</td></tr>
                           <tr><td>Hosting / security / compliance</td><td className="num">{money(num(costs.hostingSecurityCompliance))}</td></tr>
                           <tr><td>On-prem infrastructure</td><td className="num">{money(num(costs.onPremInfrastructure))}</td></tr>

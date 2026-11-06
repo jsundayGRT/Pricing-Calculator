@@ -638,6 +638,7 @@ html.embedded .mbar { background: #0D1322; border-top: 1px solid var(--border); 
           <label class="label" for="disc-range">Additional discount <b class="disc-val" id="disc-val">0%</b></label>
           <input id="disc-range" class="range" type="range" min="0" max="20" step="0.5" value="0" aria-valuetext="0% additional discount">
           <div class="range-scale"><span>0%</span><span id="disc-max-label">20%</span></div>
+          <div class="hint hidden" id="disc-cap" role="status"></div>
         </div>
       </div>
     </section>
@@ -872,16 +873,22 @@ function calculate(rawInputs, cfg) {
   // needs executive approval, so the deal goes to Deal Review even when the margin allows it.
   const repLimit = P.repDiscountLimit == null ? null : P.repDiscountLimit;
   const aboveRepLimit = repLimit != null && C90 > repLimit + EPS;
+  // Deal cap (not in the workbook): reps can add discount only up to what still meets the
+  // regional margin target (C97), never above the rep limit, rounded down to the slider's 0.5%
+  // step. Reps see the cap but never the margin. Above it the deal goes to Deal Review.
+  const discountCap = Math.floor(Math.max(0, Math.min(C97, repLimit == null ? 1 : repLimit)) * 200 + EPS) / 200;
+  const aboveCap = C90 > discountCap + EPS;
+  const capText = `Considering this deal structure and volume, additional discount is capped at ${fmtPctPlain(discountCap)}.`;
   // Pilot policy (not in the workbook): only the standard pilot modules are offered without
   // approval; piloting any other module sends the deal to Deal Review.
   const stdPilot = Array.isArray(P.pilotStandardModules) ? P.pilotStandardModules : null;
   const pilotNeedsApproval = stdPilot ? cfg.modules.filter((m) => inp.pilot[m.key] && !stdPilot.includes(m.key)).map((m) => m.name) : [];
   const pilotNote = pilotNeedsApproval.length ? ` A pilot of ${pilotNeedsApproval.join(', ')} needs approval.` : '';
-  const dealStatus = C99 === 'DEAL REVIEW' || aboveRepLimit || pilotNeedsApproval.length ? 'DEAL REVIEW' : 'STANDARD';
+  const dealStatus = C99 === 'DEAL REVIEW' || aboveCap || pilotNeedsApproval.length ? 'DEAL REVIEW' : 'STANDARD';
   const dealNote = (C99 === 'DEAL REVIEW'
-    ? D99 + (aboveRepLimit ? ` It is also above the ${Math.round(repLimit * 100)}% limit reps can give without approval.` : '') + pilotNote
-    : aboveRepLimit
-      ? `An additional discount above ${Math.round(repLimit * 100)}% needs approval.${pilotNote} The deal is escalated for Deal Review.`
+    ? D99 + (aboveCap ? ` ${capText}` : '') + pilotNote
+    : aboveCap
+      ? `${capText} A larger discount needs approval.${pilotNote} The deal is escalated for Deal Review.`
       : pilotNeedsApproval.length ? `${pilotNote.trim()} The deal is escalated for Deal Review.` : D99);
   // Internal-only reason code for the executive view.
   let reviewReason = null;
@@ -891,6 +898,7 @@ function calculate(rawInputs, cfg) {
     else reviewReason = 'Discount at the margin floor';
   }
   if (aboveRepLimit) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(repLimit)} rep limit (needs approval)`;
+  else if (aboveCap) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(discountCap)} cap that keeps the ${fmtPctPlain(C95)} regional margin target (needs approval)`;
   if (pilotNeedsApproval.length) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Non-standard pilot: ${pilotNeedsApproval.join(', ')} (needs approval)`;
 
   const C101 = C72 - C93;
@@ -1002,6 +1010,7 @@ function calculate(rawInputs, cfg) {
       // the applied additional rate is shown only when it wasn't held at the limit (it would reveal the cap)
       additional: requestAboveMax ? null : C91,
       repDiscountLimit: repLimit,
+      discountCap,
     },
     quoteValidDays: P.quoteValidDays || 30,
     schedule: {
@@ -1418,8 +1427,8 @@ function customerLinesHtml(c, { forCustomer = false } = {}) {
   if (L.modulesSelected > 1) h += r(`Bundle discount (${L.modulesSelected} modules, ${fmtPct(L.bundleDiscountPct, 0)}${V.customerSuccessFoldedInto === 'modules' ? ' of list price' : ''})`, '−' + m(D.bundle), 'sub discount');
   h += r('AI Command Center', L.commandCenter ? m(V.commandCenter) : '—');
   if (L.premiumSupport) h += r('Premium support and named Customer Success', m(L.premiumSupport));
-  if (V.customerSuccess) h += r('Customer Success', m(V.customerSuccess));
-  h += r('Inference', m(L.inference));
+  // Customer Success is never called out: it is shown together with Inference
+  h += r('Inference & infrastructure', m((V.customerSuccess || 0) + (L.inference || 0)));
   if (L.dedicatedTenant || c.onPremNote) h += r('Dedicated SaaS tenant / Security (scoped)', L.dedicatedTenant ? m(L.dedicatedTenant) : 'To be scoped');
   h += r('Annual recurring price', m(c.annualRecurringPrice), 'total');
   h += r('Implementation (Year 1 only)', c.implementation ? m(c.implementation) : '—');
@@ -1539,9 +1548,8 @@ function internalHtml(n, c) {
         ${r('Inference charge vs. cost', signed(n.inferenceChargeVsCost, fmtMoney))}
       </tbody></table></div>
       <div><h3>Cost to serve (per year)</h3><table class="kv"><tbody>
-        ${r('Inference, cloud, data and licenses', fmtMoney(C.inferenceCloudDataLicenses))}
+        ${r('Inference & infrastructure', fmtMoney((C.inferenceCloudDataLicenses || 0) + (C.customerSuccess || 0)))}
         ${r('Command Center runtime', fmtMoney(C.commandCenterRuntime))}
-        ${r('Customer success', fmtMoney(C.customerSuccess))}
         ${r('Technical support', fmtMoney(C.technicalSupport))}
         ${r('Hosting, security and compliance', fmtMoney(C.hostingSecurityCompliance))}
         ${r('On-prem / dedicated infrastructure', fmtMoney(C.onPremInfrastructure))}
@@ -1762,7 +1770,7 @@ function salesSummaryHtml(c, fxBox, inputs) {
   const ev = employeesView(c, inputs);
   h += `<div class="incl"><span><b>${fmtNum(ev.n)}</b> ${ev.label.toLowerCase()}${ev.note ? ` <span class="muted">· ${esc(ev.note.charAt(0).toLowerCase() + ev.note.slice(1))}</span>` : ''}</span><span><b>${fmtNum(i.developerWorkseats)}</b> developer workseats</span><span><b>${fmtNum(i.workflows)}</b> workflows</span></div>`;
 
-  // price lines: product prices only (Customer Success folded in), modules under AI Traffic Light
+  // price lines: product prices only (Customer Success shown within Inference & infrastructure), modules under AI Traffic Light
   const V = viewOf(c);
   let b = '';
   const sel = V.modules.filter((x) => x.selected);
@@ -1771,8 +1779,7 @@ function salesSummaryHtml(c, fxBox, inputs) {
   if (L.modulesSelected > 1) b += row(`Bundle discount · ${L.modulesSelected} modules, ${fmtPct(L.bundleDiscountPct, 0)}${V.customerSuccessFoldedInto === 'modules' ? ' of list price' : ''}`, neg(D.bundle), 'sub discount');
   b += row('AI Command Center', L.commandCenter ? m(V.commandCenter) : '—');
   if (L.premiumSupport) b += row('Premium support and named CS', m(L.premiumSupport));
-  if (V.customerSuccess) b += row('Customer Success', m(V.customerSuccess));
-  b += row('Inference', m(L.inference));
+  b += row('Inference & infrastructure', m((V.customerSuccess || 0) + (L.inference || 0)));
   if (L.dedicatedTenant || c.onPremNote) b += row('Dedicated tenant / security', L.dedicatedTenant ? m(L.dedicatedTenant) : '<span class="muted">to be scoped</span>');
   b += row('Annual recurring price', m(c.annualRecurringPrice), 'total');
   b += row('Implementation · Year 1 only', c.implementation ? m(c.implementation) : '—');
@@ -2371,6 +2378,7 @@ function downloadQuotePdf(v, opts) {
   // other discounts already in the price, shown above the additional-discount slider
   function showDiscountsSoFar(c) {
     const el = $('#disc-already'); if (!el) return;
+    showDiscountCap(c);
     if (!c) { el.innerHTML = ''; return; }
     const D = c.discounts, R = c.rates || {}, m = moneyFor(c.fx);
     const parts = [['Bundle', D.bundle, R.bundle], ['Early Pay', D.earlyPay, R.earlyPay], ['Multi-year', D.multiYear, R.multiYear]].filter(([, v]) => v > 0);
@@ -2378,6 +2386,17 @@ function downloadQuotePdf(v, opts) {
     el.innerHTML = parts.length
       ? `<b>Already applied:</b> ${parts.map(([l, v, r]) => `${l} ${fmtPct(r, r * 100 % 1 ? 1 : 0)}`).join(' · ')} <span class="muted">= ${m(sofar)} (${fmtPct(sofar / c.totalMSRP, 1)} of list)</span>`
       : '<b>Already applied:</b> <span class="muted">no other discounts yet</span>';
+  }
+  // the cap for this deal (from its margin target, which reps never see); above it is Deal Review
+  function showDiscountCap(c) {
+    const el = $('#disc-cap'), cap = c && c.rates ? c.rates.discountCap : null;
+    el.classList.toggle('hidden', cap == null);
+    if (cap == null) { $('#disc-val').classList.toggle('neg', Number(state.variableDiscountPct || 0) > repLimitPct()); return; }
+    const capPct = Math.round(cap * 1000) / 10, over = Number(state.variableDiscountPct || 0) > capPct + 1e-9;
+    el.className = over ? 'hint warn-text' : 'hint';
+    el.textContent = `Considering this deal structure and volume, additional discount is capped at ${fmtNum(capPct)}%.`
+      + (over ? ' Above the cap, the request goes to Deal Review.' : ' Anything above it goes to Deal Review.');
+    $('#disc-val').classList.toggle('neg', over);
   }
   function recalc() {
     lockedSinceChange = false;
