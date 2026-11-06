@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { AppHeader } from '@/components/AppHeader';
 import { readSession } from '@/lib/session';
 
 export default async function LoginPage({
@@ -12,30 +11,34 @@ export default async function LoginPage({
   const params = await searchParams;
   const error = params.error || '';
 
+  // One card, centred on the page: logo and title, then the sign-in action. No header bar.
   return (
-    <>
-      <AppHeader />
-      <div className="login-shell">
-        <div className="login-panel">
-          <div className="card login-card">
-            <h2 className="login-title">Sign in</h2>
-            <p className="login-copy">
-              Use your Guardrail Microsoft account to open your dashboard and the pricing calculator.
-            </p>
-            <div className="err" role="alert">{error}</div>
-            <a className="btn primary login-btn" href="/api/auth/login">
-              <svg className="ms-icon" viewBox="0 0 21 21" aria-hidden="true">
-                <rect x="1" y="1" width="9" height="9" fill="#f25022" />
-                <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
-                <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
-                <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
-              </svg>
-              Sign in with Microsoft
-            </a>
-            <div className="fine">Secured with Microsoft Entra ID</div>
-          </div>
+    <main className="login-shell">
+      <div className="card login-card">
+        <div className="login-brand">
+          <span className="shield login-shield">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Guardrail" />
+          </span>
+          <h1 className="brand-title login-name">Guardrail Pricing Calculator</h1>
         </div>
+        <div className="login-divider" />
+        <h2 className="login-title">Sign in</h2>
+        <p className="login-copy">
+          Use your Guardrail Microsoft account to open your dashboard and the pricing calculator.
+        </p>
+        <div className="err" role="alert">{error}</div>
+        <a className="btn primary login-btn" href="/api/auth/login">
+          <svg className="ms-icon" viewBox="0 0 21 21" aria-hidden="true">
+            <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+            <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+            <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+            <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+          </svg>
+          Sign in with Microsoft
+        </a>
+        <div className="fine">Secured with Microsoft Entra ID</div>
       </div>
-    </>
+    </main>
   );
 }

@@ -269,21 +269,39 @@ html, body { overflow-x: clip; }
 @media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
 
 .login-shell {
-  min-height: calc(100vh - 90px);
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* extra bottom padding sits the card a little above the middle */
-  padding: 32px 20px 14vh;
-  background: transparent;
+  padding: 40px 20px 8vh;
 }
-.login-panel { width: min(420px, 100%); }
-.login-card { padding: 28px; border-color: rgba(139, 147, 248, .22); box-shadow: 0 0 0 1px rgba(139, 147, 248, .06), 0 30px 60px rgba(0, 0, 0, .35); }
-.login-title { font-size: 20px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 6px; font-weight: 700; }
-.login-copy { color: var(--muted); margin-bottom: 22px; }
-.login-btn { width: 100%; padding: 11px 14px; }
+/* The whole sign-in page is this one card: logo + title, divider, then the sign-in action. */
+.login-card {
+  width: min(520px, 100%);
+  padding: 44px 44px 36px;
+  text-align: center;
+  border-color: rgba(139, 147, 248, .24);
+  background:
+    radial-gradient(420px 180px at 50% 0%, rgba(99, 102, 241, .22), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, .03), transparent 45%),
+    var(--surface);
+  box-shadow: 0 0 0 1px rgba(139, 147, 248, .06), 0 40px 80px rgba(0, 0, 0, .45);
+}
+.login-brand { display: grid; justify-items: center; gap: 16px; }
+.login-shield { width: 50px; height: 55px; }
+.login-shield img { height: 55px; }
+.login-name { font-size: 30px; line-height: 1.15; }
+.login-divider { height: 1px; background: var(--border); margin: 30px 0 26px; }
+.login-title { font-size: 22px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 8px; font-weight: 700; }
+.login-copy { color: var(--muted); font-size: 15px; margin: 0 auto 26px; max-width: 380px; }
+.login-card .err { text-align: left; }
+.login-btn { width: 100%; padding: 14px 16px; font-size: 15px; border-radius: 10px; }
+@media (max-width: 560px) {
+  .login-card { padding: 32px 22px 26px; }
+  .login-name { font-size: 24px; }
+}
 .ms-icon { width: 21px; height: 21px; display: block; flex: none; }
-.fine { margin-top: 16px; color: var(--muted); font-size: 12px; text-align: center; }
+.fine { margin-top: 18px; color: var(--muted); font-size: 12px; text-align: center; }
 .calc-frame {
   width: 100%;
   min-height: calc(100vh - 160px);
