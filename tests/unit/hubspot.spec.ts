@@ -19,7 +19,7 @@ const CONFIG = JSON.parse(cfgJson).config;
 
 type Priced = { inputs: unknown; customer: Record<string, unknown>; internal: Record<string, unknown> };
 
-function priced(id = 'mid-market-suite', fx = { currency: 'USD', rate: 1 }): Priced {
+function priced(id = 'mid-market-suite', fx = { currency: 'USD', rate: 1 }, discount?: number): Priced {
   const s = scenarios.find((x) => x.id === id);
   if (!s) throw new Error(`no scenario ${id}`);
   const yn = (b: boolean) => (b ? 'Y' : 'N');
@@ -28,14 +28,15 @@ function priced(id = 'mid-market-suite', fx = { currency: 'USD', rate: 1 }): Pri
     modules: Object.fromEntries(s.modules.map((k) => [k, 'Y'])),
     pilot: s.pilot ? { shadow: 'Y' } : {}, pilotCredit: 'Y',
     term: s.term, earlyPay: yn(s.earlyPay), commandCenter: yn(s.commandCenter), onPrem: yn(s.onPrem),
-    scopedOnPremPrice: s.scoped, variableDiscountPct: s.discount,
+    scopedOnPremPrice: s.scoped, variableDiscountPct: discount ?? s.discount,
   }, CONFIG);
   return { ...r, customer: { ...r.customer, fx } };
 }
 
 // Values that only exist in the executive view. None may appear in anything sent to HubSpot.
 const SECRET = 987654.321;
-function snapshotFor(result = priced(), dealId = '555'): Record<string, unknown> {
+// 5% stays within the standard limit, so the request is Standard and syncs straight away
+function snapshotFor(result = priced('mid-market-suite', undefined, 5), dealId = '555'): Record<string, unknown> {
   return {
     schema: 'grt-pricing-request/1', requestId: 'GRT-TEST1', version: 1, customerName: 'Northwind', rep: 'Avery Rep',
     stage: 'Confirmed', lockedAt: '2026-11-05T02:30:00.000Z', status: result.customer.dealStatus,
