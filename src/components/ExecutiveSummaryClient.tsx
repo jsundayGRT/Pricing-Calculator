@@ -243,9 +243,9 @@ export function ExecutiveSummaryClient() {
       </div>
 
       <div className="stats">
-        <div className="stat"><span>Shown</span><b>{quotes ? stats.total : '—'}</b></div>
-        <div className="stat"><span>Deal review</span><b>{quotes ? stats.review : '—'}</b></div>
-        <div className="stat"><span>Standard</span><b>{quotes ? stats.standard : '—'}</b></div>
+        <div className="stat total"><span>Shown</span><b>{quotes ? stats.total : '—'}</b></div>
+        <div className="stat review"><span>Deal review</span><b>{quotes ? stats.review : '—'}</b></div>
+        <div className="stat standard"><span>Standard</span><b>{quotes ? stats.standard : '—'}</b></div>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>

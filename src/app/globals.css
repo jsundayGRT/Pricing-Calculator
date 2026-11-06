@@ -266,7 +266,20 @@ html, body { overflow-x: clip; }
   padding: 14px 16px;
 }
 .stat b { display: block; font-size: 22px; letter-spacing: -.02em; margin-top: 4px; }
-.stat span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.stat span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+/* Colour-coded like the status pills: a top line, the label and a faint tint; the number stays white. */
+.stat { --tone: var(--accent); position: relative; overflow: hidden; }
+.stat.total { --tone: #8B93F8; }
+.stat.standard { --tone: #34D399; }
+.stat.review { --tone: #FBBF24; }
+.stat.total, .stat.standard, .stat.review {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 10%, transparent), transparent 75%), var(--surface);
+  border-color: color-mix(in srgb, var(--tone) 28%, transparent);
+}
+.stat.total::before, .stat.standard::before, .stat.review::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--tone);
+}
+.stat.total span, .stat.standard span, .stat.review span { color: var(--tone); }
 @media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
 
 .login-shell {
