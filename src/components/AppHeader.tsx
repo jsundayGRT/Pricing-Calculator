@@ -14,12 +14,29 @@ export function AppHeader({
 
   return (
     <header className="topbar">
-      <div className="brand">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Guardrail Technologies" width={157} height={46} />
-      </div>
-      {user ? (
-        <>
+      <div className="topbar-inner">
+        <div className="topbar-row">
+          <div>
+            <div className="eyebrow">Guardrail Technologies · Pricing</div>
+            <div className="brand">
+              <span className="shield">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Guardrail" />
+              </span>
+              <h1 className="brand-title">Guardrail Pricing Calculator</h1>
+            </div>
+            <p className="tagline">
+              Price a request, lock it, and send Deal Reviews for approval. Approved quotes go to HubSpot.
+            </p>
+          </div>
+          {user ? (
+            <div className="chips">
+              <span className="info-chip">Role <b>{admin ? 'Admin' : 'Rep'}</b></span>
+              <UserMenu name={user.name} email={user.email} admin={admin} />
+            </div>
+          ) : null}
+        </div>
+        {user ? (
           <nav className="nav">
             <a href="/" className={active === 'dashboard' ? 'active' : undefined}>Dashboard</a>
             <a href="/calculator" className={active === 'calculator' ? 'active' : undefined}>Calculator</a>
@@ -29,9 +46,10 @@ export function AppHeader({
               </a>
             ) : null}
           </nav>
-          <UserMenu name={user.name} email={user.email} admin={admin} />
-        </>
-      ) : null}
+        ) : (
+          <div style={{ height: 22 }} />
+        )}
+      </div>
     </header>
   );
 }
