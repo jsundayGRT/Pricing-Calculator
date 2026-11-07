@@ -2551,7 +2551,7 @@ function downloadQuotePdf(v, opts) {
     sel.value = pickedDeal ? pickedDeal.id : '';
   }
   function showDealHint() {
-    $('#deal-hint').textContent = hubspotOff ? OFF_HINT : searchMode ? (pickedDeal ? `Deal ${pickedDeal.id}` : 'Every deal in the Guardrail Sales Pipeline.') : dealHintText;
+    $('#deal-hint').textContent = hubspotOff ? OFF_HINT : searchMode ? (pickedDeal ? `Deal ${pickedDeal.id}` : '') : dealHintText;
   }
   let dealHintText = '';
   function setSearchMode(on) {
