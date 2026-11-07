@@ -337,7 +337,7 @@ export function DashboardClient({ userName }: { userName: string }) {
                 <div className="quote-actions">
                   {canDownload(q) ? (
                     <button
-                      className="btn small primary"
+                      className="btn small"
                       type="button"
                       disabled={downloading === q.id}
                       onClick={() => downloadPdf(q.id)}
