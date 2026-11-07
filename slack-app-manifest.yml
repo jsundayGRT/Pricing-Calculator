@@ -5,6 +5,11 @@ display_information:
   description: Approve or decline pricing Deal Reviews from the Guardrail pricing calculator.
   background_color: "#1f3a5f"
 features:
+  # the rep's decision message arrives in the app's Messages tab
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: true
   bot_user:
     display_name: Guardrail Pricing
     always_online: true

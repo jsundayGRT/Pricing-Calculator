@@ -11,6 +11,8 @@ const LABELS: Record<ActivityType, string> = {
   declined: 'Not approved',
   note: 'Note',
   deleted: 'Removed',
+  'slack-sent': 'Rep messaged in Slack',
+  'slack-failed': 'Slack message not sent',
   emailed: 'Rep emailed',
   'email-failed': 'Email not sent',
 };
@@ -18,6 +20,8 @@ const LABELS: Record<ActivityType, string> = {
 const TONE: Partial<Record<ActivityType, string>> = {
   approved: 'ok',
   emailed: 'ok',
+  'slack-sent': 'ok',
+  'slack-failed': 'bad',
   declined: 'bad',
   deleted: 'bad',
   'email-failed': 'bad',

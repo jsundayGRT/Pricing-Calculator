@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import { listActivity } from '../../src/lib/activity';
 import { approveQuote, decisionOf, declineQuote, getQuoteById, upsertQuote } from '../../src/lib/quotes';
 import {
   APPROVE_ACTION,
@@ -11,6 +12,7 @@ import {
   dealReviewBlocks,
   declineModal,
   declineReason,
+  notifyRepInSlack,
   openDeclineModal,
   postDealReview,
   refreshDealReviewMessage,
@@ -38,6 +40,11 @@ test.beforeEach(() => {
     const body = raw.startsWith('{') ? JSON.parse(raw) : raw;
     calls.push({ method, body });
     if (method === 'chat.postMessage') return Response.json({ ok: true, channel: 'C0DEALS', ts: '1730000000.000100' });
+    if (method === 'users.lookupByEmail') {
+      return String(body).includes('avery%40guardrail.tech')
+        ? Response.json({ ok: true, user: { id: 'UAVERY' } })
+        : Response.json({ ok: false, error: 'users_not_found' });
+    }
     if (method === 'users.info') return Response.json({ ok: true, user: { profile: { real_name: 'Susan Landaluce', email: 'susan.landaluce@guardrail.tech' } } });
     return Response.json({ ok: true });
   }) as typeof fetch);
@@ -173,4 +180,49 @@ test('the dashboard sees who decided and the reason', async () => {
   const approved = (await approveQuote(record.id, { name: 'Dena Lumbang', email: 'd@guardrail.tech' }, 'Approved in Slack'))!;
   expect(decisionOf(approved)).toMatchObject({ outcome: 'approved', by: 'Dena Lumbang', note: 'Approved in Slack' });
   expect(decisionOf({ ...approved, status: 'DEAL REVIEW' })).toBeNull();
+});
+
+test('the rep gets a Slack message when their Deal Review is approved', async () => {
+  const record = await lock('DEAL REVIEW');
+  await approveQuote(record.id, { name: 'Susan Landaluce', email: 'susan@guardrail.tech' });
+  await notifyRepInSlack(record.id, 'https://calc.example');
+
+  expect(calls.find((c) => c.method === 'users.lookupByEmail')!.body).toBe('email=avery%40guardrail.tech');
+  const dm = calls.find((c) => c.method === 'chat.postMessage')!.body as { channel: string; text: string; blocks: unknown[] };
+  expect(dm.channel).toBe('UAVERY');
+  expect(dm.text).toBe('Approved: your Deal Review for Northwind');
+  const text = JSON.stringify(dm.blocks);
+  expect(text).toContain('Susan Landaluce');
+  expect(text).toContain('$100,594');
+  expect(text).toContain('Quote valid until');
+  expect(text).toContain('https://calc.example/');
+  expect((await listActivity())[0]).toMatchObject({ type: 'slack-sent', detail: 'Messaged avery@guardrail.tech in Slack' });
+});
+
+test('a declined rep sees the reason, and nothing goes out before a decision', async () => {
+  const record = await lock('DEAL REVIEW');
+  await notifyRepInSlack(record.id, 'https://calc.example');
+  expect(calls).toHaveLength(0);
+  await declineQuote(record.id, { name: 'Dena Lumbang', email: 'dena@guardrail.tech' }, 'Smaller discount, please');
+  await notifyRepInSlack(record.id, 'https://calc.example');
+  const dm = calls.find((c) => c.method === 'chat.postMessage')!.body as { text: string; blocks: unknown[] };
+  expect(dm.text).toContain('Not approved');
+  expect(JSON.stringify(dm.blocks)).toContain('Smaller discount, please');
+  expect(JSON.stringify(dm.blocks)).not.toContain('Quote valid until');
+});
+
+test('a rep without a Slack account is noted in the change history', async () => {
+  const record = await upsertQuote({
+    ownerId: 'u2',
+    ownerEmail: 'nobody@guardrail.tech',
+    ownerName: 'No Slack',
+    snapshot: { requestId: 'GRT-SLACK9', version: 1, customerName: 'Contoso', status: 'DEAL REVIEW' },
+  });
+  await approveQuote(record.id, { name: 'Susan', email: 's@guardrail.tech' });
+  await notifyRepInSlack(record.id, 'https://calc.example');
+  expect(calls.filter((c) => c.method === 'chat.postMessage')).toHaveLength(0);
+  expect((await listActivity())[0]).toMatchObject({
+    type: 'slack-failed',
+    detail: 'Could not message the rep in Slack: no Slack user has the email nobody@guardrail.tech',
+  });
 });

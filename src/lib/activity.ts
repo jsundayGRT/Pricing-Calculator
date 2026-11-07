@@ -1,9 +1,11 @@
 // The change history: who locked, approved, declined, noted or removed a request, and whether
-// the rep was emailed about a decision. Newest first, for the Executive Dashboard.
+// the rep was told about a decision (in Slack, or by email). Newest first, for the Executive Dashboard.
 
 import { store } from './store';
 
-export type ActivityType = 'locked' | 'approved' | 'declined' | 'note' | 'deleted' | 'emailed' | 'email-failed';
+export type ActivityType =
+  | 'locked' | 'approved' | 'declined' | 'note' | 'deleted'
+  | 'slack-sent' | 'slack-failed' | 'emailed' | 'email-failed';
 
 export type ActivityEvent = {
   at: string;

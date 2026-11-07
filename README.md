@@ -113,9 +113,13 @@ The message shows the customer, request ID, rep, Year 1 price, requested and app
 
 Then redeploy.
 
-## Email the rep a decision
+### The rep hears about the decision
 
-When a Deal Review is approved or declined (on the Executive Dashboard or in Slack), the rep gets an email with the decision, who made it, the reason for a decline and, for an approval, the date the quote is valid until. It's sent through Microsoft Graph with the same Entra app as sign-in. Whether it was sent shows in the Activity view. If email isn't set up, nothing changes.
+Once a Deal Review is approved or declined (in Slack or on the Executive Dashboard), the app sends the rep a direct message in Slack: the decision, who made it, the reason for a decline, the date an approved quote is valid until, and a link to their dashboard. The rep is found by their sign-in email, so their Slack account needs the same address. Whether it was sent shows in the Executive Dashboard's Activity view. It uses the scopes above; the message arrives in the app's **Messages** tab (App Home → **Show Tabs** → **Messages Tab** on, with "Allow users to send messages" off).
+
+## Email the rep a decision (not turned on)
+
+As well as the Slack message, the rep can get an email with the decision, who made it, the reason for a decline and, for an approval, the date the quote is valid until. It's sent through Microsoft Graph with the same Entra app as sign-in. Whether it was sent shows in the Activity view. If email isn't set up, nothing changes.
 
 ### Set it up
 

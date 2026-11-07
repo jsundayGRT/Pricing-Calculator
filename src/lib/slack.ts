@@ -7,6 +7,8 @@
 // invited to the channel.
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { recordActivity } from './activity';
+import { quoteExpiry } from './expiry';
 import { decisionOf, getQuoteById, setQuoteSlack, type QuoteRecord } from './quotes';
 import { summarizeForExec, type ExecQuoteSummary } from './quote-view';
 
@@ -228,5 +230,65 @@ export async function slackUser(id: string, fallbackName: string) {
     return { name: p.real_name || res.user?.real_name || p.display_name || fallbackName, email: p.email || `slack:${id}` };
   } catch {
     return { name: fallbackName, email: `slack:${id}` };
+  }
+}
+
+// The message the rep gets from the app when their Deal Review is decided.
+export function repDecisionBlocks(quote: QuoteRecord, appUrl: string) {
+  const decision = decisionOf(quote);
+  if (!decision) return null;
+  const approved = decision.outcome === 'approved';
+  const expires = approved ? quoteExpiry(quote) : null;
+  const fields = [
+    `*Customer*\n${esc(quote.customerName)}`,
+    `*Request*\n${esc(quote.requestId)} v${quote.version}`,
+    `*Final price · Year 1*\n${money(quote.finalPrice ?? null, quote.currency ?? null)}`,
+    `*${approved ? 'Approved' : 'Declined'} by*\n${esc(decision.by)}`,
+    ...(quote.hubspot?.dealName ? [`*HubSpot deal*\n${esc(quote.hubspot.dealName)}`] : []),
+    ...(expires
+      ? [`*Quote valid until*\n${new Date(expires).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}`]
+      : []),
+  ];
+  const headline = approved
+    ? `:white_check_mark: *Approved:* your Deal Review for ${esc(quote.customerName)}. The quote PDF is ready on your dashboard.`
+    : `:x: *Not approved:* your Deal Review for ${esc(quote.customerName)}. Revise it on your dashboard and lock a new version.`;
+  return [
+    { type: 'section', text: { type: 'mrkdwn', text: headline } },
+    { type: 'section', fields: fields.map((text) => ({ type: 'mrkdwn', text })) },
+    ...(!approved && decision.note
+      ? [{ type: 'section', text: { type: 'mrkdwn', text: `*Reason*\n> ${esc(decision.note)}` } }]
+      : []),
+    {
+      type: 'actions',
+      elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open your dashboard' }, url: `${appUrl.replace(/\/$/, '')}/` }],
+    },
+  ];
+}
+
+// Messages the rep (found by their sign-in email) once a decision is made, from Slack or the
+// Executive Dashboard. Never throws: whether it was sent goes in the change history.
+export async function notifyRepInSlack(recordId: string, appUrl: string) {
+  if (!process.env.SLACK_BOT_TOKEN) return;
+  const quote = await getQuoteById(recordId);
+  if (!quote?.ownerEmail) return;
+  const blocks = repDecisionBlocks(quote, appUrl);
+  if (!blocks) return;
+  const system = { name: 'Pricing Calculator' };
+  try {
+    const found = await slackApi<{ user?: { id?: string } }>('users.lookupByEmail', { email: quote.ownerEmail }, { form: true });
+    if (!found.user?.id) throw new Error('users_not_found');
+    const approved = quote.status === 'APPROVED';
+    await slackApi('chat.postMessage', {
+      channel: found.user.id,
+      text: `${approved ? 'Approved' : 'Not approved'}: your Deal Review for ${quote.customerName}`,
+      blocks,
+      unfurl_links: false,
+    });
+    await recordActivity('slack-sent', quote, system, `Messaged ${quote.ownerEmail} in Slack`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const reason = message.includes('users_not_found') ? `no Slack user has the email ${quote.ownerEmail}` : message;
+    console.error('[slack] could not message the rep:', reason);
+    await recordActivity('slack-failed', quote, system, `Could not message the rep in Slack: ${reason}`);
   }
 }
