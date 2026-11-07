@@ -14,7 +14,7 @@ React (Next.js) app with **Microsoft Entra ID** sign-in and a **per-user dashboa
 | `/api/admin/quotes` | Admin list/detail of every locked request |
 | `/api/admin/activity` | Admin change history: every lock, decision, note, removal and rep email |
 
-On the Dashboard each quote shows how long its prices stay valid (**Quote valid for (days)** in the calculator settings, 30 by default): a Standard quote from when it was locked, an approved Deal Review from when it was approved. **Duplicate** starts a new request with the same setup, priced with the current price list.
+When locking, the rep picks **Quote valid until**: up to **Quote valid for (days)** from today (30 by default, in the calculator settings) needs no approval; a later date sends the request to Deal Review. The date goes on the quote PDF and the HubSpot quote, and each quote on the Dashboard shows it (amber in the last week, red once expired). An approved Deal Review keeps the date that was picked. **Duplicate** starts a new request with the same setup, priced with the current price list.
 
 The Executive Dashboard has three views: **Requests** (the table), **Reports** (Deal Review rate, average discount and margin, time to a decision and Year 1 value in US dollars, by rep or by month, for whatever the filters select) and **Activity** (the change history).
 

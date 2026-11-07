@@ -113,11 +113,15 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
 
   // 3. The quote. Quotes can't hold attachments, so the PDF is linked from its comments.
   // Dates are the HubSpot account's calendar dates (its time zone), not UTC.
-  const expiry = new Date(now.getTime() + expiryDays() * 86_400_000);
+  // The date the rep picked in the calculator; requests locked before that count days from now.
+  const picked = (record.snapshot.customer as { validUntil?: unknown } | undefined)?.validUntil;
+  const expiry = typeof picked === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(picked)
+    ? picked
+    : localDate(new Date(now.getTime() + expiryDays() * 86_400_000), account.timeZone);
   const quoteProps: Record<string, string> = {
     hs_title: `${dealName} – Pricing – ${requestLabel}`,
     hs_status: 'DRAFT',
-    hs_expiration_date: localDate(expiry, account.timeZone),
+    hs_expiration_date: expiry,
     hs_currency: pricing.currency,
     hs_language: 'en',
     hs_comments: `Pricing calculator PDF (${requestLabel}, Guardrail team only): ${pdfUrl}`,

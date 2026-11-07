@@ -403,6 +403,7 @@ body.sales .hero .conv { margin-top: 10px; font-size: 11.5px; color: var(--on-he
 .fx-rate { font-size: 13px; margin-top: 4px; }
 
 .valid-note { font-size: 12px; color: var(--muted); margin: 10px 2px 0; }
+.hint .warn-text { color: var(--warn); font-weight: 600; }
 .sheet .facts .sub { display: block; }
 
 .range { width: 100%; accent-color: var(--accent); margin: 6px 0 0; }
@@ -697,6 +698,7 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
               <option>Confirmed</option><option>Revised</option><option>Final (Pilot)</option><option>Final (Contract)</option>
             </select></div></div>
         </div>
+        <div class="field valid-field"><label class="label" for="validuntil">Quote valid until</label><input id="validuntil" type="date" aria-describedby="valid-hint lockerr"><div class="hint" id="valid-hint"></div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary grow" id="lockbtn" type="button">Lock in pricing request</button>
           <button class="btn icon-btn hidden" id="printbtn" type="button" title="Download quote PDF" aria-label="Download quote PDF"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -795,6 +797,10 @@ function normalizeInputs(raw, cfg) {
     pilotCredit: r.pilotCredit === undefined ? true : yn(r.pilotCredit), // C126 defaults to Y
     // Shown on the quote only; never changes the price (pricing follows the employee band).
     employeeCount: Number.isInteger(Number(r.employeeCount)) && Number(r.employeeCount) > 0 ? Number(r.employeeCount) : null,
+    // The date the rep wants the quote to be valid until, and how many days from today that is.
+    // Not in the workbook; never changes the price. Without one the standard validity applies.
+    validUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(r.validUntil || '')) ? String(r.validUntil) : null,
+    validDays: Number.isInteger(Number(r.validDays)) && Number(r.validDays) > 0 ? Number(r.validDays) : null,
   };
 }
 
@@ -917,12 +923,23 @@ function calculate(rawInputs, cfg) {
   const stdPilot = Array.isArray(P.pilotStandardModules) ? P.pilotStandardModules : null;
   const pilotNeedsApproval = stdPilot ? cfg.modules.filter((m) => inp.pilot[m.key] && !stdPilot.includes(m.key)).map((m) => m.name) : [];
   const pilotNote = pilotNeedsApproval.length ? ` A pilot of ${pilotNeedsApproval.join(', ')} needs approval.` : '';
-  const dealStatus = C99 === 'DEAL REVIEW' || aboveCap || pilotNeedsApproval.length ? 'DEAL REVIEW' : 'STANDARD';
-  const dealNote = (C99 === 'DEAL REVIEW'
+  // Quote validity (not in the workbook): reps can keep a quote valid up to the standard number
+  // of days; a later date needs approval, since prices follow exchange rates and the price list.
+  const stdValidDays = P.quoteValidDays || 30;
+  const validDays = inp.validDays || stdValidDays;
+  const longValidity = validDays > stdValidDays;
+  const validNote = longValidity ? ` Keeping the quote valid for ${validDays} days, longer than the standard ${stdValidDays}, needs approval.` : '';
+  const dealStatus = C99 === 'DEAL REVIEW' || aboveCap || pilotNeedsApproval.length || longValidity ? 'DEAL REVIEW' : 'STANDARD';
+  let dealNote = (C99 === 'DEAL REVIEW'
     ? D99 + (aboveCap ? ` ${capText}` : '') + pilotNote
     : aboveCap
       ? `${capText} A larger discount needs approval.${pilotNote} The deal is escalated for Deal Review.`
       : pilotNeedsApproval.length ? `${pilotNote.trim()} The deal is escalated for Deal Review.` : D99);
+  if (longValidity) {
+    dealNote = C99 === 'DEAL REVIEW' || aboveCap || pilotNeedsApproval.length
+      ? dealNote + validNote
+      : `${validNote.trim()} The deal is escalated for Deal Review.`;
+  }
   // Internal-only reason code for the executive view.
   let reviewReason = null;
   if (C99 === 'DEAL REVIEW') {
@@ -933,6 +950,7 @@ function calculate(rawInputs, cfg) {
   if (aboveRepLimit) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(repLimit)} rep limit (needs approval)`;
   else if (aboveCap) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Additional discount ${fmtPctPlain(C90)} requested, above the ${fmtPctPlain(stdLimit)} standard limit (needs approval)`;
   if (pilotNeedsApproval.length) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Non-standard pilot: ${pilotNeedsApproval.join(', ')} (needs approval)`;
+  if (longValidity) reviewReason = (reviewReason ? reviewReason + '; ' : '') + `Quote valid for ${validDays} days${inp.validUntil ? ` (until ${inp.validUntil})` : ''}, above the ${stdValidDays}-day standard (needs approval)`;
 
   const C101 = C72 - C93;
   const C102 = C72 === 0 ? 0 : 1 - C93 / C72;
@@ -1045,7 +1063,9 @@ function calculate(rawInputs, cfg) {
       repDiscountLimit: repLimit,
       discountCap,
     },
-    quoteValidDays: P.quoteValidDays || 30,
+    quoteValidDays: validDays,
+    standardValidDays: stdValidDays,
+    validUntil: inp.validUntil,
     schedule: {
       years: termYears,
       annualUplift: uplift,
@@ -1207,7 +1227,7 @@ const singles = [
   { group: 'Policy', path: 'policy.inferencePctOfArr', label: 'Inference charge, % of ARR excl. Inference (Micro-Corporate)', fmt: pct, note: 'Rounded to the nearest $1,000 in the calculation.' },
   { group: 'Policy', path: 'policy.standardDiscountLimit', label: 'Additional discount reps can give without approval', fmt: pct, max: 1, note: 'Not in the workbook. The same on every deal; requests above it go to Deal Review.' },
   { group: 'Policy', path: 'policy.repDiscountLimit', label: 'Most additional discount a rep can request (slider maximum)', fmt: pct, max: 1, note: 'Not in the workbook. Above the limit without approval, requests go to Deal Review. The margin floor still applies.' },
-  { group: 'Policy', path: 'policy.quoteValidDays', label: 'Quote valid for (days)', fmt: num, int: true, min: 1, max: 365, note: 'Shown on quotes, since converted prices follow the exchange rate.' },
+  { group: 'Policy', path: 'policy.quoteValidDays', label: 'Quote valid for (days)', fmt: num, int: true, min: 1, max: 365, note: 'The default valid-until date on a new request. Reps can pick a date up to this many days out; a later date goes to Deal Review.' },
   { group: 'Multi-year', path: 'policy.termYears.1-Year', label: 'Years in a 1-Year contract', fmt: num, int: true, min: 1, max: 10 },
   { group: 'Multi-year', path: 'policy.termYears.2-Year', label: 'Years in a 2-Year contract', fmt: num, int: true, min: 1, max: 10 },
   { group: 'Multi-year', path: 'policy.termYears.3+ Year', label: 'Years shown for a 3+ Year contract', fmt: num, int: true, min: 1, max: 10, note: 'The schedule and total contract value use this many years.' },
@@ -1446,6 +1466,9 @@ function pilotRuleText(c) {
 }
 function validUntil(c, lockedAt, approvedOn) {
   const days = c.quoteValidDays || 30;
+  // the date the rep picked when locking (requests from before the date picker count days instead)
+  const picked = /^(\d{4})-(\d{2})-(\d{2})$/.exec(c.validUntil || '');
+  if (picked) return { days, date: new Date(+picked[1], +picked[2] - 1, +picked[3]).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) };
   // an approved Deal Review counts from the approval day (YYYY-MM-DD), since that's when the customer can have it
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(approvedOn || '');
   const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(lockedAt || Date.now()); d.setDate(d.getDate() + days);
@@ -1848,7 +1871,7 @@ function salesSummaryHtml(c, fxBox, inputs) {
     h += group('pilot', 'Pilot', m(c.pilot.total), b);
   }
   const vu = validUntil(c);
-  h += `<p class="valid-note">Prices are valid for ${vu.days} days from when the request is locked (from approval, for a Deal Review)${fx.currency !== 'USD' ? ', because converted prices follow the exchange rate' : ''}.</p>`;
+  h += `<p class="valid-note">Prices are valid until ${esc(vu.date)}${fx.currency !== 'USD' ? '. Converted prices follow the exchange rate' : ''}.</p>`;
   return h;
 }
 document.addEventListener('toggle', (e) => {
@@ -2200,6 +2223,7 @@ function downloadQuotePdf(v, opts) {
     band: null, location: null, seats: '', term: cfg.terms[0], modules: {}, pilot: {}, commandCenter: true,
     onPrem: false, scopedOnPremPrice: '', earlyPay: false, variableDiscountPct: 0, pilotCredit: true, manualRate: '',
     pilotOn: true, employeeCount: '',
+    validUntil: '', // YYYY-MM-DD the rep picked; empty = the standard validity from today
   };
   const repLimitPct = () => Math.round(((cfg.policy.repDiscountLimit == null ? 1 : cfg.policy.repDiscountLimit) * 100) * 100) / 100;
   let reviseOf = null;   // { requestId, version, customerName }
@@ -2309,6 +2333,32 @@ function downloadQuotePdf(v, opts) {
     $('#onprem-box').classList.toggle('hidden', !state.onPrem);
     $('#seats').value = state.seats; $('#scoped').value = state.scopedOnPremPrice;
   }
+  // ---- how long the quote stays valid
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const stdValidDays = () => cfg.policy.quoteValidDays || 30;
+  function addDays(days) { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + days); return d; }
+  // whole calendar days from today to a YYYY-MM-DD date
+  function daysFromToday(day) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day || ''); if (!m) return null;
+    const t = new Date(); return Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000);
+  }
+  const chosenValidUntil = () => state.validUntil || ymd(addDays(stdValidDays()));
+  const longDate = (day) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day); return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : day; };
+  function showValidity() {
+    const el = $('#validuntil'); if (!el) return;
+    const std = ymd(addDays(stdValidDays()));
+    el.min = ymd(new Date());
+    if (el.value !== chosenValidUntil()) el.value = chosenValidUntil();
+    const days = daysFromToday(chosenValidUntil());
+    const long = days != null && days > stdValidDays();
+    el.toggleAttribute('aria-invalid', days != null && days < 0);
+    $('#valid-hint').innerHTML = days != null && days < 0
+      ? 'Choose today or a later date.'
+      : long
+        ? `<span class="warn-text">${days} days needs Deal Review.</span> Up to ${stdValidDays()} days (${esc(longDate(std))}) needs no approval.`
+        : `Up to ${stdValidDays()} days (${esc(longDate(std))}) needs no approval; a later date goes to Deal Review.`;
+  }
+
   function payload() {
     const yn = (b) => (b ? 'Y' : 'N');
     const map = (o) => Object.fromEntries(cfg.modules.map((m) => [m.key, yn(o[m.key])]));
@@ -2318,6 +2368,7 @@ function downloadQuotePdf(v, opts) {
       scopedOnPremPrice: Number(state.scopedOnPremPrice || 0), earlyPay: yn(state.earlyPay), term: state.term,
       variableDiscountPct: Number(state.variableDiscountPct || 0), pilot: map(state.pilotOn ? state.pilot : {}), pilotCredit: yn(state.pilotCredit),
       employeeCount: state.band === 'Enterprise' ? null : (Number(state.employeeCount) || null),
+      validUntil: chosenValidUntil(), validDays: Math.max(1, daysFromToday(chosenValidUntil()) || 0),
     };
   }
 
@@ -2461,6 +2512,7 @@ function downloadQuotePdf(v, opts) {
     out.innerHTML = salesSummaryHtml(r.customer, fxBoxHtml(fx), r.inputs);
     animatePrice(r.customer);
     $('#lockbtn').textContent = r.customer.dealStatus === 'DEAL REVIEW' ? 'Lock for Deal Review' : 'Lock in pricing request';
+    showValidity();
     showDiscountsSoFar(r.customer);
     updateMobileBar(r.customer);
     $('#onprem-flag').classList.toggle('hidden', !r.customer.onPremActionRequired);
@@ -2603,6 +2655,7 @@ function downloadQuotePdf(v, opts) {
     dealInput.removeAttribute('aria-invalid');
     if (!pickedDeal && !hubspotOff) { $('#lockerr').textContent = 'Choose the HubSpot deal for this request.'; dealInput.setAttribute('aria-invalid', 'true'); dealInput.focus(); return; }
     if (!lastResult) return;
+    if ((daysFromToday(chosenValidUntil()) ?? 0) < 0) { $('#lockerr').textContent = 'Choose a valid-until date from today on.'; $('#validuntil').focus(); return; }
     if (lockedSinceChange) { $('#lockerr').textContent = 'Already locked. Change something to save a new version.'; return; }
     const fx = lastResult.customer.fx;
     if (!fx.rate) { lastResult.customer.fx = { currency: 'USD', rate: 1, source: `Quoted in USD (no ${fx.currency} rate available)` }; }
@@ -2636,7 +2689,7 @@ function downloadQuotePdf(v, opts) {
     b.innerHTML = justLocked
       ? `<span><b>Locked:</b> ${esc(s.requestId)} “${esc(s.customerName)}”${s.version > 1 ? `, version ${s.version}` : ''}. Further changes lock as version ${s.version + 1}.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`
       : `<span><b>Revising</b> ${esc(s.requestId)} “${esc(s.customerName)}” (latest version ${s.version}). Locking saves version ${s.version + 1}; earlier versions stay as they are.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`;
-    $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; setDeal(null); $('#stage').value = 'Confirmed'; recalc(); };
+    $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; setDeal(null); $('#stage').value = 'Confirmed'; state.validUntil = ''; recalc(); };
   }
 
   // The pricing setup a request was locked with (not who it's for).
@@ -2648,6 +2701,8 @@ function downloadQuotePdf(v, opts) {
       variableDiscountPct: i.variableDiscountPct, pilotCredit: i.pilotCredit,
       manualRate: s.customer.fx && s.customer.fx.manual ? String(s.customer.fx.rate) : '',
       pilotOn: Object.values(i.pilot || {}).some(Boolean), employeeCount: i.employeeCount ? String(i.employeeCount) : '',
+      // a revision keeps the date the rep picked while it's still ahead
+      validUntil: i.validUntil && (daysFromToday(i.validUntil) ?? -1) >= 0 ? i.validUntil : '',
     });
   }
 
@@ -2655,6 +2710,7 @@ function downloadQuotePdf(v, opts) {
   function loadAsCopy(s) {
     applyInputs(s);
     reviseOf = null; lastLocked = null;
+    state.validUntil = '';
     $('#cname').value = '';
     setDeal(null);
     $('#stage').value = 'Confirmed';
@@ -2699,6 +2755,7 @@ function downloadQuotePdf(v, opts) {
   function renderHistory() { /* Locked requests are listed on the dashboard. */ }
 
   // ---------------------------------------------------------------- start
+  $('#validuntil').addEventListener('change', (e) => { state.validUntil = e.target.value || ''; recalc(); });
   buildControls(); sync(); renderVer(); recalc(); renderHistory();
   // Without HubSpot configured the deal can't be required (the server answers 503).
   loadMyDeals();

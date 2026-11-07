@@ -3,15 +3,19 @@ import type { QuoteRecord } from './quotes';
 const DAY = 86_400_000;
 export const DEFAULT_VALID_DAYS = 30;
 
-// When a quote's prices stop being valid. The days come from the price list the request was
-// locked with ("Quote valid for (days)" in the calculator settings). A Standard request counts
-// from when it was locked; a Deal Review from when it was approved, since that's when the
-// customer can have it. A Deal Review still waiting, or declined, has no expiry.
+// When a quote's prices stop being valid: the date the rep picked when locking (past the
+// standard validity it needed a Deal Review). Requests locked before the date picker count the
+// days in the price list ("Quote valid for (days)"): a Standard request from when it was locked,
+// a Deal Review from when it was approved. A Deal Review still waiting, or declined, has no expiry.
 export function quoteExpiry(quote: Pick<QuoteRecord, 'status' | 'lockedAt' | 'snapshot'>): string | null {
   const snap = (quote.snapshot || {}) as {
-    customer?: { quoteValidDays?: unknown };
+    customer?: { quoteValidDays?: unknown; validUntil?: unknown };
     approval?: { at?: string };
   };
+  if (quote.status === 'DEAL REVIEW' || quote.status === 'NOT APPROVED') return null;
+  const picked = snap.customer?.validUntil;
+  // a calendar day: midday UTC keeps it on that day in any time zone
+  if (typeof picked === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(picked)) return `${picked}T12:00:00.000Z`;
   const raw = Number(snap.customer?.quoteValidDays);
   const days = Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_VALID_DAYS;
 

@@ -131,3 +131,14 @@ test('removing a request is in the change history', async () => {
   const events = await listActivity({ requestId: 'GRT-MAIL1' });
   expect(events.map((e) => [e.type, e.by])).toEqual([['deleted', 'Avery Rep'], ['locked', 'Avery Rep']]);
 });
+
+test('the valid-until date the rep picked is the expiry, once approved', async () => {
+  const picked = await lock('STANDARD', { requestId: 'GRT-PICK1', customer: { finalPrice: 1, validUntil: '2027-01-15', quoteValidDays: 69, fx: { currency: 'USD' } } });
+  expect(quoteExpiry(picked)).toBe('2027-01-15T12:00:00.000Z');
+
+  const review = await lock('DEAL REVIEW', { requestId: 'GRT-PICK2', customer: { finalPrice: 1, validUntil: '2027-03-01', fx: { currency: 'USD' } } });
+  expect(quoteExpiry(review)).toBeNull(); // waiting for approval
+  await approveQuote(review.id, { name: 'Susan', email: 's@guardrail.tech' });
+  // the picked date stands; it doesn't restart at approval
+  expect(quoteExpiry((await getQuoteById(review.id))!)).toBe('2027-03-01T12:00:00.000Z');
+});
