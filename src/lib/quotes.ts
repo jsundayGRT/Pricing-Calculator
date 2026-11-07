@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { recordActivity } from './activity';
 import { store } from './store';
 
 // 'awaiting-approval': a Deal Review isn't sent to HubSpot until it is approved.
@@ -119,6 +120,10 @@ export async function upsertQuote(input: {
   };
 
   await store().put(record);
+  if (!existing) {
+    await recordActivity('locked', record, { name: input.ownerName, email: input.ownerEmail },
+      record.status === 'DEAL REVIEW' ? 'Sent to Deal Review' : 'Standard pricing');
+  }
   return record;
 }
 
@@ -180,6 +185,7 @@ export async function addQuoteLog(id: string, approver: { name: string; email: s
   });
   quote.updatedAt = now;
   await store().put(quote);
+  await recordActivity('note', quote, approver, text);
   return quote;
 }
 
@@ -219,6 +225,7 @@ async function decideQuote(
   }
   quote.updatedAt = now;
   await store().put(quote);
+  await recordActivity(action === 'approve' ? 'approved' : 'declined', quote, approver, text);
   return quote;
 }
 
@@ -247,5 +254,6 @@ export async function deleteQuoteForUser(ownerId: string, id: string) {
   if (!quote) return false;
   await store().remove(id);
   await store().removePdf(id);
+  await recordActivity('deleted', quote, { name: quote.ownerName, email: quote.ownerEmail }, 'Removed from the dashboard');
   return true;
 }

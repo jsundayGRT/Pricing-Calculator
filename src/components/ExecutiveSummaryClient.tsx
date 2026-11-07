@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { ActivityEvent } from '@/lib/activity';
 import type { ExecQuoteSummary } from '@/lib/quote-view';
 import type { HubSpotSync } from '@/lib/quotes';
+import { ActivityList, mergeHistory } from './ActivityLog';
+import { ExpiryTag } from './ExpiryTag';
+import { ExecReports } from './ExecReports';
 import { hubspotLabel, quoteLink } from './HubSpotSyncLine';
 
 type DetailPayload = {
@@ -13,7 +17,10 @@ type DetailPayload = {
     ownerName: string;
     hubspot?: HubSpotSync | null;
   };
+  activity?: ActivityEvent[];
 };
+
+type View = 'requests' | 'reports' | 'activity';
 
 function fmtWhen(iso?: string | null) {
   return iso ? fmtDate(iso) : '—';
@@ -51,33 +58,6 @@ function decisionBy(snapshot: Record<string, unknown>, key: 'approval' | 'decisi
   return key === 'decision' && record?.note ? `${by}: ${record.note}` : by;
 }
 
-function logLabel(action?: string) {
-  if (action === 'approved') return 'Approved';
-  if (action === 'not-approved') return 'Not approved';
-  return 'Note';
-}
-
-function RequestLog({ snapshot }: { snapshot: Record<string, unknown> }) {
-  const log = Array.isArray(snapshot.log)
-    ? snapshot.log as Array<{ at?: string; by?: string; action?: string; note?: string }>
-    : [];
-  if (!log.length) return <p className="sub" style={{ marginTop: 12 }}>No updates yet.</p>;
-  return (
-    <ol className="log-list">
-      {log.map((entry, index) => (
-        <li key={`${entry.at || 'log'}-${index}`}>
-          <strong>{logLabel(entry.action)}</strong>
-          <span className="quote-meta">
-            {entry.by ? ` · ${entry.by}` : ''}
-            {entry.at ? ` · ${fmtDate(entry.at)}` : ''}
-          </span>
-          {entry.note ? <p>{entry.note}</p> : null}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 function fmtDate(iso: string) {
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -107,6 +87,21 @@ export function ExecutiveSummaryClient() {
   // Decision panel: Decline asks for the reason. A decision is final.
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState('');
+  const [view, setView] = useState<View>('requests');
+  const [activity, setActivity] = useState<ActivityEvent[] | null>(null);
+
+  async function loadActivity() {
+    try {
+      const res = await fetch('/api/admin/activity', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Could not load the activity');
+      setActivity((await res.json()).events || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load the activity');
+      setActivity([]);
+    }
+  }
+
+  useEffect(() => { if (view === 'activity') void loadActivity(); }, [view]);
 
   function resetDecisionForm() {
     setDeclining(false);
@@ -263,7 +258,7 @@ export function ExecutiveSummaryClient() {
           <h1>Executive Dashboard</h1>
           <p className="sub">All locked pricing requests · Deal Reviews first · internal economics included</p>
         </div>
-        <button className="btn small" type="button" onClick={() => void load()}>Refresh</button>
+        <button className="btn small" type="button" onClick={() => { void load(); if (view === 'activity') void loadActivity(); }}>Refresh</button>
       </div>
 
       {/* Needs decision and Standard filter the table; click again to show all */}
@@ -334,7 +329,36 @@ export function ExecutiveSummaryClient() {
 
       <div className="err" role="alert">{error}</div>
 
-      {!quotes ? (
+      <div className="seg view-tabs" role="tablist" aria-label="View">
+        {([['requests', 'Requests'], ['reports', 'Reports'], ['activity', 'Activity']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={view === key}
+            className={view === key ? 'active' : ''}
+            onClick={() => setView(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'reports' ? (
+        !quotes ? <div className="empty">Loading…</div> : <ExecReports quotes={filtered} />
+      ) : view === 'activity' ? (
+        !activity ? <div className="empty">Loading activity…</div> : (
+          <div className="card">
+            <h2>Activity</h2>
+            <p className="sub">Every lock, decision, note and removal, newest first.</p>
+            <ActivityList showRequest events={activity.filter((e) => {
+              const term = search.trim().toLowerCase();
+              if (rep !== 'ALL' && e.by !== rep && !(quotes || []).some((q) => q.requestId === e.requestId && q.rep === rep)) return false;
+              return !term || [e.customerName, e.requestId, e.by, e.detail].some((v) => v && v.toLowerCase().includes(term));
+            })} />
+          </div>
+        )
+      ) : !quotes ? (
         <div className="empty">Loading locked requests…</div>
       ) : quotes.length === 0 ? (
         <div className="empty">No locked requests yet. They show here as soon as a rep locks one.</div>
@@ -400,6 +424,7 @@ export function ExecutiveSummaryClient() {
                         {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                       </span>
                       {review && q.reviewReason ? <div className="reason">{q.reviewReason}</div> : null}
+                      {q.expiresAt ? <div><ExpiryTag expiresAt={q.expiresAt} /></div> : null}
                     </td>
                   </tr>
                 );
@@ -480,7 +505,12 @@ export function ExecutiveSummaryClient() {
                     );
                   })()}
                   <h2 style={{ marginTop: detail.summary.status === 'DEAL REVIEW' ? 16 : 0 }}>History</h2>
-                  <RequestLog snapshot={detail.quote.snapshot} />
+                  {detail.summary.expiresAt ? <p className="sub"><ExpiryTag expiresAt={detail.summary.expiresAt} /></p> : null}
+                  <ActivityList events={mergeHistory(
+                    detail.activity || [],
+                    Array.isArray(detail.quote.snapshot.log) ? detail.quote.snapshot.log as { at?: string; by?: string; action?: string; note?: string }[] : [],
+                    { quoteId: detail.summary.id, requestId: detail.summary.requestId, version: detail.summary.version, customerName: detail.summary.customerName },
+                  )} />
                 </div>
 
                 {detail.quote.hubspot?.dealId ? (

@@ -1,4 +1,5 @@
 import { after, NextResponse } from 'next/server';
+import { emailDecisionToRep } from '@/lib/email';
 import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
 import { approveQuote, declineQuote, getQuoteById } from '@/lib/quotes';
 import {
@@ -57,7 +58,10 @@ export async function POST(request: Request) {
     }
     const who = await slackUser(payload.user.id, payload.user.name || payload.user.username || 'Slack user');
     await declineQuote(quote.id, who, reason);
-    after(() => refreshDealReviewMessage(quote.id, appUrl));
+    after(async () => {
+      await refreshDealReviewMessage(quote.id, appUrl);
+      await emailDecisionToRep(quote.id, appUrl);
+    });
     return ok(); // closes the pop-up
   }
 
@@ -93,6 +97,7 @@ export async function POST(request: Request) {
   const approved = await approveQuote(quote.id, who, 'Approved in Slack');
   after(async () => {
     await refreshDealReviewMessage(quote.id, appUrl);
+    await emailDecisionToRep(quote.id, appUrl);
     // Approval sends the request to HubSpot, same as approving on the Executive Dashboard.
     if (approved?.hubspot?.dealId) await syncRequestToHubSpot(quote.id);
   });

@@ -1444,9 +1444,11 @@ function pilotRuleText(c) {
     ? `Year 1 is over ${mm(r.thresholdYear1)}, so the pilot is a deposit of ${mm(r.flatFee)} toward Year 1.`
     : `Year 1 is under ${mm(r.thresholdYear1)}, so the pilot is ${fmtPct(r.percentOfYear1, 0)} of the Year 1 price.`;
 }
-function validUntil(c, lockedAt) {
+function validUntil(c, lockedAt, approvedOn) {
   const days = c.quoteValidDays || 30;
-  const d = new Date(lockedAt || Date.now()); d.setDate(d.getDate() + days);
+  // an approved Deal Review counts from the approval day (YYYY-MM-DD), since that's when the customer can have it
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(approvedOn || '');
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(lockedAt || Date.now()); d.setDate(d.getDate() + days);
   return { days, date: d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) };
 }
 
@@ -1846,7 +1848,7 @@ function salesSummaryHtml(c, fxBox, inputs) {
     h += group('pilot', 'Pilot', m(c.pilot.total), b);
   }
   const vu = validUntil(c);
-  h += `<p class="valid-note">Prices are valid for ${vu.days} days from when the request is locked${fx.currency !== 'USD' ? ', because converted prices follow the exchange rate' : ''}.</p>`;
+  h += `<p class="valid-note">Prices are valid for ${vu.days} days from when the request is locked (from approval, for a Deal Review)${fx.currency !== 'USD' ? ', because converted prices follow the exchange rate' : ''}.</p>`;
   return h;
 }
 document.addEventListener('toggle', (e) => {
@@ -1960,7 +1962,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   // ---- prepared for + status
   const pending = v.status === 'DEAL REVIEW' && !v.approval;
   const approved = !!v.approval || v.status === 'APPROVED';
-  const vu = validUntil(c, v.lockedAt);
+  const vu = validUntil(c, v.lockedAt, v.approval && v.approval.at);
   y = 108;
   caps('Prepared for', ML, y);
   const nameLines = pdfWrap(v.customerName, CW - 170, true, 22);
@@ -2637,7 +2639,8 @@ function downloadQuotePdf(v, opts) {
     $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; setDeal(null); $('#stage').value = 'Confirmed'; recalc(); };
   }
 
-  function loadForRevision(s) {
+  // The pricing setup a request was locked with (not who it's for).
+  function applyInputs(s) {
     const i = s.inputs;
     Object.assign(state, {
       band: i.band, location: i.location, seats: i.seats ? String(i.seats) : '', term: i.term, modules: { ...i.modules }, pilot: { ...i.pilot },
@@ -2646,6 +2649,24 @@ function downloadQuotePdf(v, opts) {
       manualRate: s.customer.fx && s.customer.fx.manual ? String(s.customer.fx.rate) : '',
       pilotOn: Object.values(i.pilot || {}).some(Boolean), employeeCount: i.employeeCount ? String(i.employeeCount) : '',
     });
+  }
+
+  // Duplicate on the dashboard: the same setup as a new request, for another customer and deal.
+  function loadAsCopy(s) {
+    applyInputs(s);
+    reviseOf = null; lastLocked = null;
+    $('#cname').value = '';
+    setDeal(null);
+    $('#stage').value = 'Confirmed';
+    sync(); recalc();
+    const b = $('#revise-banner'); b.classList.remove('hidden');
+    b.innerHTML = `<span><b>Copied</b> the setup from ${esc(s.requestId)} “${esc(s.customerName)}”. Enter the customer and deal; locking saves a new request.</span><button class="btn small" id="newreq" type="button">Start from scratch</button>`;
+    $('#newreq').onclick = () => { location.href = location.pathname; };
+    $('#cname').focus();
+  }
+
+  function loadForRevision(s) {
+    applyInputs(s);
     reviseOf = { requestId: s.requestId, version: s.version, customerName: s.customerName };
     $('#cname').value = s.customerName;
     // requests locked before the deal picker only have a pasted link: the rep picks the deal again
@@ -2682,13 +2703,16 @@ function downloadQuotePdf(v, opts) {
   // Without HubSpot configured the deal can't be required (the server answers 503).
   loadMyDeals();
   (async function loadDashboardRevise() {
-    const id = new URLSearchParams(location.search).get('revise');
+    const params = new URLSearchParams(location.search);
+    const copy = !params.get('revise') && params.get('copy');
+    const id = params.get('revise') || copy;
     if (!id) return;
     try {
       const res = await fetch('/api/quotes/' + encodeURIComponent(id), { credentials: 'same-origin', cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
       if (data.quote && data.quote.snapshot) {
+        if (copy) { loadAsCopy(data.quote.snapshot); return; }
         loadForRevision(data.quote.snapshot);
         toast('Loaded ' + data.quote.requestId + ' from your dashboard.');
       }

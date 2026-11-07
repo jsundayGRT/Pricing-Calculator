@@ -16,9 +16,15 @@ export type Store = {
   putPdf(id: string, bytes: Uint8Array): Promise<void>;
   getPdf(id: string): Promise<Uint8Array | null>;
   removePdf(id: string): Promise<void>;
+  // The activity log: newest first, capped at EVENT_LIMIT.
+  addEvent<T>(event: T): Promise<void>;
+  events<T>(): Promise<T[]>;
 };
 
+export const EVENT_LIMIT = 1000;
+
 const QUOTES_KEY = 'grt:quotes';
+const EVENTS_KEY = 'grt:events';
 const pdfKey = (id: string) => `grt:pdf:${id}`;
 
 function redisConfig() {
@@ -84,6 +90,14 @@ function redisStore(url: string, token: string): Store {
     async removePdf(id) {
       await cmd('DEL', pdfKey(id));
     },
+    async addEvent(event) {
+      await cmd('LPUSH', EVENTS_KEY, JSON.stringify(event));
+      await cmd('LTRIM', EVENTS_KEY, '0', String(EVENT_LIMIT - 1));
+    },
+    async events<T>() {
+      const raw = (await cmd<string[] | null>('LRANGE', EVENTS_KEY, '0', String(EVENT_LIMIT - 1))) || [];
+      return raw.map((x) => JSON.parse(x) as T);
+    },
   };
 }
 
@@ -97,6 +111,7 @@ function fileStore(): Store {
   const file = !process.env.DATA_DIR && process.env.VERCEL
     ? path.join('/tmp', 'grt-quotes.json')
     : path.join(dataDir(), 'quotes.json');
+  const eventsFile = path.join(path.dirname(file), file.endsWith('grt-quotes.json') ? 'grt-events.json' : 'events.json');
   const pdfPath = (id: string) => path.join(dataDir(), 'quote-pdfs', `${id.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`);
 
   function read(): { id: string }[] {
@@ -144,6 +159,20 @@ function fileStore(): Store {
     },
     async removePdf(id) {
       try { unlinkSync(pdfPath(id)); } catch { /* no PDF saved */ }
+    },
+    async addEvent(event) {
+      const list = await this.events();
+      mkdirSync(path.dirname(eventsFile), { recursive: true });
+      writeFileSync(eventsFile, JSON.stringify({ events: [event, ...list].slice(0, EVENT_LIMIT) }, null, 2), 'utf8');
+    },
+    async events<T>() {
+      try {
+        if (!existsSync(eventsFile)) return [];
+        const parsed = JSON.parse(readFileSync(eventsFile, 'utf8')) as { events?: T[] };
+        return Array.isArray(parsed.events) ? parsed.events : [];
+      } catch {
+        return [];
+      }
     },
   };
 }

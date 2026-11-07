@@ -8,6 +8,7 @@ import {
   saveQuotePdf,
   upsertQuote,
 } from '../../src/lib/quotes';
+import { listActivity } from '../../src/lib/activity';
 import { usingRedis } from '../../src/lib/store';
 
 // The Upstash Redis store (used on Vercel), against an in-memory fake of Upstash's REST API.
@@ -15,12 +16,14 @@ import { usingRedis } from '../../src/lib/store';
 const realFetch = globalThis.fetch;
 let hashes: Map<string, Map<string, string>>;
 let strings: Map<string, string>;
+let lists: Map<string, string[]>;
 
 test.beforeEach(() => {
   process.env.KV_REST_API_URL = 'https://fake-upstash.example';
   process.env.KV_REST_API_TOKEN = 'tok';
   hashes = new Map();
   strings = new Map();
+  lists = new Map();
   globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
     expect(String(url)).toBe('https://fake-upstash.example');
     expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer tok');
@@ -35,6 +38,9 @@ test.beforeEach(() => {
       case 'SET': strings.set(key, rest[0]); return Response.json({ result: 'OK' });
       case 'GET': return Response.json({ result: strings.get(key) ?? null });
       case 'DEL': return Response.json({ result: strings.delete(key) ? 1 : 0 });
+      case 'LPUSH': lists.set(key, [rest[0], ...(lists.get(key) ?? [])]); return Response.json({ result: lists.get(key)!.length });
+      case 'LTRIM': lists.set(key, (lists.get(key) ?? []).slice(Number(rest[0]), Number(rest[1]) + 1)); return Response.json({ result: 'OK' });
+      case 'LRANGE': return Response.json({ result: (lists.get(key) ?? []).slice(Number(rest[0]), Number(rest[1]) + 1) });
       default: return Response.json({ error: `unknown ${cmd}` }, { status: 400 });
     }
   }) as typeof fetch;
@@ -72,4 +78,7 @@ test('requests, decisions and PDFs are kept in Redis', async () => {
   expect(await deleteQuoteForUser('u1', record.id)).toBe(true);
   expect(await getQuoteById(record.id)).toBeNull();
   expect(await readQuotePdf(record.id)).toBeNull();
+
+  // The change history is kept in Redis too, newest first.
+  expect((await listActivity()).map((e) => e.type)).toEqual(['deleted', 'approved', 'locked']);
 });

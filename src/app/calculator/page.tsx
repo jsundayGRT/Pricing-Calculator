@@ -5,12 +5,15 @@ import { readSession } from '@/lib/session';
 export default async function CalculatorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ revise?: string }>;
+  searchParams: Promise<{ revise?: string; copy?: string }>;
 }) {
   const user = await readSession();
   if (!user) redirect('/login');
   const params = await searchParams;
-  const revise = params.revise ? `?revise=${encodeURIComponent(params.revise)}` : '';
+  // ?revise= opens a request to lock its next version; ?copy= starts a new request from one.
+  const revise = params.revise
+    ? `?revise=${encodeURIComponent(params.revise)}`
+    : params.copy ? `?copy=${encodeURIComponent(params.copy)}` : '';
 
   return (
     <>

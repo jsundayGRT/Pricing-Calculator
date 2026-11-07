@@ -1,5 +1,7 @@
 import { after, NextResponse } from 'next/server';
+import { listActivity } from '@/lib/activity';
 import { isAdmin } from '@/lib/admin';
+import { emailDecisionToRep } from '@/lib/email';
 import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
 import { addQuoteLog, approveQuote, declineQuote, getQuoteById } from '@/lib/quotes';
 import { summarizeForExec } from '@/lib/quote-view';
@@ -20,6 +22,7 @@ export async function GET(_request: Request, { params }: Params) {
   return NextResponse.json({
     summary: summarizeForExec(quote),
     quote,
+    activity: await listActivity({ requestId: quote.requestId }),
   });
 }
 
@@ -37,7 +40,7 @@ export async function POST(request: Request, { params }: Params) {
     if (!existing.hubspot?.dealId) return NextResponse.json({ error: 'no HubSpot deal on this request' }, { status: 400 });
     await syncRequestToHubSpot(id);
     const quote = (await getQuoteById(id))!;
-    return NextResponse.json({ summary: summarizeForExec(quote), quote });
+    return NextResponse.json({ summary: summarizeForExec(quote), quote, activity: await listActivity({ requestId: quote.requestId }) });
   }
   const note = typeof body?.note === 'string' ? body.note : '';
   // A decision is final: an approved or declined request can't be decided again.
@@ -72,13 +75,14 @@ export async function POST(request: Request, { params }: Params) {
   // Approval updates the HubSpot quote (same quote, not a new one), after the response.
   if (body?.action === 'approve' && quote.hubspot?.dealId) after(() => syncRequestToHubSpot(quote.id));
   // A decision made here also closes out the Slack message, so nobody acts on it twice.
-  if (body?.action !== 'log' && quote.slack) {
-    const appUrl = new URL(request.url).origin;
-    after(() => refreshDealReviewMessage(quote.id, appUrl));
-  }
+  const appUrl = new URL(request.url).origin;
+  if (body?.action !== 'log' && quote.slack) after(() => refreshDealReviewMessage(quote.id, appUrl));
+  // The rep hears about the decision by email.
+  if (body?.action !== 'log') after(() => emailDecisionToRep(quote.id, appUrl));
 
   return NextResponse.json({
     summary: summarizeForExec(quote),
     quote,
+    activity: await listActivity({ requestId: quote.requestId }),
   });
 }

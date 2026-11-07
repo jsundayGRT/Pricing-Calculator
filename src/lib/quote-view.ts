@@ -1,3 +1,4 @@
+import { quoteExpiry } from './expiry';
 import type { QuoteRecord } from './quotes';
 
 function num(v: unknown): number | null {
@@ -41,6 +42,11 @@ export type ExecQuoteSummary = {
   regionalTargetPct: number | null;
   gapToTargetPts: number | null;
   costToServe: number | null;
+  // Year 1 price in US dollars at the request's exchange rate, so reports can add them up.
+  finalPriceUsd: number | null;
+  // When it was approved or declined (the full time, from the request's history).
+  decidedAt: string | null;
+  expiresAt: string | null;
 };
 
 export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
@@ -52,6 +58,10 @@ export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
   const fx = (customer.fx || {}) as Record<string, unknown>;
   const included = (customer.included || {}) as Record<string, unknown>;
   const modulesObj = (inputs.modules || {}) as Record<string, unknown>;
+  const finalPrice = quote.finalPrice ?? num(customer.finalPrice);
+  const rate = num(fx.rate);
+  const log = Array.isArray(snap.log) ? (snap.log as { action?: string; at?: string }[]) : [];
+  const decided = log.find((e) => e.action === 'approved' || e.action === 'not-approved');
   const modules = Object.entries(modulesObj)
     .filter(([, on]) => !!on)
     .map(([k]) => k);
@@ -79,7 +89,7 @@ export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
     discountRequestedPct: num(internal.requestedVariableDiscountPct)
       ?? (num(inputs.variableDiscountPct) != null ? num(inputs.variableDiscountPct)! / 100 : null),
     discountAppliedPct: num(internal.appliedVariableDiscountPct),
-    finalPrice: quote.finalPrice ?? num(customer.finalPrice),
+    finalPrice,
     year1Due: num(customer.year1DueAtSigning),
     currency: quote.currency || str(fx.currency) || 'USD',
     dealNote: str(customer.dealNote),
@@ -88,6 +98,9 @@ export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
     regionalTargetPct: num(internal.regionalTargetPct),
     gapToTargetPts: num(internal.gapToTargetPts),
     costToServe: num(costs.totalCostToServe) ?? num(costs.annualCostToServe),
+    finalPriceUsd: finalPrice == null ? null : rate && rate > 0 ? finalPrice / rate : finalPrice,
+    decidedAt: decided?.at || null,
+    expiresAt: quoteExpiry(quote),
   };
 }
 

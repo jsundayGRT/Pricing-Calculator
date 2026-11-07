@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import { useEffect, useMemo, useState } from 'react';
 import type { Decision, HubSpotSync } from '@/lib/quotes';
+import { ExpiryTag } from './ExpiryTag';
 import { HubSpotSyncLine } from './HubSpotSyncLine';
 
 type QuoteSummary = {
@@ -17,6 +18,7 @@ type QuoteSummary = {
   currency?: string | null;
   hubspot?: HubSpotSync | null;
   decision?: Decision | null;
+  expiresAt?: string | null;
 };
 
 function fmtDay(day: string) {
@@ -231,7 +233,10 @@ export function DashboardClient({ userName }: { userName: string }) {
                   <span className={`pill ${review ? 'review' : declined ? 'declined' : 'standard'}`}>
                     {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                   </span>
-                  {q.version > 1 ? <span className="quote-meta">v{q.version}</span> : null}
+                  <span className="card-tags">
+                    <ExpiryTag expiresAt={q.expiresAt} />
+                    {q.version > 1 ? <span className="quote-meta">v{q.version}</span> : null}
+                  </span>
                 </div>
                 <h3>{q.customerName}</h3>
                 <div className="quote-price">
@@ -252,6 +257,14 @@ export function DashboardClient({ userName }: { userName: string }) {
                 <div className="quote-actions">
                   <a className="btn small" href={`/calculator?revise=${encodeURIComponent(q.id)}`}>
                     Open / revise
+                  </a>
+                  {/* Starts a new request with the same setup, for a similar customer */}
+                  <a
+                    className="btn small"
+                    href={`/calculator?copy=${encodeURIComponent(q.id)}`}
+                    title="Start a new request with the same setup"
+                  >
+                    Duplicate
                   </a>
                   <button
                     className="btn small danger"

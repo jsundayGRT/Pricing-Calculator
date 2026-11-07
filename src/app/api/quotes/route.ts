@@ -1,5 +1,6 @@
 import { after, NextResponse } from 'next/server';
 import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
+import { quoteExpiry } from '@/lib/expiry';
 import { decisionOf, listQuotesForUser, saveQuotePdf, upsertQuote } from '@/lib/quotes';
 import { readSession } from '@/lib/session';
 import { postDealReview } from '@/lib/slack';
@@ -12,7 +13,7 @@ export async function GET() {
     const { snapshot: _ignored, ...rest } = quote;
     void _ignored;
     // Who approved or declined it, and why: the rep sees this on their dashboard.
-    return { ...rest, decision: decisionOf(quote) };
+    return { ...rest, decision: decisionOf(quote), expiresAt: quoteExpiry(quote) };
   });
   return NextResponse.json({ quotes });
 }

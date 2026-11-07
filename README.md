@@ -12,6 +12,11 @@ React (Next.js) app with **Microsoft Entra ID** sign-in and a **per-user dashboa
 | `/executive` | Admin-only Executive Dashboard (all locked requests, approvals, and internal economics) |
 | `/api/quotes` | Save / list quotes for the signed-in user |
 | `/api/admin/quotes` | Admin list/detail of every locked request |
+| `/api/admin/activity` | Admin change history: every lock, decision, note, removal and rep email |
+
+On the Dashboard each quote shows how long its prices stay valid (**Quote valid for (days)** in the calculator settings, 30 by default): a Standard quote from when it was locked, an approved Deal Review from when it was approved. **Duplicate** starts a new request with the same setup, priced with the current price list.
+
+The Executive Dashboard has three views: **Requests** (the table), **Reports** (Deal Review rate, average discount and margin, time to a decision and Year 1 value in US dollars, by rep or by month, for whatever the filters select) and **Activity** (the change history).
 
 `jared.sunday@guardrail.tech`, `susan.landaluce@guardrail.tech`, and `dena.lumbang@guardrail.tech` are admins by default. Add more with `ADMIN_EMAILS`.
 
@@ -107,6 +112,19 @@ The message shows the customer, request ID, rep, Year 1 price, requested and app
 | `SLACK_DEAL_REVIEW_CHANNEL` | The channel ID (channel name → **View channel details** → bottom, e.g. `C0123ABCD`). |
 
 Then redeploy.
+
+## Email the rep a decision
+
+When a Deal Review is approved or declined (on the Executive Dashboard or in Slack), the rep gets an email with the decision, who made it, the reason for a decline and, for an approval, the date the quote is valid until. It's sent through Microsoft Graph with the same Entra app as sign-in. Whether it was sent shows in the Activity view. If email isn't set up, nothing changes.
+
+### Set it up
+
+1. Pick the mailbox to send from, for example a shared mailbox `pricing@guardrail.tech`.
+2. In Entra → **App registrations** → this app → **API permissions** → **Add a permission** → **Microsoft Graph** → **Application permissions** → **Mail.Send**, then **Grant admin consent** (needs a Global or Privileged Role admin).
+3. Recommended: limit the app to that one mailbox, since Mail.Send otherwise allows sending as anyone. In Exchange Online PowerShell, put the mailbox in a mail-enabled security group and run `New-ApplicationAccessPolicy -AppId <client ID> -PolicyScopeGroupId <group> -AccessRight RestrictAccess`.
+4. In Vercel add `MAIL_FROM` = the mailbox address, then redeploy.
+
+`EMAIL_DRY_RUN=1` logs the email instead of sending it.
 
 ## Local development
 
