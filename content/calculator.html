@@ -2757,10 +2757,28 @@ function downloadQuotePdf(v, opts) {
   // ---------------------------------------------------------------- start
   $('#validuntil').addEventListener('change', (e) => { state.validUntil = e.target.value || ''; recalc(); });
   buildControls(); sync(); renderVer(); recalc(); renderHistory();
-  // Without HubSpot configured the deal can't be required (the server answers 503).
-  loadMyDeals();
+  const params = new URLSearchParams(location.search);
+  // Download PDF on a dashboard card: the dashboard loads this page hidden with ?download=<id>;
+  // it builds that request's quote PDF here, saves it, and tells the dashboard how it went.
+  if (params.get('download')) {
+    (async () => {
+      const tell = (ok, error) => { try { parent.postMessage({ type: 'grt-pdf', id: params.get('download'), ok, error }, location.origin); } catch { /* no parent */ } };
+      try {
+        const res = await fetch('/api/quotes/' + encodeURIComponent(params.get('download')), { credentials: 'same-origin', cache: 'no-store' });
+        if (!res.ok) return tell(false, 'This request could not be found.');
+        const snap = (await res.json()).quote.snapshot;
+        if (!canDownload(snap)) return tell(false, 'A Deal Review has a quote PDF once it is approved.');
+        downloadQuotePdf(withApproval(snap));
+        tell(true);
+      } catch {
+        tell(false, 'The quote PDF could not be built.');
+      }
+    })();
+  } else {
+    // Without HubSpot configured the deal can't be required (the server answers 503).
+    loadMyDeals();
+  }
   (async function loadDashboardRevise() {
-    const params = new URLSearchParams(location.search);
     const copy = !params.get('revise') && params.get('copy');
     const id = params.get('revise') || copy;
     if (!id) return;
