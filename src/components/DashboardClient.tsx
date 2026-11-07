@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Decision, HubSpotSync } from '@/lib/quotes';
 import { ExpiryTag } from './ExpiryTag';
 import { HubSpotSyncLine } from './HubSpotSyncLine';
@@ -58,13 +58,12 @@ function fmtShort(iso: string) {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-type Filter = 'all' | 'waiting' | 'ready' | 'declined';
+type Filter = 'all' | 'standard' | 'review';
 type Sort = 'newest' | 'expiring' | 'price';
 
-const isWaiting = (q: QuoteSummary) => q.status === 'DEAL REVIEW';
-const isDeclined = (q: QuoteSummary) => q.status === 'NOT APPROVED';
-// Standard pricing, or a Deal Review that was approved: the quote can go to the customer.
-const isReady = (q: QuoteSummary) => !isWaiting(q) && !isDeclined(q);
+const isReview = (q: QuoteSummary) => q.status === 'DEAL REVIEW';
+// Standard pricing, or a Deal Review that was approved: the quote PDF can go to the customer.
+const canDownload = (q: QuoteSummary) => q.status !== 'DEAL REVIEW' && q.status !== 'NOT APPROVED';
 
 const SORTS: Record<Sort, (a: QuoteSummary, b: QuoteSummary) => number> = {
   newest: (a, b) => b.lockedAt.localeCompare(a.lockedAt),
@@ -169,12 +168,12 @@ export function DashboardClient({ userName }: { userName: string }) {
 
   const stats = useMemo(() => {
     const list = quotes || [];
+    const review = list.filter(isReview).length;
     const last = list.reduce<string | null>((max, q) => (!max || q.lockedAt > max ? q.lockedAt : max), null);
     return {
       total: list.length,
-      waiting: list.filter(isWaiting).length,
-      ready: list.filter(isReady).length,
-      declined: list.filter(isDeclined).length,
+      review,
+      standard: list.length - review,
       last,
     };
   }, [quotes]);
@@ -183,9 +182,8 @@ export function DashboardClient({ userName }: { userName: string }) {
     const term = search.trim().toLowerCase();
     return (quotes || [])
       .filter((q) => {
-        if (filter === 'waiting' && !isWaiting(q)) return false;
-        if (filter === 'ready' && !isReady(q)) return false;
-        if (filter === 'declined' && !isDeclined(q)) return false;
+        if (filter === 'review' && !isReview(q)) return false;
+        if (filter === 'standard' && isReview(q)) return false;
         if (!term) return true;
         return [q.customerName, q.requestId, q.stage, q.hubspot?.dealName]
           .some((v) => v && v.toLowerCase().includes(term));
@@ -193,12 +191,10 @@ export function DashboardClient({ userName }: { userName: string }) {
       .sort(SORTS[sort]);
   }, [quotes, filter, search, sort]);
 
-  // The stat boxes are the filters; Not approved only shows when there are any.
-  const boxes: { tone: string; key: Filter; label: string; count: number }[] = [
-    { tone: 'total', key: 'all', label: 'All requests', count: stats.total },
-    { tone: 'review', key: 'waiting', label: 'Waiting for approval', count: stats.waiting },
-    { tone: 'standard', key: 'ready', label: 'Ready to send', count: stats.ready },
-    ...(stats.declined ? [{ tone: 'declined', key: 'declined' as const, label: 'Not approved', count: stats.declined }] : []),
+  const filters: { key: Filter; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: stats.total },
+    { key: 'standard', label: 'Standard', count: stats.standard },
+    { key: 'review', label: 'Deal Review', count: stats.review },
   ];
 
   async function removeQuote(id: string) {
@@ -220,51 +216,74 @@ export function DashboardClient({ userName }: { userName: string }) {
       <div className="page-head">
         <div>
           <h1>Dashboard</h1>
-          <p className="sub welcome">
-            Welcome back, {userName}
-            {quotes && stats.last ? ` · last locked ${fmtShort(stats.last)}` : ''}
-          </p>
         </div>
         <a className="btn primary" href="/calculator">New pricing request</a>
       </div>
 
-      <div className="stats dash-stats" style={{ '--cols': boxes.length } as CSSProperties}>
-        {boxes.map((b) => (
+      <div className="hero compact">
+        <div className="amount">Welcome back, {userName}</div>
+        {quotes && stats.total ? (
+          <small>
+            {stats.total} locked request{stats.total === 1 ? '' : 's'}
+            {stats.last ? ` · last on ${fmtShort(stats.last)}` : ''}
+          </small>
+        ) : null}
+      </div>
+
+      {/* The stat boxes double as filters for the list below */}
+      <div className="stats">
+        {([
+          ['total', 'all', 'Your quotes', stats.total],
+          ['standard', 'standard', 'Standard', stats.standard],
+          ['review', 'review', 'Deal review', stats.review],
+        ] as const).map(([tone, key, label, count]) => (
           <button
-            key={b.key}
+            key={key}
             type="button"
-            className={`stat ${b.tone} stat-btn${filter === b.key ? ' active' : ''}`}
-            aria-pressed={filter === b.key}
-            onClick={() => setFilter(b.key)}
+            className={`stat ${tone} stat-btn${filter === key ? ' active' : ''}`}
+            aria-pressed={filter === key}
+            onClick={() => setFilter(key)}
           >
-            <span>{b.label}</span><b>{quotes ? b.count : '—'}</b>
+            <span>{label}</span><b>{quotes ? count : '—'}</b>
           </button>
         ))}
       </div>
 
       <div className="err" role="alert">{error}</div>
 
-      <h2 className="list-title">Locked requests</h2>
-      {quotes && quotes.length > 0 ? (
-        <div className="list-toolbar">
-          <input
-            type="search"
-            className="search"
-            placeholder="Search customer, request ID or deal"
-            aria-label="Search locked requests"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <label className="sort">
-            <span>Sort</span>
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+      <div className="list-head">
+        <h2>Locked requests</h2>
+        {quotes && quotes.length > 0 ? (
+          <div className="list-tools">
+            <input
+              type="search"
+              className="search"
+              placeholder="Search customer, request ID or deal"
+              aria-label="Search locked requests"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <div className="seg" role="group" aria-label="Filter by type">
+              {filters.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  aria-pressed={filter === f.key}
+                  className={filter === f.key ? 'active' : ''}
+                  onClick={() => setFilter(f.key)}
+                >
+                  {f.label} <span className="count">{f.count}</span>
+                </button>
+              ))}
+            </div>
+            <select className="sort-select" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort locked requests">
               <option value="newest">Newest</option>
               <option value="expiring">Expiring soonest</option>
               <option value="price">Highest price</option>
             </select>
-          </label>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
+      </div>
       {!quotes ? (
         <div className="empty">Loading your quotes…</div>
       ) : quotes.length === 0 ? (
@@ -287,14 +306,14 @@ export function DashboardClient({ userName }: { userName: string }) {
       ) : (
         <div className="grid">
           {shown.map((q) => {
-            const waiting = isWaiting(q);
+            const review = isReview(q);
             const approved = q.status === 'APPROVED';
-            const declined = isDeclined(q);
+            const declined = q.status === 'NOT APPROVED';
             return (
               <article key={q.id} className="card quote-card">
                 <div className="card-top">
-                  <span className={`pill ${waiting ? 'review' : declined ? 'declined' : 'standard'}`}>
-                    {waiting ? 'Waiting for approval' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
+                  <span className={`pill ${review ? 'review' : declined ? 'declined' : 'standard'}`}>
+                    {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                   </span>
                   <CardMenu label={q.customerName} busy={busyId === q.id} onRemove={() => void removeQuote(q.id)} />
                 </div>
@@ -316,7 +335,7 @@ export function DashboardClient({ userName }: { userName: string }) {
                   ) : null}
                 </div>
                 <div className="quote-actions">
-                  {isReady(q) ? (
+                  {canDownload(q) ? (
                     <button
                       className="btn small primary"
                       type="button"
