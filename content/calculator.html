@@ -2541,7 +2541,6 @@ function downloadQuotePdf(v, opts) {
   let pickedDeal = null, hubspotOff = false, dealHits = [], dealActive = -1, dealTimer = 0, dealSeq = 0;
   let myDeals = [], dealAdmin = false, searchMode = false;
   const OFF_HINT = 'HubSpot is not connected, so this request locks without a deal.';
-  const MINE_HINT = 'Your open deals in the Guardrail Sales Pipeline.';
   const dealLabel = (d) => d.name + (d.stage ? ` · ${d.stage}` : '');
   function fillMyDeals(placeholder) {
     const sel = $('#hubspot');
@@ -2559,7 +2558,8 @@ function downloadQuotePdf(v, opts) {
     $('#deal-pick').classList.toggle('hidden', on);
     $('#deal-search-wrap').classList.toggle('hidden', !on);
     $('#deal-mode').textContent = on ? 'Show my deals' : 'Search all deals';
-    $('#deal-mode').classList.toggle('hidden', !dealAdmin);
+    // the switch to searching every deal isn't offered; reps pick from their own deals
+    $('#deal-mode').classList.add('hidden');
     if (on) $('#deal-search').value = pickedDeal ? pickedDeal.name : '';
     else fillMyDeals(myDeals.length ? 'Choose one of your deals' : 'No open deals');
     showDealHint();
@@ -2591,7 +2591,7 @@ function downloadQuotePdf(v, opts) {
       }
       dealHintText = data.status === 'no-owner'
         ? 'Your email isn\'t a HubSpot user, so there are no deals to choose. Ask a HubSpot admin to add you.'
-        : myDeals.length ? MINE_HINT : 'You have no open deals in the Guardrail Sales Pipeline. Create the deal in HubSpot, then reload this page.';
+        : myDeals.length ? '' : 'You have no open deals in the Guardrail Sales Pipeline. Create the deal in HubSpot, then reload this page.';
       setSearchMode(false);
     } catch {
       dealHintText = 'Could not load your HubSpot deals. Reload the page to try again.';
