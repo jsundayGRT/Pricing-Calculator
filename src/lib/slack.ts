@@ -63,13 +63,11 @@ export function verifySlackSignature(rawBody: string, timestamp: string | null, 
 
 const pct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1).replace(/\.0$/, '')}%`);
 
+// $ for US dollars; other currencies by their code (AUD 100,594), as in the calculator.
 function money(v: number | null, currency: string | null) {
   if (v == null) return '—';
-  try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0 }).format(v);
-  } catch {
-    return `${currency || ''} ${Math.round(v).toLocaleString('en-US')}`;
-  }
+  const pre = currency && currency !== 'USD' ? `${currency} ` : '$';
+  return `${pre}${Math.round(v).toLocaleString('en-US')}`;
 }
 
 function esc(s: string) {

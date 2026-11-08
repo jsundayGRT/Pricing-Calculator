@@ -1396,7 +1396,8 @@ async function api(path, opts = {}) {
 }
 
 const fmtMoney = (v, cents = false) => (v == null ? '—' : (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 }));
-const CUR_PREFIX = { USD: '$', AUD: 'A$', MXN: 'MX$', CAD: 'C$', NZD: 'NZ$', BRL: 'R$', EUR: '€', GBP: '£' };
+// US dollars show as $; every other currency by its code (AUD 100,594, MXN 1,871,000), as on the dashboards.
+const CUR_PREFIX = { USD: '$' };
 // Formatter for a quote's display currency. Pricing is computed in USD; amounts are converted at the quote's rate.
 function moneyFor(fx) {
   const rate = fx && fx.rate;
