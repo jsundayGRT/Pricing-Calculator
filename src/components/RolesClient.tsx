@@ -3,6 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PersonView, UserRole } from '@/lib/admin';
 
+function fmtWhen(iso?: string | null) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
 function fmtDate(iso?: string | null) {
   if (!iso) return '—';
   try {
@@ -134,7 +143,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
                       {p.name ? <div className="sub">{p.email}</div> : null}
                       {p.roleChangedBy ? <div className="sub roles-note">Set by {p.roleChangedBy} on {fmtDate(p.roleChangedAt)}</div> : null}
                     </td>
-                    <td className="sub">{p.lastSeenAt || p.lastSignInAt ? fmtDate(p.lastSeenAt || p.lastSignInAt) : 'Not yet'}</td>
+                    <td className="sub">{p.lastSeenAt || p.lastSignInAt ? fmtWhen(p.lastSeenAt || p.lastSignInAt) : 'Not yet'}</td>
                     <td>
                       <select
                         aria-label={`Role for ${p.name || p.email}`}

@@ -1,12 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { isAdmin, listPeople, recordSeen, recordSignIn, roleForEmail, RoleError, setRole } from '../../src/lib/admin';
 import { store } from '../../src/lib/store';
+import { recordActivity } from '../../src/lib/activity';
+import { upsertQuote } from '../../src/lib/quotes';
 import { setStoreForTests, type Store } from '../../src/lib/store';
 
 // Roles against an in-memory store.
 
 function memoryStore(): Store {
-  const quotes = new Map<string, { id: string }>(), values = new Map<string, string>();
+  const quotes = new Map<string, { id: string }>(), values = new Map<string, string>(), events: unknown[] = [];
   return {
     async all<T>() { return [...quotes.values()] as T[]; },
     async get<T>(id: string) { return (quotes.get(id) as T) || null; },
@@ -15,8 +17,8 @@ function memoryStore(): Store {
     async putPdf() {},
     async getPdf() { return null; },
     async removePdf() {},
-    async addEvent() {},
-    async events<T>() { return [] as T[]; },
+    async addEvent(event) { events.unshift(event); },
+    async events<T>() { return events as T[]; },
     async getValue<T>(key: string) { const raw = values.get(key); return raw ? (JSON.parse(raw) as T) : null; },
     async putValue(key, value) { values.set(key, JSON.stringify(value)); },
   };
@@ -103,4 +105,18 @@ test('roles and sign-ins saved by the first version are still read', async () =>
   await store().putValue('people', { 'sam.rep@guardrail.tech': { email: 'sam.rep@guardrail.tech', name: 'Sam Rep', role: 'admin', lastSignInAt: '2026-11-09T10:00:00.000Z' } });
   expect(await isAdmin(sam)).toBe(true);
   expect((await listPeople()).find((p) => p.email === sam.email)?.lastSignInAt).toBe('2026-11-09T10:00:00.000Z');
+});
+
+test('locking a request or acting on one counts as being active', async () => {
+  const quote = await upsertQuote({ ownerId: 'jay', ownerEmail: 'Jay.Rep@guardrail.tech', ownerName: 'Jay Rep',
+    snapshot: { requestId: 'GRT-1', version: 1, customerName: 'Acme', lockedAt: '2026-11-09T09:15:00.000Z', status: 'STANDARD', customer: {} } });
+  // never opened a page since visits were recorded, but the lock counts
+  const jay = (await listPeople()).find((p) => p.email === 'jay.rep@guardrail.tech');
+  expect(jay).toMatchObject({ name: 'Jay Rep' });
+  expect(jay?.lastSeenAt && jay.lastSeenAt >= '2026-11-09T09:15:00.000Z').toBe(true);
+
+  await new Promise((r) => setTimeout(r, 5));
+  await recordActivity('note', quote, { name: 'Jay Rep', email: 'jay.rep@guardrail.tech' });
+  const after = (await listPeople()).find((p) => p.email === 'jay.rep@guardrail.tech');
+  expect(after?.lastSeenAt && after.lastSeenAt > (jay?.lastSeenAt as string)).toBe(true);
 });

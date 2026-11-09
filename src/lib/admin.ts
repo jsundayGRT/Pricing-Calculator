@@ -1,4 +1,5 @@
 import type { SessionUser } from './session';
+import { listActivity } from './activity';
 import { listAllQuotes } from './quotes';
 import { store, usingRedis } from './store';
 
@@ -112,16 +113,27 @@ export function rolesStorageIsTemporary() {
 // Everyone with a role to manage: people who signed in or were added, request owners, and the
 // built-in admins. Admins first, then by name.
 export async function listPeople(): Promise<PersonView[]> {
-  const [roles, seen] = await Promise.all([readRoles(), readSeen()]);
+  const [roles, seen, quotes, events] = await Promise.all([readRoles(), readSeen(), listAllQuotes(), listActivity().catch(() => [])]);
   const all = new Map<string, Person>();
   const merge = (email: string, p: Partial<Person>) => {
     const was = all.get(email);
     all.set(email, { ...was, ...p, email, name: p.name || was?.name || '' });
   };
+  // Last active is the latest of: opening the app, signing in, locking a request, or anything in
+  // the activity log (approving, declining, noting). The last two also cover the time before
+  // page visits were recorded.
+  const latest = new Map<string, string>();
+  const saw = (email: string | undefined, at: string | null | undefined) => {
+    if (!email || !at) return;
+    const e = norm(email);
+    if (!latest.has(e) || at > (latest.get(e) as string)) latest.set(e, at);
+  };
   for (const email of adminEmails()) merge(email, {});
-  for (const q of await listAllQuotes()) if (q.ownerEmail) merge(norm(q.ownerEmail), { name: q.ownerName || '' });
+  for (const q of quotes) if (q.ownerEmail) { merge(norm(q.ownerEmail), { name: q.ownerName || '' }); saw(q.ownerEmail, q.lockedAt); }
+  for (const ev of events) saw(ev.email, ev.at);
   for (const [email, r] of Object.entries(roles)) merge(email, { name: r.name, role: r.role, roleChangedBy: r.roleChangedBy, roleChangedAt: r.roleChangedAt });
-  for (const [email, x] of Object.entries(seen)) merge(email, { name: x.name, lastSignInAt: x.lastSignInAt, lastSeenAt: x.lastSeenAt });
+  for (const [email, x] of Object.entries(seen)) { merge(email, { name: x.name, lastSignInAt: x.lastSignInAt }); saw(email, x.lastSeenAt); saw(email, x.lastSignInAt); }
+  for (const [email, at] of latest) if (all.has(email)) all.set(email, { ...(all.get(email) as Person), lastSeenAt: at });
   return [...all.values()]
     .map((p) => ({ ...p, role: roleOf(p.email, p), defaultAdmin: isAdminEmail(p.email) }))
     .sort((a, b) => (a.role === b.role ? (a.name || a.email).localeCompare(b.name || b.email) : a.role === 'admin' ? -1 : 1));
