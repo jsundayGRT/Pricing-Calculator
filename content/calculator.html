@@ -2894,7 +2894,8 @@ async function downloadQuoteDocx(v) {
       if (latest > reviseOf.version) { reviseOf.version = latest; showBanner(s, false, latest); }
     });
     $('#cname').value = s.customerName;
-    if (!$('#repname').value.trim()) $('#repname').value = s.rep || '';
+    // a revision keeps the request's rep (the person signed in fills in only new requests)
+    if (s.rep) $('#repname').value = s.rep;
     // requests locked before the deal picker only have a pasted link: the rep picks the deal again
     setDeal(s.hubspotDeal && s.hubspotDeal.id ? s.hubspotDeal : null);
     // keep the stage the request was locked with (older requests without one start as Revised)
@@ -2956,6 +2957,11 @@ async function downloadQuoteDocx(v) {
   } else {
     // Without HubSpot configured the deal can't be required (the server answers 503).
     loadMyDeals();
+    // the rep is whoever is signed in; still editable, e.g. when pricing for a colleague
+    fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me) => { if (me && me.name && !$('#repname').value.trim()) $('#repname').value = me.name; })
+      .catch(() => { /* type it in */ });
   }
   (async function loadDashboardRevise() {
     const copy = !params.get('revise') && params.get('copy');

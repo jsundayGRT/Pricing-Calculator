@@ -33,6 +33,13 @@ test('the Appearance switch in the user menu changes the theme', async ({ page, 
   const appearance = page.getByRole('menuitemcheckbox', { name: /Appearance/ });
   // the first row has focus, and the arrow keys move between rows
   await expect(appearance).toBeFocused();
+  await expect(page.getByRole('menuitemcheckbox', { name: /By email/ })).toBeVisible(); // notification choices loaded
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitemcheckbox', { name: /By email/ })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitemcheckbox', { name: /In Slack/ })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitem', { name: 'Help & feedback' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('menuitem', { name: 'Manage roles' })).toBeFocused(); // admins only
   await page.keyboard.press('ArrowDown');

@@ -162,6 +162,8 @@ p { margin: 0; }
 .user-menu-icon { width: 18px; height: 18px; display: grid; place-items: center; color: var(--muted); flex: none; }
 .user-menu-icon svg { width: 16px; height: 16px; }
 .user-menu-mode { margin-left: auto; color: var(--muted); font-size: 12px; }
+.user-menu-label { padding: 6px 10px 2px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.user-menu-item[aria-disabled="true"] { cursor: default; opacity: .7; }
 .user-menu-item.signout { color: var(--menu-red); }
 .user-menu-item.signout .user-menu-icon { color: currentColor; }
 .user-menu-item.signout:hover, .user-menu-item.signout:focus-visible { background: color-mix(in srgb, var(--menu-red) 12%, transparent); }
@@ -457,6 +459,13 @@ html, body { overflow-x: clip; }
 }
 
 .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+
+/* Help */
+.help .card { margin-bottom: 14px; max-width: 760px; }
+.help .card p { margin: 0; line-height: 1.55; }
+.help .card p + p, .help .card ol + p { margin-top: 10px; }
+.help ol { margin: 0; padding-left: 20px; line-height: 1.55; }
+.help li + li { margin-top: 6px; }
 
 /* Manage roles */
 .roles-add { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; padding: 14px 16px; margin-bottom: 16px; }

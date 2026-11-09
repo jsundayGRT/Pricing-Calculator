@@ -9,6 +9,35 @@ function initials(name: string, email: string) {
   return letters || email.slice(0, 1).toUpperCase() || '?';
 }
 
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
+}
+
+function ChatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function HelpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01" />
+    </svg>
+  );
+}
+
+type Channel = 'email' | 'slack';
+type Notify = { prefs: Record<Channel, boolean>; available: Record<Channel, boolean> };
+
 function PeopleIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -46,6 +75,33 @@ export function UserMenu({
   const label = name || email;
   const [theme, toggleTheme] = useTheme();
   const dark = theme === 'dark';
+  const [notify, setNotify] = useState<Notify | null>(null);
+
+  // how this person hears about Deal Review decisions, loaded the first time the menu opens
+  useEffect(() => {
+    if (!open || notify) return;
+    fetch('/api/me/notifications', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: Notify | null) => { if (data?.prefs) setNotify(data); })
+      .catch(() => { /* the switches stay hidden */ });
+  }, [open, notify]);
+
+  async function toggleNotify(channel: Channel) {
+    if (!notify || !notify.available[channel]) return;
+    const value = !notify.prefs[channel];
+    setNotify({ ...notify, prefs: { ...notify.prefs, [channel]: value } });
+    try {
+      const res = await fetch('/api/me/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [channel]: value }),
+      });
+      if (!res.ok) throw new Error();
+      setNotify(await res.json());
+    } catch {
+      setNotify((n) => (n ? { ...n, prefs: { ...n.prefs, [channel]: !value } } : n));
+    }
+  }
 
   const items = () => Array.from(panel.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') || []);
 
@@ -123,6 +179,37 @@ export function UserMenu({
             <span className="user-menu-mode" aria-hidden="true">{dark ? 'Dark' : 'Light'}</span>
             <span className={`mini-switch${dark ? ' on' : ''}`} aria-hidden="true"><span /></span>
           </button>
+          {notify ? (
+            <>
+              <div className="user-menu-sep" role="separator" />
+              <div className="user-menu-label" aria-hidden="true">Deal Review decisions</div>
+              {([['email', 'By email', <MailIcon key="m" />], ['slack', 'In Slack', <ChatIcon key="c" />]] as const).map(([channel, label, icon]) => {
+                const ready = notify.available[channel], on = ready && notify.prefs[channel];
+                return (
+                  <button
+                    key={channel}
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={on}
+                    aria-disabled={!ready || undefined}
+                    className="user-menu-item"
+                    onClick={() => void toggleNotify(channel)}
+                  >
+                    <span className="user-menu-icon">{icon}</span>
+                    <span>{label}</span>
+                    <span className="sr-only">: tell me when my Deal Review is decided{ready ? '' : ' (not set up)'}</span>
+                    <span className="user-menu-mode" aria-hidden="true">{ready ? (on ? 'On' : 'Off') : 'Not set up'}</span>
+                    {ready ? <span className={`mini-switch${on ? ' on' : ''}`} aria-hidden="true"><span /></span> : null}
+                  </button>
+                );
+              })}
+            </>
+          ) : null}
+          <div className="user-menu-sep" role="separator" />
+          <a role="menuitem" className="user-menu-item" href="/help">
+            <span className="user-menu-icon"><HelpIcon /></span>
+            <span>Help &amp; feedback</span>
+          </a>
           {admin ? (
             <a role="menuitem" className="user-menu-item" href="/admin/roles">
               <span className="user-menu-icon"><PeopleIcon /></span>
