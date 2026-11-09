@@ -150,6 +150,8 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .btn.icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 9px 12px; }
 .btn.icon-btn svg { width: 18px; height: 18px; flex: none; }
 .btn.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.sample-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+.sample-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn.small { padding: 5px 10px; font-weight: 500; font-size: 13px; }
 .btn.link { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 500; }
@@ -608,8 +610,8 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
           <div class="field"><label class="label" for="location">Buyer location</label>
             <div class="select-wrap"><select id="location"><option value="" disabled selected>Choose a location</option></select></div></div>
         </div>
-        <div class="field hidden" id="empcount-field">
-          <label class="label" for="empcount">Number of employees <span class="label-note">Optional</span></label>
+        <div class="field" id="empcount-field">
+          <label class="label" for="empcount">Number of employees <span class="label-note">Optional · picks the band</span></label>
           <input id="empcount" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 50" style="max-width:240px" aria-describedby="empcount-hint">
           <div class="hint" id="empcount-hint"></div>
         </div>
@@ -640,7 +642,7 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
       <div class="card step">
         <h2><span class="num">3</span>Products</h2>
         <fieldset class="field plain"><legend class="label">Traffic Light modules</legend><div class="tiles" id="modules"></div>
-          <div class="hint" id="modules-hint">Leave these off for a Command Center only quote.</div></fieldset>
+          <div class="hint" id="modules-hint">Choose at least one module, or turn on AI Command Center below.</div></fieldset>
         <div class="option">
           <div><b id="cc-label">AI Command Center</b></div>
           <button class="switch" role="switch" id="commandCenter" aria-labelledby="cc-label"></button>
@@ -681,7 +683,7 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
         <div class="empty" id="empty">
           <p class="empty-kicker">Final price · Year 1</p>
           <p class="empty-amount" aria-hidden="true">$—</p>
-          <p id="empty-msg">Choose an employee band and buyer location to see pricing.</p>
+          <p id="empty-msg">Enter the number of employees (or choose a band) and a buyer location to see pricing.</p>
         </div>
         <div id="out" class="hidden"></div>
       </div>
@@ -702,8 +704,13 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary grow" id="lockbtn" type="button">Lock in pricing request</button>
           <button class="btn icon-btn hidden" id="printbtn" type="button" title="Download quote PDF" aria-label="Download quote PDF"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="btn icon-btn hidden" id="docxbtn" type="button" title="Download quote as Word, to edit" aria-label="Download quote as Word">Word</button>
         </div>
         <div class="err" id="lockerr" role="alert"></div>
+        <div class="sample-row" id="sample-row">
+          <span>Sample pricing, without a deal or saving</span>
+          <div class="sample-acts"><button class="btn small" id="samplepdf" type="button">Sample PDF</button><button class="btn small" id="sampledocx" type="button">Sample Word</button></div>
+        </div>
       </div>
     </aside>
   </div>
@@ -1422,23 +1429,6 @@ function toast(msg, kind) {
   document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
 }
 
-async function renderTopbar(active) {
-  const me = await api('/api/me');
-  const exec = me.role === 'exec' || me.role === 'admin';
-  const links = [
-    ['/', 'Calculator', 'calc'],
-    ...(exec ? [['/exec', 'Executive summary', 'exec'], ['/settings', 'Assumptions', 'settings']] : [['/requests', 'My requests', 'requests']]),
-  ];
-  const bar = document.createElement('header');
-  bar.className = 'topbar';
-  bar.innerHTML = `<div class="brand"><img src="/logo.png" alt="Guardrail Technologies" width="157" height="46"></div>
-    <nav class="nav">${links.map(([h, t, k]) => `<a href="${h}" class="${k === active ? 'active' : ''}">${t}</a>`).join('')}</nav>
-    <div class="who">${esc(me.name)} · ${esc(me.role)} <button class="btn small" id="signout">Sign out</button></div>`;
-  document.body.prepend(bar);
-  $('#signout').onclick = async () => { await api('/api/logout', { method: 'POST' }); location.href = '/login'; };
-  return me;
-}
-
 // Customer-facing price breakdown, shared by the calculator and request detail views.
 // ---- What a customer sees: product lines only (Customer Success folded into product prices),
 // modules listed under AI Traffic Light, each discount with its rate. Older saved requests
@@ -1550,123 +1540,12 @@ function fxNote(fx) {
   return `1 USD = ${Number(fx.rate).toLocaleString('en-US', { maximumFractionDigits: 6 })} ${fx.currency} · ${fx.source}${fx.rateDate ? ', rate date ' + String(fx.rateDate).slice(0, 16) : ''}${fx.stale ? ' (last good rate; live check failed)' : ''}`;
 }
 
-function statusHtml(c) {
-  const review = c.dealStatus === 'DEAL REVIEW';
-  return `<div class="status ${review ? 'review' : 'standard'}"><b>${esc(c.dealStatus)}</b><p>${esc(c.dealNote)}</p></div>`;
-}
-
 // Employees on the quote: the rep's headcount when entered (display only), else the band's included count.
 function employeesView(c, inputs) {
   const i = c.included, n = i.customerEmployees || (inputs && inputs.band !== 'Enterprise' && inputs.employeeCount) || null;
   const band = inputs && inputs.band;
   return n ? { n, label: 'Employees', note: `Priced for up to ${fmtNum(i.governedEmployees)}${band ? ` (${band} band)` : ''}` }
            : { n: i.governedEmployees, label: 'Governed employees', note: '' };
-}
-function includedHtml(c, inputs) {
-  const i = c.included, ev = employeesView(c, inputs);
-  return `<div class="included">
-    <div><b>${fmtNum(ev.n)}</b><span>${ev.label}${ev.note ? ` · ${esc(ev.note.charAt(0).toLowerCase() + ev.note.slice(1))}` : ''}</span></div>
-    <div><b>${fmtNum(i.developerWorkseats)}</b><span>Developer workseats</span></div>
-    <div><b>${fmtNum(i.workflows)}</b><span>Governed workflows</span></div></div>`;
-}
-
-// ---- request detail drawer (rep: customer view only; exec: adds the internal panel)
-function inputsHtml(i, moduleNames) {
-  const sel = (o) => Object.entries(o).filter(([, v]) => v).map(([k]) => moduleNames[k] || k).join(', ') || 'None';
-  const yn = (b) => (b ? 'Yes' : 'No');
-  const rows = [
-    ['Employee band', i.band + (i.band === 'Enterprise' ? ` · ${fmtNum(i.seats)} seats` : '')],
-    ['Buyer location', i.location],
-    ['Traffic Light modules', sel(i.modules)],
-    ['Command Center', yn(i.commandCenter)],
-    ['On-prem / dedicated', yn(i.onPrem) + (i.onPrem ? ` · scoped price ${i.scopedOnPremPrice ? fmtMoney(i.scopedOnPremPrice) : 'not yet entered'}` : '')],
-    ['Early Pay', yn(i.earlyPay)],
-    ['Contract term', i.term],
-    ['Additional discount requested', fmtNum(i.variableDiscountPct) + '%'],
-    ['Pilot modules', sel(i.pilot)],
-    ['Pilot credited toward contract', yn(i.pilotCredit)],
-  ];
-  return `<table class="kv"><tbody>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>`;
-}
-
-function internalHtml(n, c) {
-  const r = (k, v, cls = '') => `<tr class="${cls}"><td>${k}</td><td>${v}</td></tr>`;
-  const C = n.costs, P = n.profit;
-  const signed = (v, f) => `<span class="${v < 0 ? 'neg' : ''}">${f(v)}</span>`;
-  return `<div class="card internal"><h2>Internal only, never shared with reps or customers (USD)</h2>
-    ${n.reviewReason ? `<div class="flag bad" style="margin:0 0 12px">Deal Review reason: ${esc(n.reviewReason)}</div>` : ''}
-    <div class="two">
-      <div><h3>Margin and discount</h3><table class="kv"><tbody>
-        ${r('Final margin', signed(n.finalMarginPct, fmtPct))}
-        ${r('Regional margin target', fmtPct(n.regionalTargetPct))}
-        ${r('Gap to target', `<span class="${n.gapToTargetPts < 0 ? 'neg' : 'pos'}">${fmtPts(n.gapToTargetPts)}</span>`)}
-        ${r('Minimum margin (floor)', fmtPct(n.minimumMargin))}
-        ${r('Margin floor price', fmtMoney(n.marginFloorTotal))}
-        ${r('Requested variable discount', fmtPct(n.requestedVariableDiscountPct, 2))}
-        ${r('Applied variable discount', fmtPct(n.appliedVariableDiscountPct, 2))}
-        ${r('Maximum allowed (floor)', fmtPct(n.maxVariableDiscountPct, 2))}
-        ${r('Maximum that still meets target', fmtPct(n.maxDiscountMeetingTargetPct, 2))}
-        ${r('Inference charge vs. cost', signed(n.inferenceChargeVsCost, fmtMoney))}
-      </tbody></table></div>
-      <div><h3>Cost to serve (per year)</h3><table class="kv"><tbody>
-        ${r('Inference & infrastructure', fmtMoney((C.inferenceCloudDataLicenses || 0) + (C.customerSuccess || 0)))}
-        ${r('Command Center runtime', fmtMoney(C.commandCenterRuntime))}
-        ${r('Technical support', fmtMoney(C.technicalSupport))}
-        ${r('Hosting, security and compliance', fmtMoney(C.hostingSecurityCompliance))}
-        ${r('On-prem / dedicated infrastructure', fmtMoney(C.onPremInfrastructure))}
-        ${r('Annual cost to serve', fmtMoney(C.annualCostToServe), 'total')}
-        ${r('Implementation delivery (one-time)', fmtMoney(C.implementationDelivery))}
-        ${r('Total cost to serve', fmtMoney(C.totalCostToServe), 'total')}
-      </tbody></table></div>
-    </div>
-    <h3 style="margin-top:16px">Profit</h3>
-    <div class="two"><table class="kv"><tbody>
-        ${r('Gross profit, recurring', signed(P.grossProfitRecurring, fmtMoney) + ` · ${fmtPct(P.recurringMarginPct)}`)}
-        ${r('Gross profit, Year 1', signed(P.grossProfitYear1, fmtMoney) + ` · ${fmtPct(P.year1MarginPct)}`)}
-        ${r('Operating profit, Year 1', signed(P.operatingProfitYear1, fmtMoney) + ` · ${fmtPct(P.operatingMarginYear1Pct)}`)}
-        ${r('Operating profit, ongoing', signed(P.operatingProfitOngoing, fmtMoney) + ` · ${fmtPct(P.operatingMarginOngoingPct)}`)}
-      </tbody></table><table class="kv"><tbody>
-        ${r('Payback on CAC', fmtNum(P.paybackMonths) + ' months')}
-        ${r('LTV to CAC', fmtNum(P.ltvToCac) + '×')}
-        ${r('CAC used', fmtMoney(P.cacUsed))}
-        ${r('Recurring, net of discounts', fmtMoney(n.recurringNet))}
-        ${r('Implementation, net of discounts', fmtMoney(n.implementationNet))}
-        ${n.contract && n.contract.years > 1 ? r(`Contract value (${n.contract.years} yrs)`, fmtMoney(n.contract.totalContractValue)) + r('Cost to serve over term', fmtMoney(n.contract.totalCostToServe)) + r('Margin over term', signed(n.contract.marginOverTermPct, fmtPct)) : ''}
-      </tbody></table></div>
-  </div>`;
-}
-
-function openDrawer(d, { exec, me, moduleNames, pick = 0 }) {
-  closeDrawer();
-  const bg = document.createElement('div'); bg.className = 'drawer-bg'; bg.onclick = closeDrawer;
-  const dr = document.createElement('aside'); dr.className = 'drawer'; dr.setAttribute('role', 'dialog');
-  document.body.append(bg, dr);
-  const latest = d.versions[0];
-  function render(idx) {
-    const v = d.versions[idx];
-    dr.innerHTML = `<div class="drawer-head"><div>
-        <h1>${esc(latest.customerName)}</h1>
-        <p class="sub">Request #${d.requestId} · version ${v.version} of ${latest.version} · locked ${fmtDate(v.lockedAt)} by ${esc(v.rep)} · assumptions v${v.assumptionsVersion}</p>
-        ${d.versions.length > 1 ? `<div class="versions" style="margin-top:8px">${d.versions.map((x, j) => `<button class="btn small" data-j="${j}" ${j === idx ? 'aria-pressed="true" style="border-color:var(--accent)"' : ''}>v${x.version}${x.status === 'DEAL REVIEW' ? ' ●' : ''}</button>`).join('')}</div>` : ''}
-      </div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><a class="btn small" href="/quote?id=${d.requestId}&v=${v.version}" target="_blank" rel="noopener">Quote PDF</a><a class="btn small" href="/?revise=${d.requestId}">Revise</a><button class="btn small" id="dclose">Close</button></div></div>
-      <div class="drawer-body">
-        ${exec && v.internal ? internalHtml(v.internal, v.customer) : ''}
-        <div class="two" style="margin-top:${exec ? 16 : 0}px">
-          <div class="card"><h2>Customer view</h2>${statusHtml(v.customer)}${includedHtml(v.customer, v.inputs)}${customerLinesHtml(v.customer)}</div>
-          <div class="card"><h2>Inputs</h2>${inputsHtml(v.inputs, moduleNames)}${v.customer.onPremNote ? `<div class="flag warn">${esc(v.customer.onPremNote)}</div>` : ''}<div class="hint" style="margin-top:10px">${esc(fxNote(v.customer.fx))}${v.customer.fx && v.customer.fx.currency !== 'USD' ? `<br>Converted using: ${fxSourceHtml(v.customer.fx)}` : ''}</div></div>
-        </div>
-      </div>`;
-    $('#dclose', dr).onclick = closeDrawer;
-    $$('[data-j]', dr).forEach((b) => (b.onclick = () => render(Number(b.dataset.j))));
-  }
-  render(pick);
-  document.addEventListener('keydown', escClose);
-}
-function escClose(e) { if (e.key === 'Escape') closeDrawer(); }
-function closeDrawer() {
-  $$('.drawer, .drawer-bg').forEach((x) => x.remove());
-  document.removeEventListener('keydown', escClose);
-  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
 }
 
 
@@ -1923,7 +1802,42 @@ const pdfRgb = (hex) => [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) 
 
 // The fields a locked request carries; nothing internal is ever written into the PDF.
 const PDF_REQUEST_FIELDS = ['schema', 'requestId', 'version', 'stage', 'hubspotRecord', 'hubspotDeal', 'approval', 'customerName', 'rep', 'lockedAt', 'assumptionsVersion', 'assumptionsNote', 'assumptionsHash', 'status', 'inputs', 'customer'];
-function quoteFileName(v) { return `Guardrail Quote - ${String(v.customerName).replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60)} - ${v.requestId}${v.version > 1 ? `-v${v.version}` : ''}.pdf`; }
+// Sample pricing is a quote that was never locked: no request ID, not saved, not sent to HubSpot.
+const quoteRef = (v) => (v.sample ? 'Sample' : v.version > 1 ? `${v.requestId}-v${v.version}` : v.requestId); // the first version has no suffix
+function quoteFileName(v, ext = 'pdf') {
+  const name = String(v.customerName).replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60);
+  return v.sample ? `Guardrail Sample Pricing - ${name} - ${String(v.lockedAt).slice(0, 10)}.${ext}` : `Guardrail Quote - ${name} - ${quoteRef(v)}.${ext}`;
+}
+// The pricing table on a quote (PDF and Word): the lines the calculator shows, in groups that
+// stay together (price lines, discounts and totals, schedule, pilot).
+function quotePriceGroups(c) {
+  const doc = new DOMParser().parseFromString(customerLinesHtml(c, { forCustomer: true }), 'text/html');
+  const groups = [[]];
+  for (const tr of doc.querySelectorAll('tr')) {
+    const cls = (tr.className || '').split(/\s+/), has = (k) => cls.includes(k), tds = tr.querySelectorAll('td');
+    const label = (tds[0] ? tds[0].textContent : '').replace(/\s+/g, ' ').trim();
+    const val = (tds[1] ? tds[1].textContent : '').replace(/\s+/g, ' ').trim();
+    if (has('section')) { if (label !== 'Price lines') groups.push([{ kind: 'section', label }]); continue; }
+    if (has('discount') && !has('total') && (!val || val === '—')) continue; // a discount that does not apply
+    if (has('grand') || has('due')) { groups[groups.length - 1].push({ kind: has('due') ? 'due' : 'grand', label, val }); continue; }
+    groups[groups.length - 1].push({ kind: 'row', label, val, sub: has('sub'), bold: has('total') || has('parent'), total: has('total'), disc: has('discount') && val && val !== '—' });
+  }
+  return groups;
+}
+function quoteSteps(v, m, vu) {
+  const c = v.customer, rep = v.rep || 'your Guardrail representative';
+  if (v.sample) return [`Review the modules, term and pricing with ${rep}.`, `Ask ${rep} for a formal quote to sign. Prices can change until one is issued.`];
+  return [
+    `Review the modules, term and pricing with ${rep}.`,
+    c.pilot.total ? `Start the pilot (${m(c.pilot.total)}${c.pilot.credited ? ', credited toward Year 1' : ''}).` : 'Confirm any changes before signing; a revised quote replaces this one.',
+    `Sign the order form by ${vu.date}. Year 1 due at signing: ${m(c.year1DueAtSigning)}.`,
+    'Define governed workflows within 30 days of signing; setup completes within 3 months.',
+  ];
+}
+const quoteAsk = (v) => (v.sample
+  ? `Questions about this pricing? Contact ${v.rep || 'your Guardrail representative'}.`
+  : `Questions about this quote? Contact ${v.rep || 'your Guardrail representative'} and mention quote ${quoteRef(v)}.`);
+const SAMPLE_NOTE = 'Sample pricing for discussion only. It is not a quote or an offer.';
 
 function buildQuotePdf(v, { attachRequest = true } = {}) {
   const c = v.customer, i = v.inputs, fx = c.fx || { currency: 'USD', rate: 1 };
@@ -1937,7 +1851,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   const m = moneyFor(fx);
   const logo = typeof PDF_LOGO !== 'undefined' ? PDF_LOGO : null;
   const pages = []; let ops = null, y = 0;
-  const ref = v.version > 1 ? `${v.requestId}-v${v.version}` : v.requestId; // the first version has no suffix
+  const ref = quoteRef(v);
 
   // ---- drawing primitives (y grows downward from the top of the page)
   const textW = (s, bold, size, sp = 0) => pdfWidth(s, bold, size) + sp * Math.max(0, pdfCodes(s).length - 1);
@@ -1966,7 +1880,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
     ops = []; pages.push(ops);
     if (pages.length > 1) { // continuation pages: slim header
       topStrip(); drawLogo(ML, 22, 20);
-      text(`Quote ${ref} · ${v.customerName}`, PW - MR, 36, { size: 8, color: C.muted, align: 'right' });
+      text(`${v.sample ? 'Sample pricing' : `Quote ${ref}`} · ${v.customerName}`, PW - MR, 36, { size: 8, color: C.muted, align: 'right' });
       line(ML, 52, PW - MR);
     }
     y = TOP;
@@ -1979,8 +1893,8 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   topStrip();
   drawLogo(ML, 30, 34);
   const locked = new Date(v.lockedAt);
-  caps('Quote', PW - MR, 40, { align: 'right', size: 8, spacing: 2 });
-  text(ref, PW - MR, 56, { size: 13, bold: true, color: C.navy, align: 'right' });
+  caps(v.sample ? 'Sample pricing' : 'Quote', PW - MR, 40, { align: 'right', size: 8, spacing: 2 });
+  text(v.sample ? 'Not a quote' : ref, PW - MR, 56, { size: 13, bold: true, color: C.navy, align: 'right' });
   text(locked.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }), PW - MR, 70, { size: 9, color: C.muted, align: 'right' });
 
   // ---- prepared for + status
@@ -1993,15 +1907,25 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   nameLines.forEach((ln, k) => text(ln, ML, y + 24 + k * 25, { size: 22, bold: true, color: C.navy }));
   const nameBottom = y + 24 + (nameLines.length - 1) * 25;
   text(`Prepared by ${v.rep ? v.rep + ' · ' : ''}Guardrail Technologies Inc.${v.stage ? ` · ${v.stage}` : ''}`, ML, nameBottom + 17, { size: 9.5, color: C.muted });
-  if (pending || approved) {
-    const label = pending ? 'PENDING DEAL REVIEW' : 'APPROVED';
+  if (pending || approved || v.sample) {
+    const label = v.sample ? 'SAMPLE' : pending ? 'PENDING DEAL REVIEW' : 'APPROVED';
     const pw = textW(label, true, 7.5, 0.8) + 20;
-    rrect(PW - MR - pw, y - 9, pw, 18, 9, pending ? C.warnSoft : C.okSoft);
-    text(label, PW - MR - pw / 2, y + 3, { size: 7.5, bold: true, color: pending ? C.warn : C.ok, spacing: 0.8, align: 'center' });
+    rrect(PW - MR - pw, y - 9, pw, 18, 9, v.sample ? C.blueSoft : pending ? C.warnSoft : C.okSoft);
+    text(label, PW - MR - pw / 2, y + 3, { size: 7.5, bold: true, color: v.sample ? C.navy : pending ? C.warn : C.ok, spacing: 0.8, align: 'center' });
   }
-  text('Valid until', PW - MR, y + 22, { size: 8, color: C.muted, align: 'right' });
-  text(vu.date, PW - MR, y + 36, { size: 10.5, bold: true, color: C.ink, align: 'right' });
+  if (!v.sample) {
+    text('Valid until', PW - MR, y + 22, { size: 8, color: C.muted, align: 'right' });
+    text(vu.date, PW - MR, y + 36, { size: 10.5, bold: true, color: C.ink, align: 'right' });
+  }
   y = nameBottom + 34;
+
+  if (v.sample) {
+    rrect(ML, y, CW, 30, 8, C.blueSoft);
+    circle(ML + 18, y + 15, 7, C.blue);
+    text('i', ML + 18, y + 18.5, { size: 9, bold: true, color: C.white, align: 'center' });
+    text(SAMPLE_NOTE, ML + 34, y + 18.5, { size: 9, color: C.navy });
+    y += 42;
+  }
 
   if (pending) {
     const msg = 'This pricing is pending executive approval (Deal Review) and is not final until approved.';
@@ -2071,19 +1995,12 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   // ---- pricing table (the same lines the calculator shows), measured first so each section
   // (price lines, discounts and totals, schedule, pilot) stays on one page
   sectionTitle('Pricing');
-  const doc = new DOMParser().parseFromString(customerLinesHtml(c, { forCustomer: true }), 'text/html');
-  const groups = [[]];
-  for (const tr of doc.querySelectorAll('tr')) {
-    const cls = (tr.className || '').split(/\s+/), has = (k) => cls.includes(k), tds = tr.querySelectorAll('td');
-    const label = (tds[0] ? tds[0].textContent : '').replace(/\s+/g, ' ').trim();
-    const val = (tds[1] ? tds[1].textContent : '').replace(/\s+/g, ' ').trim();
-    if (has('section')) { if (label !== 'Price lines') groups.push([{ kind: 'section', label, h: 22 }]); continue; }
-    if (has('discount') && !has('total') && (!val || val === '—')) continue; // a discount that does not apply
-    if (has('grand') || has('due')) { groups[groups.length - 1].push({ kind: has('due') ? 'due' : 'grand', label, val, h: has('due') ? 34 : 36 }); continue; }
-    const sub = has('sub'), size = sub ? 8.8 : 9.4, indent = sub ? 16 : 0, bold = has('total') || has('parent');
-    const lines = pdfWrap(label, CW - indent - 120, bold, size);
-    groups[groups.length - 1].push({ kind: 'row', label, val, lines, sub, size, indent, bold, total: has('total'), disc: has('discount') && val && val !== '—', h: lines.length * (size + 3.5) + 7.5 });
-  }
+  const groups = quotePriceGroups(c).map((g) => g.map((r) => {
+    if (r.kind === 'section') return { ...r, h: 22 };
+    if (r.kind !== 'row') return { ...r, h: r.kind === 'due' ? 34 : 36 };
+    const size = r.sub ? 8.8 : 9.4, indent = r.sub ? 16 : 0, lines = pdfWrap(r.label, CW - indent - 120, r.bold, size);
+    return { ...r, size, indent, lines, h: lines.length * (size + 3.5) + 7.5 };
+  }));
   groups.forEach((g, gi) => {
     // short sections (discounts and totals, schedule, pilot) move whole to the next page rather
     // than split; the long price-line list flows, starting with at least a few rows
@@ -2114,12 +2031,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   }
 
   // ---- next steps
-  const steps = [
-    `Review the modules, term and pricing with ${v.rep || 'your Guardrail representative'}.`,
-    c.pilot.total ? `Start the pilot (${m(c.pilot.total)}${c.pilot.credited ? ', credited toward Year 1' : ''}).` : 'Confirm any changes before signing; a revised quote replaces this one.',
-    `Sign the order form by ${vu.date}. Year 1 due at signing: ${m(c.year1DueAtSigning)}.`,
-    'Define governed workflows within 30 days of signing; setup completes within 3 months.',
-  ];
+  const steps = quoteSteps(v, m, vu);
   const stepH = steps.reduce((h, st) => h + Math.max(22, pdfWrap(st, CW - 40, false, 9.5).length * 13 + 9), 0);
   ensure(stepH + 56);
   sectionTitle('Next steps');
@@ -2141,7 +2053,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   let ny = y + 30;
   for (const n of notes) { for (const ln of pdfWrap(n, CW - 28, false, 8)) { text(ln, ML + 14, ny, { size: 8, color: C.muted }); ny += 11; } ny += 4; }
   y += noteH + 18;
-  const ask = `Questions about this quote? Contact ${v.rep || 'your Guardrail representative'} and mention quote ${ref}.`;
+  const ask = quoteAsk(v);
   for (const ln of pdfWrap(ask, CW, true, 9.5)) { text(ln, ML, y, { size: 9.5, bold: true, color: C.navy }); y += 13; }
 
   // ---- footers
@@ -2149,7 +2061,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
     ops = p;
     line(ML, PH - 40, PW - MR, C.rule, 0.6);
     text('Guardrail Technologies Inc.', ML, PH - 26, { size: 7.5, bold: true, color: C.navy });
-    text(`Quote ${ref} · Confidential`, ML + textW('Guardrail Technologies Inc.', true, 7.5) + 8, PH - 26, { size: 7.5, color: C.muted });
+    text(`${v.sample ? 'Sample pricing' : `Quote ${ref}`} · Confidential`, ML + textW('Guardrail Technologies Inc.', true, 7.5) + 8, PH - 26, { size: 7.5, color: C.muted });
     text(`Page ${k + 1} of ${pages.length}`, PW - MR, PH - 26, { size: 7.5, color: C.muted, align: 'right' });
   });
 
@@ -2173,7 +2085,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
   });
   objs[pagesN - 1] = pdfBytes(`<< /Type /Pages /Count ${kids.length} /Kids [${kids.map((k) => k + ' 0 R').join(' ')}] >>`);
   let names2 = '';
-  if (attachRequest) {
+  if (attachRequest && !v.sample) {
     const req = {}; for (const k of PDF_REQUEST_FIELDS) if (v[k] !== undefined) req[k] = v[k];
     const data = pdfBytes(JSON.stringify(req));
     const fname = `${v.requestId}-v${v.version}.json`;
@@ -2182,7 +2094,7 @@ function buildQuotePdf(v, { attachRequest = true } = {}) {
     names2 = ` /Names << /EmbeddedFiles << /Names [${pdfStr(fname)} ${fs} 0 R] >> >> /AF [${fs} 0 R]`;
   }
   objs[catalogN - 1] = pdfBytes(`<< /Type /Catalog /Pages ${pagesN} 0 R${names2} >>`);
-  const info = add(pdfBytes(`<< /Title ${pdfStr('Guardrail pricing quote - ' + v.customerName)} /Author ${pdfStr(v.rep || '')} /Subject ${pdfStr(v.requestId + ' version ' + v.version)} /Producer ${pdfStr('Guardrail Pricing Calculator')} >>`));
+  const info = add(pdfBytes(`<< /Title ${pdfStr('Guardrail pricing quote - ' + v.customerName)} /Author ${pdfStr(v.rep || '')} /Subject ${pdfStr(v.sample ? 'Sample pricing' : v.requestId + ' version ' + v.version)} /Producer ${pdfStr('Guardrail Pricing Calculator')} >>`));
   // header: the binary marker line must be raw bytes, not UTF-8
   const parts = [];
   parts[0] = pdfConcat([pdfBytes('%PDF-1.7\n%'), new Uint8Array([0xe2, 0xe3, 0xcf, 0xd3, 0x0a])]);
@@ -2206,6 +2118,210 @@ function downloadQuotePdf(v, opts) {
 }
 
 
+// ===== Quote as a Word document (no libraries): the same content as the quote PDF, in a file
+// the rep can edit, e.g. to change terms while negotiating. A .docx is a zip of XML parts.
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(b) { let c = 0xffffffff; for (let k = 0; k < b.length; k++) c = CRC_TABLE[(c ^ b[k]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+// A zip with stored (uncompressed) entries, which is all Word needs. files: [{ name, data }]
+function zipStored(files) {
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const local = [], central = []; let off = 0;
+  for (const f of files) {
+    const name = pdfBytes(f.name), data = typeof f.data === 'string' ? pdfBytes(f.data) : f.data, crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+    h.setUint16(10, time, true); h.setUint16(12, date, true); h.setUint32(14, crc, true);
+    h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
+    local.push(new Uint8Array(h.buffer), name, data);
+    const e = new DataView(new ArrayBuffer(46));
+    e.setUint32(0, 0x02014b50, true); e.setUint16(4, 20, true); e.setUint16(6, 20, true); e.setUint16(8, 0x0800, true);
+    e.setUint16(12, time, true); e.setUint16(14, date, true); e.setUint32(16, crc, true);
+    e.setUint32(20, data.length, true); e.setUint32(24, data.length, true); e.setUint16(28, name.length, true); e.setUint32(42, off, true);
+    central.push(new Uint8Array(e.buffer), name);
+    off += 30 + name.length + data.length;
+  }
+  const size = central.reduce((s, p) => s + p.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, size, true); end.setUint32(16, off, true);
+  return pdfConcat([...local, ...central, new Uint8Array(end.buffer)]);
+}
+// The logo the PDF draws, as a PNG for Word.
+async function quoteLogoPng() {
+  const logo = typeof PDF_LOGO !== 'undefined' ? PDF_LOGO : null;
+  if (!logo || typeof DecompressionStream === 'undefined') return null;
+  try {
+    const inflate = async (b64) => new Uint8Array(await new Response(new Blob([Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
+    const [rgb, alpha] = await Promise.all([inflate(logo.rgb), inflate(logo.alpha)]);
+    const cv = document.createElement('canvas'); cv.width = logo.w; cv.height = logo.h;
+    const ctx = cv.getContext('2d'), img = ctx.createImageData(logo.w, logo.h);
+    for (let p = 0; p < logo.w * logo.h; p++) img.data.set([rgb[p * 3], rgb[p * 3 + 1], rgb[p * 3 + 2], alpha[p]], p * 4);
+    ctx.putImageData(img, 0, 0);
+    const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
+    return blob ? { w: logo.w, h: logo.h, bytes: new Uint8Array(await blob.arrayBuffer()) } : null;
+  } catch { return null; }
+}
+
+async function buildQuoteDocx(v) {
+  const c = v.customer, i = v.inputs, fx = c.fx || { currency: 'USD', rate: 1 }, m = moneyFor(fx);
+  const vu = validUntil(c, v.lockedAt, v.approval && v.approval.at), ref = quoteRef(v);
+  // the PDF's colours
+  const C = { navy: '0B0D3F', blue: '5878B8', blueSoft: 'EEF2FB', heroText: 'B9C6EA', heroRule: '2A2E66', ink: '14162E', body: '2B2F45',
+    muted: '6B7189', rule: 'E3E6EF', panel: 'F5F7FC', ok: '0F8A5F', okSoft: 'E6F5EE', warn: 'A0640F', warnSoft: 'FFF5E3', white: 'FFFFFF' };
+  const W = 10080; // text width in twips: Letter with 0.75in margins
+  const tw = (pt) => Math.round(pt * 20);
+  const x = (s) => String(s ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f￾￿]/g, '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const rPr = ({ size = 9.5, bold = false, color = C.body, caps = false, spacing = 0, shade = null } = {}) =>
+    `<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>${bold ? '<w:b/>' : ''}${caps ? '<w:caps/>' : ''}<w:color w:val="${color}"/>${spacing ? `<w:spacing w:val="${tw(spacing)}"/>` : ''}`
+    + `<w:sz w:val="${Math.round(size * 2)}"/><w:szCs w:val="${Math.round(size * 2)}"/>${shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>` : ''}</w:rPr>`;
+  const run = (t, o) => `<w:r>${rPr(o)}<w:t xml:space="preserve">${x(t)}</w:t></w:r>`;
+  const caps = (t, o = {}) => run(t, { size: 7.5, bold: true, color: C.blue, caps: true, spacing: 1.1, ...o });
+  const border = (side, color, eighths, space = 0) => `<w:${side} w:val="single" w:sz="${eighths}" w:space="${space}" w:color="${color}"/>`;
+  const para = (runs, { before = 0, after = 0, align, shade, indent = 0, hanging = 0, pBdr = '', keepNext = false, tabs = '' } = {}) =>
+    `<w:p><w:pPr>${keepNext ? '<w:keepNext/>' : ''}${pBdr ? `<w:pBdr>${pBdr}</w:pBdr>` : ''}${shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>` : ''}${tabs}`
+    + `<w:spacing w:before="${tw(before)}" w:after="${tw(after)}"/>${indent || hanging ? `<w:ind w:left="${tw(indent)}"${hanging ? ` w:hanging="${tw(hanging)}"` : ''}/>` : ''}${align ? `<w:jc w:val="${align}"/>` : ''}</w:pPr>${runs}</w:p>`;
+  const NIL = '<w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/>';
+  // mar: cell padding in points; gap: space between cells in points
+  const table = (cols, rows, { top = '', mar = [0, 0, 0, 0], gap = 0 } = {}) =>
+    `<w:tbl><w:tblPr><w:tblW w:w="${W}" w:type="dxa"/>${gap ? `<w:tblCellSpacing w:w="${tw(gap / 2)}" w:type="dxa"/>` : ''}<w:tblBorders>${top ? top + NIL.replace('<w:top w:val="nil"/>', '') : NIL}</w:tblBorders><w:tblLayout w:type="fixed"/>`
+    + `<w:tblCellMar><w:top w:w="${tw(mar[0])}" w:type="dxa"/><w:left w:w="${tw(mar[1])}" w:type="dxa"/><w:bottom w:w="${tw(mar[2])}" w:type="dxa"/><w:right w:w="${tw(mar[3])}" w:type="dxa"/></w:tblCellMar></w:tblPr>`
+    + `<w:tblGrid>${cols.map((w) => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`;
+  // cells: [{ body, w, span, shade, top, bottom, vAlign }]
+  const row = (cells) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells.map((cl) => {
+    const b = [cl.top && border('top', ...cl.top), cl.bottom && border('bottom', ...cl.bottom)].filter(Boolean).join('');
+    return `<w:tc><w:tcPr><w:tcW w:w="${cl.w}" w:type="dxa"/>${cl.span ? `<w:gridSpan w:val="${cl.span}"/>` : ''}${b ? `<w:tcBorders>${b}</w:tcBorders>` : ''}${cl.shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${cl.shade}"/>` : ''}${cl.vAlign ? `<w:vAlign w:val="${cl.vAlign}"/>` : ''}</w:tcPr>${cl.body || para('')}</w:tc>`;
+  }).join('')}</w:tr>`;
+  const sectionTitle = (t) => para(caps(t, { size: 8.5, spacing: 1.4 }), { before: 20, after: 4, keepNext: true, pBdr: border('bottom', C.navy, 8, 4) });
+  const space = (pt) => para('', { before: pt });
+
+  const logo = await quoteLogoPng();
+  const body = [];
+  // ---- header: logo, and the quote reference on the right, under the navy strip
+  const logoH = 34 * 12700, logoW = logo ? Math.round(logoH * logo.w / logo.h) : 0; // EMU
+  const logoRun = logo
+    ? `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${logoW}" cy="${logoH}"/><wp:docPr id="1" name="Guardrail Technologies"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="logo.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${logoW}" cy="${logoH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`
+    : run('GUARDRAIL', { size: 20, bold: true, color: C.navy });
+  const locked = new Date(v.lockedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  body.push(table([5040, 5040], [row([
+    { w: 5040, vAlign: 'center', body: para(logoRun) },
+    { w: 5040, vAlign: 'center', body: para(caps(v.sample ? 'Sample pricing' : 'Quote', { size: 8, spacing: 2 }), { align: 'right' })
+      + para(run(v.sample ? 'Not a quote' : ref, { size: 13, bold: true, color: C.navy }), { align: 'right', before: 2 })
+      + para(run(locked, { size: 9, color: C.muted }), { align: 'right', before: 2 }) },
+  ])], { top: border('top', C.navy, 36, 0), mar: [16, 0, 0, 0] }));
+
+  // ---- prepared for, status and validity
+  const pending = v.status === 'DEAL REVIEW' && !v.approval;
+  const approved = !!v.approval || v.status === 'APPROVED';
+  const pill = v.sample ? ['SAMPLE', C.blueSoft, C.navy] : pending ? ['PENDING DEAL REVIEW', C.warnSoft, C.warn] : approved ? ['APPROVED', C.okSoft, C.ok] : null;
+  body.push(table([6720, 3360], [row([
+    { w: 6720, body: para(caps('Prepared for'))
+      + para(run(v.customerName, { size: 22, bold: true, color: C.navy }), { before: 4 })
+      + para(run(`Prepared by ${v.rep ? v.rep + ' · ' : ''}Guardrail Technologies Inc.${v.stage ? ` · ${v.stage}` : ''}`, { color: C.muted }), { before: 4 }) },
+    { w: 3360, body: (pill ? para(run(` ${pill[0]} `, { size: 7.5, bold: true, color: pill[2], spacing: 0.8, shade: pill[1] }), { align: 'right' }) : '')
+      + (v.sample ? '' : para(run('Valid until', { size: 8, color: C.muted }), { align: 'right', before: 6 }) + para(run(vu.date, { size: 10.5, bold: true, color: C.ink }), { align: 'right', before: 2 })) },
+  ])], { mar: [26, 0, 10, 0] }));
+  const notice = v.sample ? [SAMPLE_NOTE, C.blueSoft, C.navy] : pending ? ['This pricing is pending executive approval (Deal Review) and is not final until approved.', C.warnSoft, C.warn] : null;
+  if (notice) body.push(table([W], [row([{ w: W, shade: notice[1], body: para(run(notice[0], { size: 9, color: notice[2] })) }])], { mar: [7, 12, 7, 12] }), space(6));
+
+  // ---- summary card: the Year 1 total, then three key figures
+  const D = c.discounts || {}, third = Math.floor(W / 3);
+  const cols = [
+    ['Due at signing', m(c.year1DueAtSigning), c.pilot && c.pilot.creditApplied ? 'After pilot credit' : 'Year 1'],
+    ['Annual recurring', m(c.annualRecurringPrice), 'List price per year'],
+    ['You save', D.total ? m(D.total) : '—', D.total ? `${fmtPct(D.totalPctOfMSRP)} off list price` : 'List price'],
+  ];
+  body.push(table([third, third, W - 2 * third], [
+    row([{ w: W, span: 3, shade: C.navy, bottom: [C.heroRule, 6, 0], body: para(caps('Year 1 total', { color: C.heroText }))
+      + para(run(m(c.finalPrice), { size: 30, bold: true, color: C.white }), { before: 4 })
+      + para(run(`After all discounts · ${fx.rate > 0 ? fx.currency : 'USD'}`, { size: 9, color: C.heroText }), { before: 2, after: 6 }) }]),
+    row(cols.map(([l, val, sub], k) => ({ w: k < 2 ? third : W - 2 * third, shade: C.navy, body: para(caps(l, { color: C.heroText, size: 6.8, spacing: 0.9 }), { before: 6 })
+      + para(run(val, { size: 13.5, bold: true, color: C.white }), { before: 3 }) + para(run(sub, { size: 7.5, color: C.heroText }), { before: 2, after: 4 }) }))),
+  ], { mar: [10, 22, 6, 22] }));
+
+  // ---- detail tiles
+  const ev = employeesView(c, i);
+  const tiles = [
+    ['Employee band', i.band, bandRangeText(i.band, c.included.governedEmployees)],
+    ['Contract term', i.term, i.earlyPay ? 'Early Pay applied' : (c.schedule && c.schedule.years > 1 ? `${c.schedule.years} years` : 'Annual')],
+    [ev.label, fmtNum(ev.n), ev.note ? ev.note.replace(/ \(.*\)$/, '') : 'Covered by this quote'],
+    ['Currency', fx.rate > 0 ? fx.currency : 'USD', fx.currency !== 'USD' && fx.rate > 0 ? `1 USD = ${Number(fx.rate).toLocaleString('en-US', { maximumFractionDigits: 4 })} ${fx.currency}` : 'US dollars'],
+  ];
+  const quarter = Math.floor(W / 4);
+  body.push(space(4), table([quarter, quarter, quarter, W - 3 * quarter], [row(tiles.map(([l, val, sub], k) => ({ w: k < 3 ? quarter : W - 3 * quarter, shade: C.panel,
+    body: para(caps(l, { size: 6.8, spacing: 0.8, color: C.muted })) + para(run(String(val), { size: 13, bold: true, color: C.navy }), { before: 3 }) + para(run(sub, { size: 7.5, color: C.muted }), { before: 2 }) })))],
+  { mar: [8, 10, 8, 10], gap: 8 }));
+
+  // ---- what's included, as tags
+  const names = Object.fromEntries(c.lines.modules.map((mm) => [mm.key, mm.name.replace('Traffic Light for ', '')]));
+  const tags = Object.entries(i.modules || {}).filter(([, on]) => on).map(([k]) => `Traffic Light: ${names[k]}`);
+  if (i.commandCenter) tags.push('AI Command Center');
+  tags.push(`${fmtNum(c.included.developerWorkseats)} developer workseats`, `${fmtNum(c.included.workflows)} governed workflows`);
+  body.push(para(caps('Included', { size: 7, color: C.muted, spacing: 1 }) + run('   ') + tags.map((t) => run(`  ${t.replace(/ /g, ' ')}  `, { size: 8, bold: true, color: C.navy, shade: C.blueSoft })).join(run('  ')), { before: 12 }));
+
+  // ---- pricing table: the same lines the calculator shows
+  body.push(sectionTitle('Pricing'));
+  const LW = 7680, VW = W - LW, rows = [];
+  quotePriceGroups(c).forEach((g) => g.forEach((r) => {
+    if (r.kind === 'section') { rows.push(row([{ w: W, span: 2, body: para(caps(r.label, { size: 7.5, spacing: 1 }), { before: 12, keepNext: true }) }])); return; }
+    if (r.kind === 'grand' || r.kind === 'due') {
+      const due = r.kind === 'due', shade = due ? C.navy : C.blueSoft, color = due ? C.white : C.navy;
+      rows.push(row([{ w: LW, shade, vAlign: 'center', body: para(run(r.label, { size: due ? 10.5 : 10, bold: true, color }), { before: 5, after: 5, indent: 10 }) },
+        { w: VW, shade, vAlign: 'center', body: para(run(r.val, { size: due ? 13 : 12, bold: true, color }), { align: 'right', before: 5, after: 5 }) }]));
+      return;
+    }
+    const size = r.sub ? 8.8 : 9.4, top = r.total ? [C.navy, 5, 0] : null, bottom = r.total ? null : [C.rule, 3, 0];
+    rows.push(row([
+      { w: LW, top, bottom, body: para(run(r.label, { size, bold: r.bold, color: r.sub ? C.muted : r.total ? C.ink : C.body }), { before: 3, after: 3, indent: r.sub ? 16 : 0 }) },
+      { w: VW, top, bottom, body: para(r.val ? run(r.val, { size, bold: r.bold, color: r.disc ? C.ok : r.sub ? C.muted : C.ink }) : '', { align: 'right', before: 3, after: 3 }) },
+    ]));
+  }));
+  body.push(table([LW, VW], rows, { mar: [0, 0, 0, 10] }));
+  if (c.onPremNote) body.push(para(run(`Dedicated infrastructure: ${c.lines.dedicatedTenant ? 'priced as scoped.' : 'to be scoped and quoted separately.'}`, { size: 8.5, color: C.muted }), { before: 8 }));
+
+  // ---- next steps
+  body.push(sectionTitle('Next steps'));
+  quoteSteps(v, m, vu).forEach((st, k) => body.push(para(run(String(k + 1), { bold: true, color: C.blue }) + '<w:r><w:tab/></w:r>' + run(st),
+    { before: 6, indent: 22, hanging: 22, tabs: `<w:tabs><w:tab w:val="left" w:pos="${tw(22)}"/></w:tabs>` })));
+
+  // ---- terms and contact
+  body.push(space(12), table([W], [row([{ w: W, shade: C.panel, body: para(caps('Terms', { size: 7, color: C.muted, spacing: 1 }), { after: 4 })
+    + quoteNotes(v).map((n) => para(run(n, { size: 8, color: C.muted }), { after: 4 })).join('') }])], { mar: [10, 14, 8, 14] }));
+  body.push(para(run(quoteAsk(v), { bold: true, color: C.navy }), { before: 14 }));
+
+  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"';
+  const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const small = { size: 7.5, color: C.muted }, fc = (type) => `<w:r>${rPr(small)}<w:fldChar w:fldCharType="${type}"/></w:r>`;
+  const field = (instr) => `${fc('begin')}<w:r>${rPr(small)}<w:instrText xml:space="preserve"> ${instr} </w:instrText></w:r>${fc('separate')}${run('1', small)}${fc('end')}`;
+  const footer = `${XML}<w:ftr ${NS}>${para(run('Guardrail Technologies Inc.', { size: 7.5, bold: true, color: C.navy }) + run(`   ${v.sample ? 'Sample pricing' : `Quote ${ref}`} · Confidential`, small)
+    + '<w:r><w:tab/></w:r>' + run('Page ', small) + field('PAGE') + run(' of ', small) + field('NUMPAGES'),
+  { pBdr: border('top', C.rule, 5, 6), tabs: `<w:tabs><w:tab w:val="right" w:pos="${W}"/></w:tabs>` })}</w:ftr>`;
+  const docXml = `${XML}<w:document ${NS}><w:body>${body.join('')}`
+    + `<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080" w:header="540" w:footer="540" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  const styles = `${XML}<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:color w:val="${C.body}"/><w:sz w:val="19"/><w:szCs w:val="19"/><w:lang w:val="en-US"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="252" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>`;
+  const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const docRels = `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="${REL}/styles" Target="styles.xml"/><Relationship Id="rIdFooter" Type="${REL}/footer" Target="footer1.xml"/>${logo ? `<Relationship Id="rIdLogo" Type="${REL}/image" Target="media/logo.png"/>` : ''}</Relationships>`;
+  const core = `${XML}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${x('Guardrail pricing quote - ' + v.customerName)}</dc:title><dc:subject>${x(v.sample ? 'Sample pricing' : v.requestId + ' version ' + v.version)}</dc:subject><dc:creator>${x(v.rep || 'Guardrail Pricing Calculator')}</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString().slice(0, 19)}Z</dcterms:created></cp:coreProperties>`;
+  const types = `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>`
+    + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>';
+  const rootRels = `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`;
+  return zipStored([
+    { name: '[Content_Types].xml', data: types }, { name: '_rels/.rels', data: rootRels }, { name: 'docProps/core.xml', data: core },
+    { name: 'word/document.xml', data: docXml }, { name: 'word/styles.xml', data: styles }, { name: 'word/footer1.xml', data: footer },
+    { name: 'word/_rels/document.xml.rels', data: docRels }, ...(logo ? [{ name: 'word/media/logo.png', data: logo.bytes }] : []),
+  ]);
+}
+async function downloadQuoteDocx(v) {
+  const bytes = await buildQuoteDocx(v);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+  a.download = quoteFileName(v, 'docx'); document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
 
 // ===== Sales calculator (one page, no tabs). Uses Engine (src/engine.js), Schema (src/config-schema.js)
 // and the shared display helpers from public/common.js, all inlined by the build.
@@ -2221,7 +2337,7 @@ function downloadQuotePdf(v, opts) {
 
   // ---------------------------------------------------------------- calculator
   const state = {
-    band: null, location: null, seats: '', term: cfg.terms[0], modules: {}, pilot: {}, commandCenter: true,
+    band: null, location: null, seats: '', term: cfg.terms[0], modules: {}, pilot: {}, commandCenter: false,
     onPrem: false, scopedOnPremPrice: '', earlyPay: false, variableDiscountPct: 0, pilotCredit: true, manualRate: '',
     pilotOn: true, employeeCount: '',
     validUntil: '', // YYYY-MM-DD the rep picked; empty = the standard validity from today
@@ -2241,12 +2357,30 @@ function downloadQuotePdf(v, opts) {
     el.innerHTML = cfg.modules.map((m) => `<button type="button" class="chip" data-k="${m.key}"><span>${esc(m.name)}</span><span class="chip-price" data-price="${m.key}"></span></button>`).join('');
     el.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; state[key][b.dataset.k] = !state[key][b.dataset.k]; sync(); recalc(); };
   }
+  // Employee bands as headcount ranges: each band covers from one past the band below up to its
+  // own governed-employee count; Enterprise is everything above the largest of those.
+  const bandCap = (t) => (t && t !== 'Enterprise' ? cfg.tier.governedEmployees[t] : null);
+  const cappedTiers = () => cfg.tiers.filter((t) => t !== 'Enterprise');
+  function bandRange(t) {
+    const caps = cappedTiers(), k = caps.indexOf(t);
+    if (t === 'Enterprise') return `${fmtNum(Math.max(...caps.map(bandCap)) + 1)}+ employees`;
+    return `${fmtNum(k > 0 ? bandCap(caps[k - 1]) + 1 : 1)}–${fmtNum(bandCap(t))} employees`;
+  }
+  // the smallest band that covers a headcount
+  const bandFor = (n) => cappedTiers().find((t) => n <= bandCap(t)) || 'Enterprise';
+  const wholeCount = (v) => { const n = Number(v); return v !== '' && Number.isInteger(n) && n > 0 ? n : null; };
+
   function buildControls() {
-    // each band with its headcount, e.g. "SMB (up to 100 employees)"
-    const tiers = cfg.tiers, gov = cfg.tier.governedEmployees;
-    const bandText = (t, k) => t === 'Enterprise' ? `${t} (${fmtNum(gov[tiers[k - 1]] || 1000)}+ employees)` : `${t} (up to ${fmtNum(gov[t])} employees)`;
-    $('#band').insertAdjacentHTML('beforeend', tiers.map((t, k) => `<option value="${esc(t)}">${esc(bandText(t, k))}</option>`).join(''));
-    $('#band').addEventListener('change', (e) => { state.band = e.target.value; sync(); recalc(); });
+    // each band with its headcount range, e.g. "SMB (21–100 employees)"
+    $('#band').insertAdjacentHTML('beforeend', cfg.tiers.map((t) => `<option value="${esc(t)}">${esc(`${t} (${bandRange(t)})`)}</option>`).join(''));
+    $('#band').addEventListener('change', (e) => {
+      state.band = e.target.value;
+      // a headcount the new band can't cover no longer applies
+      const n = wholeCount(state.employeeCount), cap = bandCap(state.band);
+      empCleared = n && cap && n > cap ? n : null;
+      if (empCleared) state.employeeCount = '';
+      sync(); recalc();
+    });
     $('#location').insertAdjacentHTML('beforeend', cfg.locations.map((v) => `<option value="${esc(v)}">${esc(`${LOC_NAMES[v] || v} (${cfg.currencyByLocation[v]})`)}</option>`).join(''));
     $('#location').addEventListener('change', (e) => { state.location = e.target.value; sync(); recalc(); });
     seg($('#term'), cfg.terms, 'term');
@@ -2273,6 +2407,7 @@ function downloadQuotePdf(v, opts) {
       if (state.pilot[k]) state.modules[k] = true;
       sync(); recalc();
     };
+    $('#seats-hint').textContent = `Enterprise is ${bandRange('Enterprise')}.`;
     $('#disc-range').max = repLimitPct(); $('#disc-max-label').textContent = `${repLimitPct()}%`;
   }
   $('#pilotOn').addEventListener('click', () => {
@@ -2282,24 +2417,33 @@ function downloadQuotePdf(v, opts) {
   });
   // discount: a slider up to the rep limit; "Need more?" opens a box for larger requests (Deal Review)
   $('#disc-range').addEventListener('input', (e) => { state.variableDiscountPct = e.target.value; sync(); recalc(); });
-  // employee count: typed like the Enterprise seat count, held at the band's maximum ("up to N")
-  const bandCap = () => (state.band && state.band !== 'Enterprise' ? cfg.tier.governedEmployees[state.band] : null);
-  let empHeld = false;
-  function clampEmp() {
-    const cap = bandCap(), n = Number(state.employeeCount);
-    empHeld = !!(cap && state.employeeCount !== '' && n > cap);
-    if (empHeld) state.employeeCount = String(cap);
-    return empHeld;
-  }
+  // employee count: picks the band that covers it. Pricing follows the band, so the price only
+  // moves when the count crosses into another band. Above the largest band it becomes the
+  // Enterprise seat count.
+  let empCleared = null; // a count dropped because the rep picked a band too small for it
   $('#empcount').addEventListener('input', (e) => {
-    state.employeeCount = e.target.value;
-    if (clampEmp()) e.target.value = state.employeeCount;
+    state.employeeCount = e.target.value; empCleared = null;
+    const n = wholeCount(state.employeeCount);
+    if (n) {
+      const band = bandFor(n);
+      if (band === 'Enterprise') {
+        Object.assign(state, { band, seats: String(n), employeeCount: '' });
+        sync(); recalc(); $('#seats').focus();
+        return;
+      }
+      if (band !== state.band) { state.band = band; sync(); }
+    }
     empHint(); recalc();
   });
   function empHint() {
-    const h = $('#empcount-hint'), cap = bandCap();
-    h.className = 'hint warn-text'; h.textContent = '';
-    if (cap && empHeld) h.textContent = `${state.band} covers up to ${fmtNum(cap)} employees. For more, choose a larger band.`;
+    const h = $('#empcount-hint'), n = wholeCount(state.employeeCount);
+    h.className = 'hint'; h.textContent = '';
+    if (empCleared) {
+      h.className = 'hint warn-text';
+      h.textContent = `${state.band} covers ${bandRange(state.band)}, so the count of ${fmtNum(empCleared)} was cleared.`;
+    } else if (n && state.band && state.band !== 'Enterprise') {
+      h.textContent = `Priced on the ${state.band} band (${bandRange(state.band)}). The price changes when the count moves into another band.`;
+    }
   }
   ['commandCenter', 'onPrem', 'earlyPay', 'pilotCredit'].forEach((id) => $('#' + id).addEventListener('click', () => { state[id] = !state[id]; sync(); recalc(); }));
   // pilot modules can't be chosen without the module itself (enforced in sync)
@@ -2325,10 +2469,8 @@ function downloadQuotePdf(v, opts) {
     $('#disc-range').setAttribute('aria-valuetext', `${fmtNum(pct)}% additional discount`);
     $('#disc-val').textContent = `${fmtNum(pct)}%`;
     $('#disc-val').classList.toggle('neg', pct > repLimitPct());
-    const capNow = bandCap(), before = state.employeeCount;
-    $('#empcount-field').classList.toggle('hidden', !capNow);
-    if (capNow) { $('#empcount').max = capNow; $('#empcount').placeholder = `Up to ${fmtNum(capNow)}`; }
-    if (clampEmp() || document.activeElement !== $('#empcount') || before !== state.employeeCount) $('#empcount').value = state.employeeCount;
+    $('#empcount-field').classList.toggle('hidden', state.band === 'Enterprise');
+    if (document.activeElement !== $('#empcount') || empCleared) $('#empcount').value = state.employeeCount;
     empHint();
     $('#seats-field').classList.toggle('hidden', state.band !== 'Enterprise');
     $('#onprem-box').classList.toggle('hidden', !state.onPrem);
@@ -2490,7 +2632,7 @@ function downloadQuotePdf(v, opts) {
   function recalc() {
     lockedSinceChange = false;
     const out = $('#out'), empty = $('#empty'), lock = $('#lock');
-    $('#printbtn').classList.add('hidden');
+    $('#printbtn').classList.add('hidden'); $('#docxbtn').classList.add('hidden');
     const hide = (msg) => {
       showChipPrices(null); showDiscountsSoFar(null); updateMobileBar(null);
       out.classList.add('hidden'); lock.classList.add('hidden'); empty.classList.remove('hidden');
@@ -2498,8 +2640,10 @@ function downloadQuotePdf(v, opts) {
       $('#seats').toggleAttribute('aria-invalid', state.band === 'Enterprise' && !(Number(state.seats) > 0));
       lastResult = null;
     };
-    if (!state.band || !state.location) return hide(`To see the price, choose ${!state.band && !state.location ? 'an employee band and a buyer location' : !state.band ? 'an employee band' : 'a buyer location'} on the left.`);
+    if (!state.band || !state.location) return hide(`To see the price, ${!state.band && !state.location ? 'enter the number of employees (or choose a band) and a buyer location' : !state.band ? 'enter the number of employees or choose a band' : 'choose a buyer location'} on the left.`);
     if (state.band === 'Enterprise' && !(Number(state.seats) > 0)) return hide('Enter the Enterprise seat count to see pricing.');
+    // with no product there is nothing to sell, only support and inference lines
+    if (!Object.values(state.modules).some(Boolean) && !state.commandCenter && !state.onPrem) return hide('Choose a Traffic Light module or AI Command Center to see pricing.');
     let r;
     try { r = Engine.calculate(payload(), cfg); } catch (e) { return hide(e.message); }
     const fx = currentFx();
@@ -2513,6 +2657,8 @@ function downloadQuotePdf(v, opts) {
     out.innerHTML = salesSummaryHtml(r.customer, fxBoxHtml(fx), r.inputs);
     animatePrice(r.customer);
     $('#lockbtn').textContent = r.customer.dealStatus === 'DEAL REVIEW' ? 'Lock for Deal Review' : 'Lock in pricing request';
+    // pricing that needs approval has no quote document, sample or not
+    $('#sample-row').classList.toggle('hidden', r.customer.dealStatus === 'DEAL REVIEW');
     showValidity();
     showDiscountsSoFar(r.customer);
     updateMobileBar(r.customer);
@@ -2658,6 +2804,7 @@ function downloadQuotePdf(v, opts) {
     if (!lastResult) return;
     if ((daysFromToday(chosenValidUntil()) ?? 0) < 0) { $('#lockerr').textContent = 'Choose a valid-until date from today on.'; $('#validuntil').focus(); return; }
     if (lockedSinceChange) { $('#lockerr').textContent = 'Already locked. Change something to save a new version.'; return; }
+    if (reviseOf && reviseOf.checking) { $('#lockerr').textContent = 'Checking for the latest version of this request. Try again in a moment.'; return; }
     const fx = lastResult.customer.fx;
     if (!fx.rate) { lastResult.customer.fx = { currency: 'USD', rate: 1, source: `Quoted in USD (no ${fx.currency} rate available)` }; }
     const requestId = reviseOf ? reviseOf.requestId : newRequestId();
@@ -2677,19 +2824,33 @@ function downloadQuotePdf(v, opts) {
     const review = snap.status === 'DEAL REVIEW';
     showBanner(snap, true);
     saveHistory(snap); renderHistory();
-    $('#printbtn').classList.toggle('hidden', !canDownload(snap));
+    $('#printbtn').classList.toggle('hidden', !canDownload(snap)); $('#docxbtn').classList.toggle('hidden', !canDownload(snap));
     const label = version > 1 ? `${requestId}, version ${version}` : requestId;
     toast(review
       ? `Locked ${label}. Sent for approval; the quote PDF is available once it's approved.`
       : `Locked ${label}.`, 'ok');
   });
   $('#printbtn').addEventListener('click', () => { if (lastLocked) downloadQuotePdf(withApproval(lastLocked)); });
+  $('#docxbtn').addEventListener('click', () => { if (lastLocked) downloadQuoteDocx(withApproval(lastLocked)).catch(() => toast('Could not build the Word file.')); });
 
-  function showBanner(s, justLocked) {
+  // ---- sample pricing: the current price as a quote document, without locking, saving or HubSpot
+  function sampleSnap() {
+    const fx = lastResult.customer.fx;
+    return {
+      sample: true, customerName: $('#cname').value.trim() || 'Sample pricing', rep: $('#repname').value.trim(), stage: null,
+      lockedAt: new Date().toISOString(), status: lastResult.customer.dealStatus, inputs: lastResult.inputs,
+      customer: fx.rate ? lastResult.customer : { ...lastResult.customer, fx: { currency: 'USD', rate: 1, source: `Quoted in USD (no ${fx.currency} rate available)` } },
+    };
+  }
+  const sampleOk = () => lastResult && canDownload({ status: lastResult.customer.dealStatus });
+  $('#samplepdf').addEventListener('click', () => { if (sampleOk()) downloadQuotePdf(sampleSnap()); });
+  $('#sampledocx').addEventListener('click', () => { if (sampleOk()) downloadQuoteDocx(sampleSnap()).catch(() => toast('Could not build the Word file.')); });
+
+  function showBanner(s, justLocked, latest = s.version) {
     const b = $('#revise-banner'); b.classList.remove('hidden');
     b.innerHTML = justLocked
       ? `<span><b>Locked:</b> ${esc(s.requestId)} “${esc(s.customerName)}”${s.version > 1 ? `, version ${s.version}` : ''}. Further changes lock as version ${s.version + 1}.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`
-      : `<span><b>Revising</b> ${esc(s.requestId)} “${esc(s.customerName)}” (latest version ${s.version}). Locking saves version ${s.version + 1}; earlier versions stay as they are.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`;
+      : `<span><b>Revising</b> ${esc(s.requestId)} “${esc(s.customerName)}” ${latest > s.version ? `from version ${s.version} (latest is version ${latest})` : `(latest version ${s.version})`}. Locking saves version ${latest + 1}; earlier versions stay as they are.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`;
     $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; setDeal(null); $('#stage').value = 'Confirmed'; state.validUntil = ''; recalc(); };
   }
 
@@ -2724,8 +2885,16 @@ function downloadQuotePdf(v, opts) {
 
   function loadForRevision(s) {
     applyInputs(s);
-    reviseOf = { requestId: s.requestId, version: s.version, customerName: s.customerName };
+    reviseOf = { requestId: s.requestId, version: s.version, customerName: s.customerName, checking: true };
+    // The next version follows the latest one saved, so revising an older version never
+    // overwrites a newer one.
+    latestVersion(s.requestId, s.version).then((latest) => {
+      if (!reviseOf || reviseOf.requestId !== s.requestId) return;
+      reviseOf.checking = false;
+      if (latest > reviseOf.version) { reviseOf.version = latest; showBanner(s, false, latest); }
+    });
     $('#cname').value = s.customerName;
+    if (!$('#repname').value.trim()) $('#repname').value = s.rep || '';
     // requests locked before the deal picker only have a pasted link: the rep picks the deal again
     setDeal(s.hubspotDeal && s.hubspotDeal.id ? s.hubspotDeal : null);
     // keep the stage the request was locked with (older requests without one start as Revised)
@@ -2734,7 +2903,16 @@ function downloadQuotePdf(v, opts) {
     // Opening an approved (or Standard) request from the dashboard offers its quote PDF until
     // anything is changed; recalc() hides it again on the next edit.
     lastLocked = s;
-    $('#printbtn').classList.toggle('hidden', !canDownload(s));
+    $('#printbtn').classList.toggle('hidden', !canDownload(s)); $('#docxbtn').classList.toggle('hidden', !canDownload(s));
+  }
+
+  async function latestVersion(requestId, version) {
+    try {
+      const res = await fetch('/api/quotes', { credentials: 'same-origin', cache: 'no-store' });
+      if (!res.ok) return version;
+      const saved = ((await res.json()).quotes || []).filter((q) => q.requestId === requestId).map((q) => Number(q.version) || 0);
+      return Math.max(version, ...saved);
+    } catch { return version; }
   }
 
   // ---- this browser's locked requests (a convenience; the quote PDFs are the record)
