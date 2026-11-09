@@ -14,12 +14,20 @@ test('admins manage who is an admin or a rep from the user menu', async ({ brows
   await admin.getByRole('menuitem', { name: 'Manage roles' }).click();
   await expect(admin.getByRole('heading', { name: 'Manage roles' })).toBeVisible();
   await expect(admin.getByText(/\d+ people · \d+ admins?/)).toBeVisible(); // the list has loaded
+  const person = admin.getByLabel('Person'), role = admin.getByLabel('Role', { exact: true }), saveBtn = admin.getByRole('button', { name: 'Save' });
+  await expect(admin.getByRole('searchbox')).toHaveCount(0); // a dropdown, not a search
+  await person.selectOption({ label: 'Someone new…' });
   await admin.getByLabel('Email').fill(rep.email);
   await admin.getByLabel(/^Name/).fill(rep.name);
-  await admin.getByRole('button', { name: 'Add person' }).click();
+  await role.selectOption('rep');
+  await saveBtn.click();
   await expect(admin.getByRole('status')).toHaveText('Playwright Rep is now a rep.');
+  await expect(person).toHaveValue(rep.email);
   // admins can't change their own role
-  await expect(admin.getByLabel('Role for Jared Sunday')).toBeDisabled();
+  await person.selectOption({ label: 'Jared Sunday (jared.sunday@guardrail.tech) · you' });
+  await expect(role).toBeDisabled();
+  await expect(saveBtn).toBeDisabled();
+  await expect(admin.getByText("You can't change your own role.")).toBeVisible();
 
   // as a rep: no menu item, no page, no API
   const repCtx = await browser.newContext();
@@ -37,13 +45,21 @@ test('admins manage who is an admin or a rep from the user menu', async ({ brows
   expect((await r.request.post('/api/admin/roles', { data: { email: rep.email, role: 'admin' } })).status()).toBe(403);
 
   // made an admin: the rep now gets the Executive Dashboard
-  await admin.getByLabel('Role for Playwright Rep').selectOption('admin');
+  await expect(admin.getByText(/\d+ people · \d+ admins?/)).toBeVisible();
+  await person.selectOption({ label: `${rep.name} (${rep.email})` });
+  await expect(role).toHaveValue('rep'); // shows their current role
+  await expect(saveBtn).toBeDisabled(); // nothing changed yet
+  await role.selectOption('admin');
+  await saveBtn.click();
   await expect(admin.getByRole('status')).toHaveText('Playwright Rep is now an admin.');
   await r.goto('/');
   await expect(r.getByRole('link', { name: 'Executive Dashboard' })).toBeVisible();
 
+  await expect(admin.getByRole('row', { name: /Playwright Rep/ })).toContainText('Admin');
+
   // and back to a rep
-  await admin.getByLabel('Role for Playwright Rep').selectOption('rep');
+  await role.selectOption('rep');
+  await saveBtn.click();
   await expect(admin.getByRole('status')).toHaveText('Playwright Rep is now a rep.');
   await r.goto('/');
   await expect(r.getByRole('link', { name: 'Executive Dashboard' })).toHaveCount(0);
