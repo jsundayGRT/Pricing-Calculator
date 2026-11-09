@@ -26,6 +26,9 @@ test('admins manage who is an admin or a rep from the user menu', async ({ brows
   await signIn(repCtx, rep);
   const r = await repCtx.newPage();
   await r.goto('/');
+  // opening the app counts as activity, even without a fresh sign-in
+  await admin.reload();
+  await expect(admin.getByRole('row', { name: /Playwright Rep/ }).getByRole('cell').nth(1)).not.toHaveText('Not yet');
   await r.getByRole('button', { name: rep.name }).click();
   await expect(r.getByRole('menuitem', { name: 'Manage roles' })).toHaveCount(0);
   await r.goto('/admin/roles');

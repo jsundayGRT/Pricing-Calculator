@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { AppHeader } from '@/components/AppHeader';
 import { RolesClient } from '@/components/RolesClient';
-import { isAdmin } from '@/lib/admin';
+import { isAdmin, rolesStorageIsTemporary } from '@/lib/admin';
 import { readSession } from '@/lib/session';
 
 export default async function RolesPage() {
@@ -22,7 +22,7 @@ export default async function RolesPage() {
   return (
     <>
       <AppHeader user={user} />
-      <RolesClient myEmail={user.email} />
+      <RolesClient myEmail={user.email} temporaryStorage={rolesStorageIsTemporary()} />
     </>
   );
 }

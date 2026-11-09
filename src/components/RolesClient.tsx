@@ -14,7 +14,7 @@ function fmtDate(iso?: string | null) {
 
 // Admins choose who is an admin and who is a rep. Admins see the Executive Dashboard, approve
 // Deal Reviews, search every HubSpot deal and manage roles; reps price and lock their own requests.
-export function RolesClient({ myEmail }: { myEmail: string }) {
+export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: string; temporaryStorage?: boolean }) {
   const [people, setPeople] = useState<PersonView[] | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
@@ -82,6 +82,13 @@ export function RolesClient({ myEmail }: { myEmail: string }) {
         </div>
       </div>
 
+      {temporaryStorage ? (
+        <div className="err roles-warn">
+          Roles and last-active dates aren&apos;t being saved permanently: this site has no Upstash Redis connected, so
+          changes can be lost when the app restarts. In Vercel, open the project → Storage → connect Upstash for Redis,
+          then redeploy.
+        </div>
+      ) : null}
       <div className="err" role="alert">{error}</div>
       <p className="roles-saved" role="status">{saved}</p>
 
@@ -115,7 +122,7 @@ export function RolesClient({ myEmail }: { myEmail: string }) {
         <div className="table-wrap">
           <table className="roles">
             <thead>
-              <tr><th>Person</th><th>Last sign-in</th><th>Role</th></tr>
+              <tr><th>Person</th><th>Last active</th><th>Role</th></tr>
             </thead>
             <tbody>
               {shown.map((p) => {
@@ -127,7 +134,7 @@ export function RolesClient({ myEmail }: { myEmail: string }) {
                       {p.name ? <div className="sub">{p.email}</div> : null}
                       {p.roleChangedBy ? <div className="sub roles-note">Set by {p.roleChangedBy} on {fmtDate(p.roleChangedAt)}</div> : null}
                     </td>
-                    <td className="sub">{p.lastSignInAt ? fmtDate(p.lastSignInAt) : 'Not yet'}</td>
+                    <td className="sub">{p.lastSeenAt || p.lastSignInAt ? fmtDate(p.lastSeenAt || p.lastSignInAt) : 'Not yet'}</td>
                     <td>
                       <select
                         aria-label={`Role for ${p.name || p.email}`}

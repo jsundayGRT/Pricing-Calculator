@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-import { isAdmin } from '@/lib/admin';
+import { isAdmin, recordSeen } from '@/lib/admin';
 import type { SessionUser } from '@/lib/session';
 import { UserMenu } from '@/components/UserMenu';
 import { ThemeToggle } from '@/components/theme';
@@ -11,7 +11,7 @@ export async function AppHeader({
   user?: SessionUser | null;
   active?: 'dashboard' | 'calculator' | 'executive';
 }) {
-  const admin = await isAdmin(user);
+  const [admin] = await Promise.all([isAdmin(user), recordSeen(user)]);
 
   return (
     <header className={user ? 'topbar' : 'topbar signed-out'}>

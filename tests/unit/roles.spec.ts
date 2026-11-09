@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { isAdmin, listPeople, recordSignIn, roleForEmail, RoleError, setRole } from '../../src/lib/admin';
+import { isAdmin, listPeople, recordSeen, recordSignIn, roleForEmail, RoleError, setRole } from '../../src/lib/admin';
+import { store } from '../../src/lib/store';
 import { setStoreForTests, type Store } from '../../src/lib/store';
 
 // Roles against an in-memory store.
@@ -78,4 +79,28 @@ test('bad input is refused', async () => {
   await expect(setRole(jared, sam.email, 'owner' as never)).rejects.toThrow('Admin or Rep');
   process.env.AZURE_AD_ALLOWED_EMAIL_DOMAIN = 'guardrail.tech';
   await expect(setRole(jared, 'someone@gmail.com', 'rep')).rejects.toThrow('@guardrail.tech');
+});
+
+test('opening the app records when someone was last active, at most every few minutes', async () => {
+  // already signed in before sign-ins were recorded: the first page they open counts
+  await recordSeen(sam);
+  const first = (await listPeople()).find((p) => p.email === sam.email);
+  expect(first).toMatchObject({ name: 'Sam Rep', role: 'rep' });
+  expect(first?.lastSeenAt).toBeTruthy();
+  await recordSeen(sam);
+  expect((await listPeople()).find((p) => p.email === sam.email)?.lastSeenAt).toBe(first?.lastSeenAt);
+});
+
+test('recording activity never touches roles', async () => {
+  await setRole(jared, sam.email, 'admin');
+  await recordSignIn(sam);
+  await recordSeen({ ...sam, email: 'other@guardrail.tech' });
+  expect(await isAdmin(sam)).toBe(true);
+  expect(await store().getValue('roles')).toEqual({ [sam.email]: expect.objectContaining({ role: 'admin' }) });
+});
+
+test('roles and sign-ins saved by the first version are still read', async () => {
+  await store().putValue('people', { 'sam.rep@guardrail.tech': { email: 'sam.rep@guardrail.tech', name: 'Sam Rep', role: 'admin', lastSignInAt: '2026-11-09T10:00:00.000Z' } });
+  expect(await isAdmin(sam)).toBe(true);
+  expect((await listPeople()).find((p) => p.email === sam.email)?.lastSignInAt).toBe('2026-11-09T10:00:00.000Z');
 });

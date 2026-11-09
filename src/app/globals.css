@@ -469,6 +469,7 @@ table.roles select { width: auto; min-width: 110px; }
 .roles-add input:focus, .roles-add select:focus, table.roles select:focus { outline: none; border-color: var(--accent); }
 .roles-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .roles-saved { margin: 0 0 12px; color: var(--ok); font-size: 13px; }
+.roles-warn { margin-bottom: 12px; }
 .roles-saved:empty { display: none; }
 table.roles { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.roles th, table.roles td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
