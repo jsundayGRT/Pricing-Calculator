@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
 export type Theme = 'dark' | 'light';
 const KEY = 'grt-theme';
 
-// Runs in <head> before the page paints, so a light-mode page never flashes dark.
-export const THEME_BOOT = `try{if(localStorage.getItem('${KEY}')==='light')document.documentElement.dataset.theme='light'}catch(e){}`;
+// Runs in <head> before the page paints, so a light-mode page never flashes dark. Light is the
+// default; dark only once someone picks it.
+export const THEME_BOOT = `try{if(localStorage.getItem('${KEY}')!=='dark')document.documentElement.dataset.theme='light'}catch(e){document.documentElement.dataset.theme='light'}`;
 
 function current(): Theme {
   return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
@@ -25,7 +26,7 @@ function apply(theme: Theme) {
 
 // The current theme, kept in step between the header button and the user menu.
 export function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
   useEffect(() => {
     setTheme(current());
     const onChange = (event: Event) => setTheme((event as CustomEvent<Theme>).detail);

@@ -38,10 +38,12 @@ test('the Appearance switch in the user menu changes the theme', async ({ page, 
   await page.keyboard.press('ArrowDown');
   await expect(appearance).toBeFocused();
 
-  await expect(appearance).toHaveAttribute('aria-checked', 'true');
-  await page.keyboard.press('Enter');
+  // light by default; the switch (checked = dark) turns dark on and off
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(appearance).toHaveAttribute('aria-checked', 'false');
-  await appearance.click();
+  await page.keyboard.press('Enter');
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'light');
+  await expect(appearance).toHaveAttribute('aria-checked', 'true');
+  await appearance.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });

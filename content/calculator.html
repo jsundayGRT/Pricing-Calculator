@@ -579,10 +579,10 @@ html.embedded.light .status-row.review { border-color: rgba(251, 191, 36, .7); }
 html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--border); }
 </style>
 <script>if (window.self !== window.top) document.documentElement.classList.add("embedded");
-// light or dark, as chosen in the app; follows a switch made while this page is open
+// light or dark, as chosen in the app (light unless dark was picked); follows a switch made while this page is open
 (function () {
-  const set = (v) => document.documentElement.classList.toggle('light', v === 'light');
-  try { set(localStorage.getItem('grt-theme')); } catch (e) { /* no storage: stay dark */ }
+  const set = (v) => document.documentElement.classList.toggle('light', v !== 'dark');
+  try { set(localStorage.getItem('grt-theme')); } catch (e) { set(null); /* no storage: light */ }
   window.addEventListener('storage', (e) => { if (e.key === 'grt-theme') set(e.newValue); });
 })();</script>
 </head>
