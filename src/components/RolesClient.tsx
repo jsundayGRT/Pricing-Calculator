@@ -76,7 +76,6 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
   const picked = (people || []).find((p) => p.email === pick) || null;
   const isNew = pick === NEW;
   const self = !!picked && picked.email === me;
-  const admins = (people || []).filter((p) => p.role === 'admin').length;
 
   // picking someone shows their current role, ready to change
   function choose(value: string) {
@@ -154,7 +153,6 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
         ) : null}
       </form>
 
-      <p className="sub roles-count">{people ? `${people.length} people · ${admins} admin${admins === 1 ? '' : 's'}` : ''}</p>
 
       {!people ? (
         <div className="empty">Loading people…</div>

@@ -13,8 +13,8 @@ test('admins manage who is an admin or a rep from the user menu', async ({ brows
   await admin.getByRole('button', { name: 'Jared Sunday' }).click();
   await admin.getByRole('menuitem', { name: 'Manage roles' }).click();
   await expect(admin.getByRole('heading', { name: 'Manage roles' })).toBeVisible();
-  await expect(admin.getByText(/\d+ people · \d+ admins?/)).toBeVisible(); // the list has loaded
   const person = admin.getByLabel('Person'), role = admin.getByLabel('Role', { exact: true }), saveBtn = admin.getByRole('button', { name: 'Save' });
+  await expect(person).toBeEnabled(); // the list has loaded
   await expect(admin.getByRole('searchbox')).toHaveCount(0); // a dropdown, not a search
   await person.selectOption({ label: 'Someone new…' });
   await admin.getByLabel('Email').fill(rep.email);
@@ -45,7 +45,7 @@ test('admins manage who is an admin or a rep from the user menu', async ({ brows
   expect((await r.request.post('/api/admin/roles', { data: { email: rep.email, role: 'admin' } })).status()).toBe(403);
 
   // made an admin: the rep now gets the Executive Dashboard
-  await expect(admin.getByText(/\d+ people · \d+ admins?/)).toBeVisible();
+  await expect(person).toBeEnabled();
   await person.selectOption({ label: `${rep.name} (${rep.email})` });
   await expect(role).toHaveValue('rep'); // shows their current role
   await expect(saveBtn).toBeDisabled(); // nothing changed yet
