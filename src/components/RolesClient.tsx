@@ -99,7 +99,6 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
       <div className="page-head">
         <div>
           <h1>Manage roles</h1>
-          <p className="sub">Admins see the Executive Dashboard, approve Deal Reviews and manage roles. Reps price and lock their own requests.</p>
         </div>
       </div>
 
