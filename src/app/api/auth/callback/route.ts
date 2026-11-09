@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { recordSignIn } from '@/lib/admin';
 import { getBaseUrl } from '@/lib/auth-config';
 import {
   assertAllowedUser,
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
     const user = userFromClaims(claims);
     assertAllowedUser(user);
 
+    await recordSignIn(user);
     const sessionToken = await createSessionToken(user);
     // Everyone, admins included, lands on the Dashboard welcome screen.
     const destination = '/';

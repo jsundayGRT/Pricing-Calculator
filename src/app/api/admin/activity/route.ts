@@ -7,7 +7,7 @@ import { readSession } from '@/lib/session';
 export async function GET() {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
-  if (!isAdmin(session)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!(await isAdmin(session))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   return NextResponse.json({ events: await listActivity() });
 }

@@ -7,7 +7,7 @@ import { readSession } from '@/lib/session';
 export default async function ExecutivePage() {
   const user = await readSession();
   if (!user) redirect('/login');
-  if (!isAdmin(user)) {
+  if (!(await isAdmin(user))) {
     return (
       <>
         <AppHeader user={user} />

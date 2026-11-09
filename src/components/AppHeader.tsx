@@ -4,14 +4,14 @@ import type { SessionUser } from '@/lib/session';
 import { UserMenu } from '@/components/UserMenu';
 import { ThemeToggle } from '@/components/theme';
 
-export function AppHeader({
+export async function AppHeader({
   user,
   active,
 }: {
   user?: SessionUser | null;
   active?: 'dashboard' | 'calculator' | 'executive';
 }) {
-  const admin = isAdmin(user);
+  const admin = await isAdmin(user);
 
   return (
     <header className={user ? 'topbar' : 'topbar signed-out'}>

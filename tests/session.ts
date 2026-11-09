@@ -10,14 +10,11 @@ function sessionSecret() {
   return line.slice('SESSION_SECRET='.length).trim().replace(/^["']|["']$/g, '');
 }
 
-export async function signIn(context: BrowserContext) {
-  const token = await new SignJWT({
-    name: 'Jared Sunday',
-    email: 'jared.sunday@guardrail.tech',
-    oid: 'playwright-local',
-  })
+// Signs in as Jared (an admin) unless another user is given.
+export async function signIn(context: BrowserContext, user = { name: 'Jared Sunday', email: 'jared.sunday@guardrail.tech', oid: 'playwright-local' }) {
+  const token = await new SignJWT(user)
     .setProtectedHeader({ alg: 'HS256' })
-    .setSubject('playwright-local')
+    .setSubject(user.oid)
     .setIssuedAt()
     .setExpirationTime('2h')
     .sign(new TextEncoder().encode(sessionSecret()));

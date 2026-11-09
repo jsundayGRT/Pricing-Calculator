@@ -19,6 +19,9 @@ export type Store = {
   // The activity log: newest first, capped at EVENT_LIMIT.
   addEvent<T>(event: T): Promise<void>;
   events<T>(): Promise<T[]>;
+  // Small app settings, such as who is an admin.
+  getValue<T>(key: string): Promise<T | null>;
+  putValue<T>(key: string, value: T): Promise<void>;
 };
 
 export const EVENT_LIMIT = 1000;
@@ -26,6 +29,7 @@ export const EVENT_LIMIT = 1000;
 const QUOTES_KEY = 'grt:quotes';
 const EVENTS_KEY = 'grt:events';
 const pdfKey = (id: string) => `grt:pdf:${id}`;
+const valueKey = (key: string) => `grt:value:${key}`;
 
 function redisConfig() {
   const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
@@ -98,6 +102,13 @@ function redisStore(url: string, token: string): Store {
       const raw = (await cmd<string[] | null>('LRANGE', EVENTS_KEY, '0', String(EVENT_LIMIT - 1))) || [];
       return raw.map((x) => JSON.parse(x) as T);
     },
+    async getValue<T>(key: string) {
+      const raw = await cmd<string | null>('GET', valueKey(key));
+      return raw ? (JSON.parse(raw) as T) : null;
+    },
+    async putValue(key, value) {
+      await cmd('SET', valueKey(key), JSON.stringify(value));
+    },
   };
 }
 
@@ -112,6 +123,14 @@ function fileStore(): Store {
     ? path.join('/tmp', 'grt-quotes.json')
     : path.join(dataDir(), 'quotes.json');
   const eventsFile = path.join(path.dirname(file), file.endsWith('grt-quotes.json') ? 'grt-events.json' : 'events.json');
+  const valuesFile = path.join(path.dirname(file), file.endsWith('grt-quotes.json') ? 'grt-settings.json' : 'settings.json');
+  function readValues(): Record<string, unknown> {
+    try {
+      return existsSync(valuesFile) ? (JSON.parse(readFileSync(valuesFile, 'utf8')) as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
   const pdfPath = (id: string) => path.join(dataDir(), 'quote-pdfs', `${id.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`);
 
   function read(): { id: string }[] {
@@ -173,6 +192,13 @@ function fileStore(): Store {
       } catch {
         return [];
       }
+    },
+    async getValue<T>(key: string) {
+      return (readValues()[key] as T) ?? null;
+    },
+    async putValue(key, value) {
+      mkdirSync(path.dirname(valuesFile), { recursive: true });
+      writeFileSync(valuesFile, JSON.stringify({ ...readValues(), [key]: value }, null, 2), 'utf8');
     },
   };
 }

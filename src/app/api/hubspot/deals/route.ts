@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
   if (!hubspotEnabled()) return NextResponse.json({ error: 'HubSpot is not configured' }, { status: 503 });
 
-  const admin = isAdmin(session);
+  const admin = await isAdmin(session);
   const q = new URL(request.url).searchParams.get('q');
   try {
     if (q !== null) {

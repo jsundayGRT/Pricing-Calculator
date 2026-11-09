@@ -18,7 +18,7 @@ When locking, the rep picks **Quote valid until**: up to **Quote valid for (days
 
 The Executive Dashboard has three views: **Requests** (the table), **Reports** (Deal Review rate, average discount and margin, time to a decision and Year 1 value in US dollars, by rep or by month, for whatever the filters select) and **Activity** (the change history).
 
-`jared.sunday@guardrail.tech`, `susan.landaluce@guardrail.tech`, and `dena.lumbang@guardrail.tech` are admins by default. Add more with `ADMIN_EMAILS`.
+`jared.sunday@guardrail.tech`, `susan.landaluce@guardrail.tech`, and `dena.lumbang@guardrail.tech` are admins by default (add more with `ADMIN_EMAILS`); everyone else is a rep. Admins change anyone's role under **Manage roles** in the user menu (`/admin/roles`), which lists everyone who has signed in or locked a request and can add someone before their first sign-in. A role picked there overrides the default. Admins can't remove their own admin access, and there is always at least one admin. Roles are kept in the same store as locked requests, so on Vercel they need Upstash Redis (see below) to last.
 
 After you lock a pricing request in the calculator, it is saved to **your** dashboard (not shared with other users).
 

@@ -9,6 +9,16 @@ function initials(name: string, email: string) {
   return letters || email.slice(0, 1).toUpperCase() || '?';
 }
 
+function PeopleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
 function SignOutIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -113,6 +123,12 @@ export function UserMenu({
             <span className="user-menu-mode" aria-hidden="true">{dark ? 'Dark' : 'Light'}</span>
             <span className={`mini-switch${dark ? ' on' : ''}`} aria-hidden="true"><span /></span>
           </button>
+          {admin ? (
+            <a role="menuitem" className="user-menu-item" href="/admin/roles">
+              <span className="user-menu-icon"><PeopleIcon /></span>
+              <span>Manage roles</span>
+            </a>
+          ) : null}
           <div className="user-menu-sep" role="separator" />
           <a role="menuitem" className="user-menu-item signout" href="/api/auth/logout">
             <span className="user-menu-icon"><SignOutIcon /></span>

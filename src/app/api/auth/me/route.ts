@@ -10,7 +10,7 @@ export async function GET() {
       id: session.id,
       name: session.name,
       email: session.email,
-      role: roleFor(session),
+      role: await roleFor(session),
     });
   } catch {
     return NextResponse.json({ error: 'signed out' }, { status: 401 });

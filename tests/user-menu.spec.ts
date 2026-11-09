@@ -34,6 +34,8 @@ test('the Appearance switch in the user menu changes the theme', async ({ page, 
   // the first row has focus, and the arrow keys move between rows
   await expect(appearance).toBeFocused();
   await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitem', { name: 'Manage roles' })).toBeFocused(); // admins only
+  await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('menuitem', { name: 'Sign out' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(appearance).toBeFocused();

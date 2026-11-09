@@ -13,7 +13,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, { params }: Params) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
-  if (!isAdmin(session)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!(await isAdmin(session))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const { id } = await params;
   const quote = await getQuoteById(id);
@@ -29,7 +29,7 @@ export async function GET(_request: Request, { params }: Params) {
 export async function POST(request: Request, { params }: Params) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
-  if (!isAdmin(session)) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!(await isAdmin(session))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
   const actor = { name: session.name, email: session.email };
