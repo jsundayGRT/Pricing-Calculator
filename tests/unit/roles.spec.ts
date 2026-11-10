@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { isAdmin, listPeople, recordSeen, recordSignIn, roleForEmail, RoleError, setRole } from '../../src/lib/admin';
+import { isAdmin, listPeople, recordSeen, recordSignIn, removePerson, roleForEmail, RoleError, setRole } from '../../src/lib/admin';
 import { store } from '../../src/lib/store';
 import { recordActivity } from '../../src/lib/activity';
 import { upsertQuote } from '../../src/lib/quotes';
@@ -119,4 +119,39 @@ test('locking a request or acting on one counts as being active', async () => {
   await recordActivity('note', quote, { name: 'Jay Rep', email: 'jay.rep@guardrail.tech' });
   const after = (await listPeople()).find((p) => p.email === 'jay.rep@guardrail.tech');
   expect(after?.lastSeenAt && after.lastSeenAt > (jay?.lastSeenAt as string)).toBe(true);
+});
+
+test('removing someone takes them off the list and away from admin, until they use the app again', async () => {
+  await recordSignIn(sam);
+  await setRole(jared, sam.email, 'admin');
+  const people = await removePerson(jared, sam.email);
+  expect(people.map((p) => p.email)).not.toContain(sam.email);
+  expect(await isAdmin(sam)).toBe(false);
+
+  await new Promise((r) => setTimeout(r, 5));
+  await recordSeen(sam); // they open the app again
+  expect((await listPeople()).find((p) => p.email === sam.email)).toMatchObject({ role: 'rep' });
+});
+
+test('a built-in admin who is removed stays a rep', async () => {
+  await removePerson(jared, 'dena.lumbang@guardrail.tech');
+  expect((await listPeople()).map((p) => p.email)).not.toContain('dena.lumbang@guardrail.tech');
+  expect(await roleForEmail('dena.lumbang@guardrail.tech')).toBe('rep');
+});
+
+test('admins cannot remove themselves or the last admin', async () => {
+  await expect(removePerson(jared, jared.email)).rejects.toThrow("can't remove yourself");
+  await removePerson(jared, 'susan.landaluce@guardrail.tech');
+  await removePerson(jared, 'dena.lumbang@guardrail.tech');
+  await setRole(jared, sam.email, 'admin');
+  await removePerson(sam, jared.email); // Sam is now the only admin
+  await expect(removePerson({ ...jared, email: 'other@guardrail.tech' }, sam.email)).rejects.toThrow('at least one admin');
+  await expect(removePerson(sam, 'nobody@guardrail.tech')).rejects.toThrow('not on the list');
+});
+
+test('adding a removed person back brings them back', async () => {
+  await setRole(jared, sam.email, 'rep', 'Sam Rep');
+  await removePerson(jared, sam.email);
+  await setRole(jared, sam.email, 'admin');
+  expect((await listPeople()).find((p) => p.email === sam.email)).toMatchObject({ role: 'admin' });
 });

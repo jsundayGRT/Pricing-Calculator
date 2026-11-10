@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { isAdmin, listPeople, RoleError, setRole } from '@/lib/admin';
+import { isAdmin, listPeople, removePerson, RoleError, setRole } from '@/lib/admin';
 import { readSession } from '@/lib/session';
 
 // GET  → everyone with a role (admins only)
 // POST { email, role, name? } → make someone an admin or a rep (admins only)
+// DELETE { email } → take someone off the list (admins only)
 export async function GET() {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
@@ -23,5 +24,19 @@ export async function POST(request: Request) {
     if (err instanceof RoleError) return NextResponse.json({ error: err.message }, { status: 400 });
     console.error('[roles] could not change a role', err);
     return NextResponse.json({ error: 'Could not save the role. Try again.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const session = await readSession();
+  if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
+  if (!(await isAdmin(session))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  try {
+    const body = await request.json().catch(() => ({}));
+    return NextResponse.json({ people: await removePerson(session, String(body?.email || '')) });
+  } catch (err) {
+    if (err instanceof RoleError) return NextResponse.json({ error: err.message }, { status: 400 });
+    console.error('[roles] could not remove a person', err);
+    return NextResponse.json({ error: 'Could not remove. Try again.' }, { status: 500 });
   }
 }

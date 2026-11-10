@@ -80,6 +80,31 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
     }
   }
 
+  // takes the picked person off the list, after asking
+  async function remove() {
+    if (!picked) return;
+    const name = displayName(picked);
+    const access = picked.role === 'admin' ? ' and lose admin access' : '';
+    if (!confirm(`Remove ${name}?\n\nThey'll leave this list${access}. Their locked requests stay. If they use the app again, they'll come back as a rep.`)) return;
+    setError(''); setSaved(''); setBusy(picked.email);
+    try {
+      const res = await fetch('/api/admin/roles', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: picked.email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not remove.');
+      setPeople(data.people);
+      setPick(''); setRole('');
+      setSaved(`${name} was removed.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const picked = (people || []).find((p) => p.email === pick) || null;
   const isNew = pick === NEW;
   const self = !!picked && picked.email === me;
@@ -157,10 +182,15 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
         ) : null}
         {self ? <p className="sub roles-hint">You can&apos;t change your own role. Ask another admin.</p> : null}
         {picked && !self ? (
-          <p className="sub roles-hint">
-            {displayName(picked)} is {picked.role === 'admin' ? 'an admin' : 'a rep'}
-            {picked.roleChangedBy ? `, set by ${picked.roleChangedBy} on ${fmtDate(picked.roleChangedAt)}` : picked.defaultAdmin ? ' by default' : ''}.
-          </p>
+          <div className="roles-hint roles-picked">
+            <p className="sub">
+              {displayName(picked)} is {picked.role === 'admin' ? 'an admin' : 'a rep'}
+              {picked.roleChangedBy ? `, set by ${picked.roleChangedBy} on ${fmtDate(picked.roleChangedAt)}` : picked.defaultAdmin ? ' by default' : ''}.
+            </p>
+            <button className="btn small danger" type="button" onClick={() => void remove()} disabled={busy !== null}>
+              Remove {displayName(picked)}
+            </button>
+          </div>
         ) : null}
       </form>
 

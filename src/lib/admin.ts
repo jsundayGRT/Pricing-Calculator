@@ -30,7 +30,8 @@ export type PersonView = Person & { role: UserRole; defaultAdmin: boolean };
 // overwrite a role an admin is changing at the same moment. ('people' is the older combined
 // record, still read for the roles saved in it.)
 const ROLES_KEY = 'roles', SEEN_KEY = 'seen', LEGACY_KEY = 'people';
-type RoleEntry = { role: UserRole; name?: string; roleChangedBy?: string; roleChangedAt?: string };
+// removedAt: taken off Manage roles; they show again (as a rep) once they use the app after it.
+type RoleEntry = { role: UserRole; name?: string; roleChangedBy?: string; roleChangedAt?: string; removedAt?: string };
 type SeenEntry = { name?: string; lastSignInAt?: string | null; lastSeenAt?: string | null };
 const norm = (email: string) => email.trim().toLowerCase();
 
@@ -134,7 +135,12 @@ export async function listPeople(): Promise<PersonView[]> {
   for (const [email, r] of Object.entries(roles)) merge(email, { name: r.name, role: r.role, roleChangedBy: r.roleChangedBy, roleChangedAt: r.roleChangedAt });
   for (const [email, x] of Object.entries(seen)) { merge(email, { name: x.name, lastSignInAt: x.lastSignInAt }); saw(email, x.lastSeenAt); saw(email, x.lastSignInAt); }
   for (const [email, at] of latest) if (all.has(email)) all.set(email, { ...(all.get(email) as Person), lastSeenAt: at });
+  const removed = (p: Person) => {
+    const at = roles[p.email]?.removedAt;
+    return !!at && !((p.lastSeenAt || '') > at);
+  };
   return [...all.values()]
+    .filter((p) => !removed(p))
     .map((p) => ({ ...p, role: roleOf(p.email, p), defaultAdmin: isAdminEmail(p.email) }))
     .sort((a, b) => (a.role === b.role ? (a.name || a.email).localeCompare(b.name || b.email) : a.role === 'admin' ? -1 : 1));
 }
@@ -159,5 +165,26 @@ export async function setRole(by: SessionUser, emailIn: string, role: UserRole, 
     roleChangedAt: new Date().toISOString(),
   };
   await store().putValue(ROLES_KEY, roles);
+  return listPeople();
+}
+
+// Takes someone off Manage roles: they lose admin access at once (even a built-in admin) and their
+// last-active date is forgotten. Their requests stay. Anyone at the company can still sign in, so
+// if they use the app again they come back as a rep.
+export async function removePerson(by: SessionUser, emailIn: string) {
+  const email = norm(String(emailIn || ''));
+  if (!email) throw new RoleError('Choose a person to remove.');
+  if (email === norm(by.email)) throw new RoleError("You can't remove yourself. Ask another admin.");
+  const before = await listPeople();
+  const person = before.find((p) => p.email === email);
+  if (!person) throw new RoleError('That person is not on the list.');
+  if (person.role === 'admin' && !before.some((p) => p.role === 'admin' && p.email !== email)) throw new RoleError('There has to be at least one admin.');
+
+  const now = new Date().toISOString();
+  const roles = await readRoles();
+  roles[email] = { role: 'rep', name: person.name, roleChangedBy: by.name || by.email, roleChangedAt: now, removedAt: now };
+  await store().putValue(ROLES_KEY, roles);
+  const seen = await readSeen();
+  if (seen[email]) { delete seen[email]; await store().putValue(SEEN_KEY, seen); }
   return listPeople();
 }
