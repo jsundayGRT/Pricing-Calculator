@@ -80,6 +80,7 @@ export function ExecutiveSummaryClient() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [search, setSearch] = useState('');
+  const [moreFilters, setMoreFilters] = useState(false); // phones: status, rep and dates fold away
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -284,7 +285,7 @@ export function ExecutiveSummaryClient() {
         </div>
       </div>
 
-      <div className="card filter-card">
+      <div className={`card filter-card${moreFilters ? ' open' : ''}`}>
         <div className="filters">
           <div className="f-search">
             <label htmlFor="f-search">Search</label>
@@ -325,6 +326,9 @@ export function ExecutiveSummaryClient() {
             <button type="button" className="btn small clear-filters" onClick={clearFilters}>Clear filters</button>
           ) : null}
         </div>
+        <button type="button" className="btn small more-filters" aria-expanded={moreFilters} onClick={() => setMoreFilters((v) => !v)}>
+          {moreFilters ? 'Fewer filters' : `More filters${status !== 'ALL' || rep !== 'ALL' || from || to ? ' · on' : ''}`}
+        </button>
       </div>
 
       <div className="err" role="alert">{error}</div>
@@ -400,26 +404,26 @@ export function ExecutiveSummaryClient() {
                     className={review ? 'review' : declined ? 'declined' : 'standard'}
                     onClick={() => setSelectedId(q.id)}
                   >
-                    <td>{fmtDate(q.lockedAt)}</td>
-                    <td>{q.rep}</td>
-                    <td>
+                    <td className="c-date" data-label="Locked">{fmtDate(q.lockedAt)}</td>
+                    <td className="c-rep" data-label="Rep">{q.rep}</td>
+                    <td className="c-cust">
                       <b>{q.customerName}</b>
                       <div className="quote-meta">{q.requestId}{q.version > 1 ? ` · v${q.version}` : ''}</div>
                     </td>
-                    <td>
+                    <td className="c-tier" data-label="Tier">
                       {q.band || '—'}
                       {q.seats != null ? ` · ${q.seats.toLocaleString()} seats` : ''}
                     </td>
-                    <td>{q.location || '—'}</td>
-                    <td>{q.modules.map((m) => MODULE_LABELS[m] || m).join(', ') || 'None'}</td>
-                    <td>{q.term || '—'}</td>
-                    <td className="num">
+                    <td className="c-loc" data-label="Location">{q.location || '—'}</td>
+                    <td className="c-mods" data-label="Modules">{q.modules.map((m) => MODULE_LABELS[m] || m).join(', ') || 'None'}</td>
+                    <td className="c-term" data-label="Term">{q.term || '—'}</td>
+                    <td className="num c-disc" data-label="Discount">
                       req {pct(q.discountRequestedPct, 1)}
                       <div className="quote-meta">applied {pct(q.discountAppliedPct, 2)}</div>
                     </td>
-                    <td className="num">{money(q.finalPrice, q.currency)}</td>
-                    <td className="num">{money(q.year1Due, q.currency)}</td>
-                    <td>
+                    <td className="num c-price" data-label="Final price">{money(q.finalPrice, q.currency)}</td>
+                    <td className="num c-due" data-label="Due">{money(q.year1Due, q.currency)}</td>
+                    <td className="c-status">
                       <span className={`pill ${review ? 'review' : declined ? 'declined' : 'standard'}`}>
                         {review ? 'Deal Review' : approved ? 'Approved' : declined ? 'Not approved' : 'Standard'}
                       </span>

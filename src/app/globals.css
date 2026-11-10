@@ -366,7 +366,12 @@ html, body { overflow-x: clip; }
   content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--tone);
 }
 .stat.total span, .stat.standard span, .stat.review span { color: var(--tone); }
-@media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .stats { gap: 8px; }
+  .stat { padding: 10px 10px 9px; min-width: 0; }
+  .stat span { font-size: 10px; letter-spacing: .03em; line-height: 1.25; display: block; }
+  .stat b { font-size: 18px; overflow-wrap: anywhere; }
+}
 /* Dashboard stat boxes are buttons that filter the list */
 .stat-btn { font: inherit; color: var(--text); text-align: left; cursor: pointer; transition: border-color .15s, transform .15s; }
 .stat-btn:hover { border-color: color-mix(in srgb, var(--tone) 55%, transparent); }
@@ -434,6 +439,10 @@ html, body { overflow-x: clip; }
   display: block;
   background: transparent;
 }
+/* the header takes what it needs (taller on phones) and the calculator the rest of the screen */
+.calc-shell { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.calc-shell > .topbar { flex: none; }
+.calc-shell > .calc-frame { flex: 1 1 auto; min-height: 0; }
 
 .filters {
   display: grid;
@@ -451,6 +460,13 @@ html, body { overflow-x: clip; }
 .filter-card .clear-filters { height: 34px; }
 @media (max-width: 1100px) { .filter-card .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .filter-card .filters { grid-template-columns: 1fr; } }
+/* the "More filters" button only shows on phones, where everything but Search folds away */
+.more-filters { display: none; }
+@media (max-width: 640px) {
+  .more-filters { display: inline-block; margin-top: 10px; }
+  .filter-card:not(.open) .filters > div:not(.f-search), .filter-card:not(.open) .clear-filters { display: none; }
+
+}
 .table-count { margin: 0 0 10px; }
 .filters label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 13px; }
 .filters input, .filters select {
@@ -552,6 +568,27 @@ table.exec tr.review td:first-child { box-shadow: inset 4px 0 0 var(--warn); }
 table.exec tr.declined td:first-child { box-shadow: inset 4px 0 0 var(--bad); }
 table.exec .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 table.exec .reason { color: var(--bad); font-size: 12px; margin-top: 4px; }
+/* phones: requests as cards (after the table rules above, so these win) */
+@media (max-width: 640px) {
+  /* Executive Dashboard requests as cards: customer and status on top, then the price and details */
+  table.exec { min-width: 0; display: block; }
+  table.exec thead { display: none; }
+  table.exec tbody { display: block; }
+  table.exec tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  table.exec tbody tr:last-child { border-bottom: 0; }
+  table.exec tbody td { display: block; padding: 0; border: 0; grid-column: 1 / -1; font-size: 13px; }
+  table.exec tr.standard { box-shadow: inset 4px 0 0 var(--ok); }
+  table.exec tr.review { box-shadow: inset 4px 0 0 var(--warn); }
+  table.exec tr.declined { box-shadow: inset 4px 0 0 var(--bad); }
+  table.exec td.c-cust { grid-column: 1; grid-row: 1; min-width: 0; overflow-wrap: anywhere; }
+  table.exec td.c-status { grid-column: 2; grid-row: 1; text-align: right; }
+  table.exec td.c-price { grid-column: 1; grid-row: 2; font-size: 17px; font-weight: 700; color: var(--text); }
+  table.exec td.c-due { grid-column: 2; grid-row: 2; align-self: end; text-align: right; }
+  table.exec td[data-label]::before { content: attr(data-label) " "; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  table.exec td.c-price::before { display: none; }
+  table.exec td.c-disc .quote-meta { display: inline; margin-left: 4px; }
+  table.exec td.c-disc .quote-meta::before { content: "· "; }
+}
 
 .drawer-bg {
   position: fixed; inset: 0; background: rgba(2, 4, 12, .6); backdrop-filter: blur(2px); z-index: 40;
@@ -682,6 +719,12 @@ select option { background: #111827; color: var(--text); }
 [data-theme="light"] table.exec tr.standard td:first-child { box-shadow: inset 4px 0 0 #10B981; }
 [data-theme="light"] table.exec tr.review td:first-child { box-shadow: inset 4px 0 0 #FBBF24; }
 [data-theme="light"] table.exec tr.declined td:first-child { box-shadow: inset 4px 0 0 #EF4444; }
+/* phones: the request cards draw their own colored edge, so the table's first-cell edge goes */
+@media (max-width: 640px) {
+  table.exec tr.standard td:first-child, table.exec tr.review td:first-child, table.exec tr.declined td:first-child,
+  [data-theme="light"] table.exec tr.standard td:first-child, [data-theme="light"] table.exec tr.review td:first-child,
+  [data-theme="light"] table.exec tr.declined td:first-child { box-shadow: none; }
+}
 [data-theme="light"] .drawer-bg { background: rgba(15, 23, 42, .35); }
 [data-theme="light"] .drawer { background: var(--bg); box-shadow: -12px 0 40px rgba(15, 23, 42, .15); }
 [data-theme="light"] select option { background: #FFFFFF; }

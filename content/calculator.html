@@ -604,16 +604,16 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
     <section class="inputs">
       <div class="card step">
         <h2><span class="num">1</span>Customer</h2>
+        <div class="field" id="empcount-field">
+          <label class="label" for="empcount">Number of employees <span class="label-note">Optional · picks the band</span></label>
+          <input id="empcount" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 50" style="max-width:240px" aria-describedby="empcount-hint">
+          <div class="hint" id="empcount-hint"></div>
+        </div>
         <div class="row2 band-row">
           <div class="field"><label class="label" for="band">Employee band</label>
             <div class="select-wrap"><select id="band"><option value="" disabled selected>Choose a band</option></select></div></div>
           <div class="field"><label class="label" for="location">Buyer location</label>
             <div class="select-wrap"><select id="location"><option value="" disabled selected>Choose a location</option></select></div></div>
-        </div>
-        <div class="field" id="empcount-field">
-          <label class="label" for="empcount">Number of employees <span class="label-note">Optional · picks the band</span></label>
-          <input id="empcount" type="number" min="1" step="1" inputmode="numeric" placeholder="e.g. 50" style="max-width:240px" aria-describedby="empcount-hint">
-          <div class="hint" id="empcount-hint"></div>
         </div>
         <div class="field hidden" id="seats-field">
           <label class="label" for="seats">Enterprise seat count</label>

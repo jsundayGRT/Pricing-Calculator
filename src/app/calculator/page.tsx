@@ -15,14 +15,15 @@ export default async function CalculatorPage({
     ? `?revise=${encodeURIComponent(params.revise)}`
     : params.copy ? `?copy=${encodeURIComponent(params.copy)}` : '';
 
+  // the calculator fills the screen under the header, so its own bottom price bar stays in view
   return (
-    <>
+    <div className="calc-shell">
       <AppHeader user={user} active="calculator" />
       <iframe
         className="calc-frame"
         title="Pricing calculator"
         src={`/api/calculator${revise}`}
       />
-    </>
+    </div>
   );
 }
