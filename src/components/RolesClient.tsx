@@ -175,7 +175,14 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
             <option value="admin">Admin</option>
           </select>
         </div>
-        <button className="btn primary" type="submit" disabled={!pick || !role || self || unchanged || busy !== null}>Save</button>
+        <div className="roles-buttons">
+          <button className="btn primary" type="submit" disabled={!pick || !role || self || unchanged || busy !== null}>Save</button>
+          {picked && !self && !picked.removedAt ? (
+            <button className="btn danger roles-remove" type="button" aria-label={`Remove ${displayName(picked)}`} onClick={() => void remove()} disabled={busy !== null}>
+              Remove
+            </button>
+          ) : null}
+        </div>
         {isNew ? (
           <div className="roles-new">
             <div>
@@ -194,17 +201,6 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
             {displayName(picked)} was removed{picked.roleChangedBy ? ` by ${picked.roleChangedBy}` : ''} on {fmtDate(picked.removedAt)} and can&apos;t sign in.
             Choose a role and Save to let them back in.
           </p>
-        ) : null}
-        {picked && !self && !picked.removedAt ? (
-          <div className="roles-hint roles-picked">
-            <p className="sub">
-              {displayName(picked)} is {picked.role === 'admin' ? 'an admin' : 'a rep'}
-              {picked.roleChangedBy ? `, set by ${picked.roleChangedBy} on ${fmtDate(picked.roleChangedAt)}` : picked.defaultAdmin ? ' by default' : ''}.
-            </p>
-            <button className="btn small danger" type="button" onClick={() => void remove()} disabled={busy !== null}>
-              Remove {displayName(picked)}
-            </button>
-          </div>
         ) : null}
       </form>
 

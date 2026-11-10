@@ -296,8 +296,8 @@ html, body { overflow-x: clip; }
 .quote-price span { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
 .meta-line { font-size: 12.5px; }
 .meta-line.hs > div { display: inline; }
-.btn.small.danger { color: #F87171; border-color: rgba(248, 113, 113, .45); background: transparent; }
-.btn.small.danger:hover { color: #fff; background: #E01E5A; border-color: #E01E5A; }
+.btn.small.danger, .btn.roles-remove { color: #F87171; border-color: rgba(248, 113, 113, .45); background: transparent; }
+.btn.small.danger:hover, .btn.roles-remove:hover { color: #fff; background: #E01E5A; border-color: #E01E5A; }
 .pill {
   display: inline-flex;
   align-items: center;
@@ -492,8 +492,8 @@ html, body { overflow-x: clip; }
 .roles-add { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; padding: 14px 16px; margin-bottom: 16px; }
 .roles-new { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; }
 .roles-hint { grid-column: 1 / -1; margin: 0; font-size: 13px; }
-.roles-picked { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-.roles-picked p { margin: 0; }
+.roles-buttons { display: flex; gap: 8px; }
+.roles-buttons .btn { flex: 1 1 auto; white-space: nowrap; }
 .role-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
 .role-tag.admin { background: var(--accent-soft, rgba(99, 102, 241, .12)); color: var(--accent); border-color: transparent; }
 .roles-add label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 13px; }
@@ -701,7 +701,7 @@ select option { background: #111827; color: var(--text); }
 /* the selected button keeps its fill while hovered */
 [data-theme="light"] .seg button.active:hover { color: #fff; background: var(--primary); }
 [data-theme="light"] .btn.primary:hover { background: #4338CA; border-color: #4338CA; }
-[data-theme="light"] .btn.small.danger { color: #B91C1C; border-color: rgba(185, 28, 28, .4); }
+[data-theme="light"] .btn.small.danger, [data-theme="light"] .btn.roles-remove { color: #B91C1C; border-color: rgba(185, 28, 28, .4); }
 [data-theme="light"] .pill.declined, [data-theme="light"] .decision.bad, [data-theme="light"] .flag.bad, [data-theme="light"] .err { border-color: rgba(185, 28, 28, .3); }
 [data-theme="light"] .flag.warn { border-color: rgba(251, 191, 36, .7); }
 [data-theme="light"] .login-card {
