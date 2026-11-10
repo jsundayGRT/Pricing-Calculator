@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { applyScenario, openCalculator, readTotals } from './drive';
 import type { Scenario } from './scenarios';
 import { signIn } from './session';

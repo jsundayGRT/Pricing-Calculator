@@ -1759,8 +1759,17 @@ document.addEventListener('toggle', (e) => {
   if (d.matches && d.matches('details.grp')) summaryOpen[d.dataset.k] = d.open;
 }, true);
 
+// The band's headcount range for the quote, e.g. "21–100 employees" (as the calculator shows it).
 function bandRangeText(band, governed) {
-  return band === 'Enterprise' ? `${fmtNum(governed)} seats` : `Up to ${fmtNum(governed)} employees`;
+  if (band === 'Enterprise') return `${fmtNum(governed)} seats`;
+  let caps = null;
+  try {
+    const cfg = JSON.parse(document.getElementById('grt-config').textContent).config;
+    caps = cfg.tiers.filter((t) => t !== 'Enterprise').map((t) => [t, cfg.tier.governedEmployees[t]]);
+  } catch { /* no price list on the page: fall back below */ }
+  const k = caps ? caps.findIndex(([t]) => t === band) : -1;
+  if (k < 0) return `Up to ${fmtNum(governed)} employees`;
+  return `${fmtNum(k > 0 ? caps[k - 1][1] + 1 : 1)}–${fmtNum(caps[k][1])} employees`;
 }
 
 

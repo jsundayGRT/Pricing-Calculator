@@ -2,7 +2,7 @@
 // (linking the customer quote PDF), the deal amount, and the PDF as a note. Safe to run again: a request that
 // already has a quote updates it instead of creating another.
 
-import { getQuoteById, readQuotePdf, updateQuoteHubSpot, type HubSpotSync, type QuoteRecord } from '../quotes';
+import { getQuoteById, listAllQuotes, readQuotePdf, updateQuoteHubSpot, type HubSpotSync, type QuoteRecord } from '../quotes';
 import { createHubSpotClient, hubspotEnabled, type HubSpotClient } from './client';
 import { buildQuotePricing, lineItemProperties } from './payload';
 
@@ -43,6 +43,12 @@ export async function syncRequestToHubSpot(
     const hs = (await updateQuoteHubSpot(recordId, { status: 'awaiting-approval', error: null }))?.hubspot;
     return { ok: false, hubspot: hs ?? null };
   }
+  // An older version never goes back onto the deal once a newer one is there.
+  const newer = (await listAllQuotes()).some((q) => q.requestId === record.requestId && q.version > record.version && q.hubspot?.status === 'synced');
+  if (record.hubspot?.status === 'replaced' || newer) {
+    const hs = (await updateQuoteHubSpot(recordId, { status: 'replaced', error: null }))?.hubspot;
+    return { ok: false, hubspot: hs ?? null };
+  }
   if (!opts.client && !hubspotEnabled()) {
     const hs = (await updateQuoteHubSpot(recordId, { status: 'skipped', error: 'HubSpot is not configured (HUBSPOT_TOKEN is not set).' }))?.hubspot;
     return { ok: false, hubspot: hs ?? null };
@@ -56,6 +62,7 @@ export async function syncRequestToHubSpot(
   try {
     const done = await pushToHubSpot(client, record, dealId, now);
     const hs = (await updateQuoteHubSpot(recordId, { ...done, status: 'synced', error: null, syncedAt: now.toISOString() }))?.hubspot;
+    await retireOlderDrafts(client, record);
     return { ok: true, hubspot: hs ?? null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -179,6 +186,30 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
   }
 
   return { dealName, quoteId, quoteUrl, fileId, noteId, lineItemIds };
+}
+
+// Once a new version is on the deal, earlier versions' quotes and line items would sit next to it.
+// A draft is archived with its line items (HubSpot can restore archived records for 90 days); a
+// quote someone published to the customer is left as it is. Never fails the new version's sync.
+async function retireOlderDrafts(client: HubSpotClient, record: QuoteRecord) {
+  const older = (await listAllQuotes()).filter((q) =>
+    q.requestId === record.requestId && q.version < record.version && q.hubspot?.quoteId && q.hubspot.status !== 'replaced');
+  for (const old of older) {
+    const hs = old.hubspot as HubSpotSync;
+    try {
+      const quote = await client.request<{ properties?: { hs_status?: string } }>(
+        `/crm/v3/objects/quotes/${encodeURIComponent(hs.quoteId as string)}?properties=hs_status`, { allow404: true });
+      const status = quote?.properties?.hs_status;
+      if (quote && status && status !== 'DRAFT') continue; // published or sent: keep it
+      if (quote) await client.request(`/crm/v3/objects/quotes/${encodeURIComponent(hs.quoteId as string)}`, { method: 'DELETE', allow404: true });
+      for (const id of hs.lineItemIds || []) {
+        await client.request(`/crm/v3/objects/line_items/${encodeURIComponent(id)}`, { method: 'DELETE', allow404: true });
+      }
+      await updateQuoteHubSpot(old.id, { status: 'replaced', quoteId: null, quoteUrl: null, lineItemIds: [], error: null });
+    } catch (err) {
+      console.error(`[hubspot] could not retire the draft quote of ${old.requestId} v${old.version}:`, err);
+    }
+  }
 }
 
 function expiryDays() {

@@ -301,3 +301,57 @@ test('a revised version keeps its version number in HubSpot', async () => {
   const quote = hs.calls.find((c) => c.method === 'POST' && c.path === '/crm/v3/objects/quotes')!;
   expect((quote.body as { properties: Record<string, string> }).properties.hs_title).toBe('Northwind – Platform – Pricing – GRT-TEST1 v2');
 });
+
+test('a new version archives the older version\'s draft quote and line items', async () => {
+  const v1 = await lockRequest();
+  const hs1 = fakeHubSpot();
+  await syncRequestToHubSpot(v1.id, { client: createHubSpotClient({ token: 'test', fetch: hs1.fetchFn, ...quiet }) });
+  const v1Hub = (await getQuoteById(v1.id))!.hubspot!;
+  expect(v1Hub.quoteId).toBe('q-1');
+
+  const v2 = await lockRequest({ ...snapshotFor(), version: 2 });
+  const hs2 = fakeHubSpot((call) => (call.method === 'POST' && call.path === '/crm/v3/objects/quotes'
+    ? new Response(JSON.stringify({ id: 'q-2' }), { status: 201, headers: { 'content-type': 'application/json' } })
+    : call.method === 'GET' && call.path.startsWith('/crm/v3/objects/quotes/q-1')
+      ? new Response(JSON.stringify({ id: 'q-1', properties: { hs_status: 'DRAFT' } }), { headers: { 'content-type': 'application/json' } })
+      : undefined));
+  const res = await syncRequestToHubSpot(v2.id, { client: createHubSpotClient({ token: 'test', fetch: hs2.fetchFn, ...quiet }) });
+  expect(res.ok).toBe(true);
+
+  const deleted = hs2.calls.filter((c) => c.method === 'DELETE').map((c) => c.path);
+  expect(deleted).toContain('/crm/v3/objects/quotes/q-1');
+  for (const id of v1Hub.lineItemIds!) expect(deleted).toContain(`/crm/v3/objects/line_items/${id}`);
+  expect((await getQuoteById(v1.id))!.hubspot).toMatchObject({ status: 'replaced', quoteId: null });
+  expect((await getQuoteById(v2.id))!.hubspot).toMatchObject({ status: 'synced', quoteId: 'q-2' });
+
+  // and the old version can't go back onto the deal
+  const again = await syncRequestToHubSpot(v1.id, { client: createHubSpotClient({ token: 'test', fetch: fakeHubSpot().fetchFn, ...quiet }) });
+  expect(again.ok).toBe(false);
+});
+
+test('an older quote that was already published is kept', async () => {
+  const v1 = await lockRequest();
+  await syncRequestToHubSpot(v1.id, { client: createHubSpotClient({ token: 'test', fetch: fakeHubSpot().fetchFn, ...quiet }) });
+  const v2 = await lockRequest({ ...snapshotFor(), version: 2 });
+  const hs2 = fakeHubSpot((call) => (call.method === 'GET' && call.path.startsWith('/crm/v3/objects/quotes/q-1')
+    ? new Response(JSON.stringify({ id: 'q-1', properties: { hs_status: 'APPROVAL_NOT_NEEDED' } }), { headers: { 'content-type': 'application/json' } })
+    : undefined));
+  await syncRequestToHubSpot(v2.id, { client: createHubSpotClient({ token: 'test', fetch: hs2.fetchFn, ...quiet }) });
+  expect(hs2.calls.some((c) => c.method === 'DELETE' && c.path === '/crm/v3/objects/quotes/q-1')).toBe(false);
+  expect((await getQuoteById(v1.id))!.hubspot).toMatchObject({ status: 'synced', quoteId: 'q-1' });
+});
+
+test('a problem archiving the old draft never fails the new version', async () => {
+  const v1 = await lockRequest();
+  await syncRequestToHubSpot(v1.id, { client: createHubSpotClient({ token: 'test', fetch: fakeHubSpot().fetchFn, ...quiet }) });
+  const v2 = await lockRequest({ ...snapshotFor(), version: 2 });
+  const hs2 = fakeHubSpot((call) => (call.method === 'GET' && call.path.startsWith('/crm/v3/objects/quotes/q-1')
+    ? new Response(JSON.stringify({ message: 'boom' }), { status: 400, headers: { 'content-type': 'application/json' } })
+    : undefined));
+  const errors = console.error; console.error = () => {};
+  try {
+    const res = await syncRequestToHubSpot(v2.id, { client: createHubSpotClient({ token: 'test', fetch: hs2.fetchFn, maxRetries: 0, ...quiet }) });
+    expect(res.ok).toBe(true);
+  } finally { console.error = errors; }
+  expect((await getQuoteById(v1.id))!.hubspot!.status).toBe('synced');
+});

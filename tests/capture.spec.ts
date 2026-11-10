@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { test } from '@playwright/test';
+import { test } from './fixtures';
 import { fitFrame, openCalculator, applyScenario, readTotals } from './drive';
 import { scenarios } from './scenarios';
 import { signIn } from './session';

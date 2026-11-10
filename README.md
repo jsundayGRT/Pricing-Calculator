@@ -46,7 +46,7 @@ When a rep locks a pricing request, the server sends it to the HubSpot deal the 
 3. The deal's **Amount** is set to the quote total (Year 1, after all discounts), and its **Pricing request ID** property is set (the property is created on first use).
 4. The customer quote PDF from the calculator is uploaded to the private **Pricing Calculator** folder in HubSpot Files. HubSpot quotes can't hold attachments, so the quote's **Comments to buyer** links to the PDF (the link opens only for signed-in HubSpot users), and the PDF is also attached to a note on the deal: *Pricing request … locked by … on …. Quote: …*
 
-Each locked version gets its own HubSpot quote. Syncing a version again (a retry, or an approval after the lock) updates that quote instead of creating a second one, replaces its line items, and keeps a quote someone already published in its published state. Pilot fees are not added to the quote.
+Each locked version gets its own HubSpot quote. When a newer version syncs, an older version's quote that is still a draft is archived along with its line items (HubSpot can restore archived records for 90 days), so only the latest pricing sits on the deal; a quote that was already published to the customer is kept. An older version is never synced back onto the deal once a newer one is there. Syncing a version again (a retry, or an approval after the lock) updates that quote instead of creating a second one, replaces its line items, and keeps a quote someone already published in its published state. Pilot fees are not added to the quote.
 
 The sync runs after the lock is saved. If HubSpot fails, the lock still stands and the request shows **HubSpot sync failed**. HubSpot rate limits (429) are retried with backoff.
 

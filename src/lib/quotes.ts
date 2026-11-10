@@ -3,7 +3,8 @@ import { recordActivity } from './activity';
 import { store } from './store';
 
 // 'awaiting-approval': a Deal Review isn't sent to HubSpot until it is approved.
-export type HubSpotSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped' | 'awaiting-approval';
+// replaced: a newer version of the request was synced and this version's draft quote archived
+export type HubSpotSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped' | 'awaiting-approval' | 'replaced';
 
 // What the HubSpot sync knows about a request. Only IDs and links: nothing priced lives here.
 export type HubSpotSync = {

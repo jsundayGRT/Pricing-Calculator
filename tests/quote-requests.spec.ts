@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type FrameLocator, type Page } from '@playwright/test';
+import type { FrameLocator, Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { openCalculator } from './drive';
 import { signIn } from './session';
 
@@ -94,6 +95,8 @@ test('sample pricing downloads as PDF and Word without saving anything', async (
   expect(zip).toContain('word/document.xml');
   expect(zip).toContain('Bank of the Rockies');
   expect(zip).toContain('Not a quote');
+  // the band box shows the band's range, as the calculator does
+  expect(readFileSync(await docx.path()).toString('utf8')).toContain('21–100 employees');
 
   await page.waitForTimeout(500);
   expect(posts).toBe(0);

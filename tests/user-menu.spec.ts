@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { signIn } from './session';
 
 test('account details and sign out live in the user menu', async ({ page, context }) => {

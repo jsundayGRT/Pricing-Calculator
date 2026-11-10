@@ -3,6 +3,7 @@ import type { HubSpotSync } from '@/lib/quotes';
 export function hubspotLabel(hs?: HubSpotSync | null, requestStatus?: string) {
   if (!hs?.dealId) return null;
   if (hs.status === 'synced') return 'HubSpot quote synced';
+  if (hs.status === 'replaced') return 'HubSpot quote replaced by a newer version';
   if (requestStatus === 'NOT APPROVED') return 'Not sent to HubSpot (not approved)';
   if (hs.status === 'awaiting-approval' || requestStatus === 'DEAL REVIEW') return 'Goes to HubSpot once approved';
   if (hs.status === 'failed') return 'HubSpot sync failed';

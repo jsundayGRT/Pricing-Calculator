@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { applyScenario, openCalculator } from './drive';
 import { scenarios } from './scenarios';
 import { signIn } from './session';

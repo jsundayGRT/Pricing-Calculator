@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { signIn } from './session';
 
 const rep = { name: 'Playwright Rep', email: 'playwright.rep@guardrail.tech', oid: 'playwright-rep' };
