@@ -56,3 +56,17 @@ test('the Appearance switch in the user menu changes the theme', async ({ page, 
   await appearance.click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
+
+test('on a phone every top link fits without scrolling', async ({ page, context }) => {
+  await signIn(context);
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/');
+    const nav = page.locator('nav.nav');
+    // short label on screen, full name for screen readers
+    expect((await nav.getByRole('link', { name: 'Executive Dashboard' }).innerText()).trim()).toBe('Executive');
+    expect(await nav.evaluate((n) => n.scrollWidth <= n.clientWidth)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+  expect((await page.locator('nav.nav').getByRole('link', { name: 'Executive Dashboard' }).innerText()).trim()).toBe('Executive Dashboard');
+});

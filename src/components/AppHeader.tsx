@@ -40,8 +40,8 @@ export async function AppHeader({
             <a href="/" className={active === 'dashboard' ? 'active' : undefined}>Dashboard</a>
             <a href="/calculator" className={active === 'calculator' ? 'active' : undefined}>Calculator</a>
             {admin ? (
-              <a href="/executive" className={active === 'executive' ? 'active' : undefined}>
-                Executive Dashboard
+              <a href="/executive" className={active === 'executive' ? 'active' : undefined} aria-label="Executive Dashboard">
+                Executive<span className="nav-long"> Dashboard</span>
               </a>
             ) : null}
           </nav>

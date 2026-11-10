@@ -192,6 +192,11 @@ p { margin: 0; }
   .nav { gap: 20px; margin-top: 14px; }
   .nav a { font-size: 14px; }
 }
+/* phones: "Executive Dashboard" becomes "Executive" so every link fits without scrolling */
+@media (max-width: 480px) {
+  .nav { gap: 18px; }
+  .nav .nav-long { display: none; }
+}
 html, body { overflow-x: clip; }
 
 .page { max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; }
