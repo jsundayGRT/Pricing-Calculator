@@ -16,6 +16,15 @@ test('admins manage who is an admin or a rep from the user menu', async ({ brows
   const person = admin.getByLabel('Person'), role = admin.getByLabel('Role', { exact: true }), saveBtn = admin.getByRole('button', { name: 'Save' });
   await expect(person).toBeEnabled(); // the list has loaded
   await expect(admin.getByRole('searchbox')).toHaveCount(0); // a dropdown, not a search
+  await expect(role).toHaveValue(''); // no role shown until a person is picked
+  await expect(saveBtn).toBeDisabled();
+  // someone who hasn't signed in yet gets a name from their email
+  await expect(admin.getByRole('row', { name: /Susan Landaluce/ })).toContainText('susan.landaluce@guardrail.tech');
+  // clicking a row picks that person
+  await admin.getByRole('row', { name: /Susan Landaluce/ }).click();
+  await expect(person).toHaveValue('susan.landaluce@guardrail.tech');
+  await expect(role).toHaveValue('admin');
+  await expect(role).toBeFocused();
   await person.selectOption({ label: 'Someone new…' });
   await admin.getByLabel('Email').fill(rep.email);
   await admin.getByLabel(/^Name/).fill(rep.name);
@@ -66,4 +75,17 @@ test('admins manage who is an admin or a rep from the user menu', async ({ brows
 
   await adminCtx.close();
   await repCtx.close();
+});
+
+test('on a phone, Manage roles shows each person as a card with no sideways scrolling', async ({ page, context }) => {
+  await signIn(context);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/roles');
+  await expect(page.getByLabel('Person')).toBeEnabled();
+  const row = page.getByRole('row', { name: 'Change role for Jared Sunday' });
+  await expect(row.getByText('Admin', { exact: true })).toBeVisible();
+  await expect(row).toContainText('Last active');
+  const sideways = await page.evaluate(() => document.querySelector('.table-wrap')!.scrollWidth > document.querySelector('.table-wrap')!.clientWidth
+    || document.documentElement.scrollWidth > document.documentElement.clientWidth);
+  expect(sideways).toBe(false);
 });

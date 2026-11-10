@@ -21,6 +21,13 @@ function fmtDate(iso?: string | null) {
   }
 }
 
+// Someone's name, or until we know it (they haven't signed in yet) one made from their email:
+// dena.lumbang@guardrail.tech → Dena Lumbang.
+function displayName(p: { name?: string; email: string }) {
+  if (p.name) return p.name;
+  return p.email.split('@')[0].split(/[._-]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') || p.email;
+}
+
 // Admins choose who is an admin and who is a rep. Admins see the Executive Dashboard, approve
 // Deal Reviews, search every HubSpot deal and manage roles; reps price and lock their own requests.
 const NEW = '__new__';
@@ -33,7 +40,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
   const [pick, setPick] = useState(''); // an email, NEW for someone not listed yet, or '' for none
   const [newEmail, setNewEmail] = useState('');
   const [newName, setNewName] = useState('');
-  const [role, setRole] = useState<UserRole>('rep');
+  const [role, setRole] = useState<UserRole | ''>(''); // empty until a person is picked
   const me = myEmail.trim().toLowerCase();
 
   async function load() {
@@ -63,7 +70,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
       if (!res.ok) throw new Error(data.error || 'Could not save the role.');
       setPeople(data.people);
       const who = data.people.find((p: PersonView) => p.email === email.trim().toLowerCase());
-      setSaved(`${who?.name || email} is now ${role === 'admin' ? 'an admin' : 'a rep'}.`);
+      setSaved(`${who ? displayName(who) : email} is now ${role === 'admin' ? 'an admin' : 'a rep'}.`);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the role.');
@@ -77,14 +84,17 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
   const isNew = pick === NEW;
   const self = !!picked && picked.email === me;
 
-  // picking someone shows their current role, ready to change
-  function choose(value: string) {
+  // picking someone shows their current role, ready to change; someone new starts as a rep
+  function choose(value: string, focusRole = false) {
     setPick(value); setSaved(''); setError('');
-    setRole((people || []).find((p) => p.email === value)?.role || 'rep');
+    const who = (people || []).find((p) => p.email === value);
+    setRole(who?.role || (value === NEW ? 'rep' : ''));
+    if (focusRole && value !== me) setTimeout(() => document.getElementById('role-role')?.focus(), 0);
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!role) return;
     if (isNew) {
       if (await save(newEmail, role, newName)) { setNewEmail(''); setNewName(''); setPick(newEmail.trim().toLowerCase()); }
     } else if (picked) {
@@ -94,7 +104,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
   const unchanged = !!picked && picked.role === role;
 
   return (
-    <main className="page">
+    <main className="page roles-page">
       <div className="page-head">
         <div>
           <h1>Manage roles</h1>
@@ -118,7 +128,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
             <option value="" disabled>{people ? 'Choose a person' : 'Loading people…'}</option>
             {(people || []).map((p) => (
               <option key={p.email} value={p.email}>
-                {p.name ? `${p.name} (${p.email})` : p.email}{p.email === me ? ' · you' : ''}
+                {displayName(p)} ({p.email}){p.email === me ? ' · you' : ''}
               </option>
             ))}
             <option value={NEW}>Someone new…</option>
@@ -127,11 +137,12 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
         <div>
           <label htmlFor="role-role">Role</label>
           <select id="role-role" value={role} onChange={(e) => setRole(e.target.value as UserRole)} disabled={!pick || self}>
+            <option value="" disabled hidden>—</option>
             <option value="rep">Rep</option>
             <option value="admin">Admin</option>
           </select>
         </div>
-        <button className="btn primary" type="submit" disabled={!pick || self || unchanged || busy !== null}>Save</button>
+        <button className="btn primary" type="submit" disabled={!pick || !role || self || unchanged || busy !== null}>Save</button>
         {isNew ? (
           <div className="roles-new">
             <div>
@@ -147,7 +158,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
         {self ? <p className="sub roles-hint">You can&apos;t change your own role. Ask another admin.</p> : null}
         {picked && !self ? (
           <p className="sub roles-hint">
-            {picked.name || picked.email} is {picked.role === 'admin' ? 'an admin' : 'a rep'}
+            {displayName(picked)} is {picked.role === 'admin' ? 'an admin' : 'a rep'}
             {picked.roleChangedBy ? `, set by ${picked.roleChangedBy} on ${fmtDate(picked.roleChangedAt)}` : picked.defaultAdmin ? ' by default' : ''}.
           </p>
         ) : null}
@@ -164,14 +175,18 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
             </thead>
             <tbody>
               {(people || []).map((p) => (
-                <tr key={p.email}>
-                  <td>
-                    <b>{p.name || p.email}</b>{p.email === me ? <span className="sub"> (you)</span> : null}
-                    {p.name ? <div className="sub">{p.email}</div> : null}
+                // clicking a row picks that person in the box above
+                <tr key={p.email} className={p.email === pick ? 'picked' : undefined} onClick={() => choose(p.email, true)}>
+                  <td className="roles-who">
+                    <button type="button" className="roles-pick" aria-label={`Change role for ${displayName(p)}`} onClick={(e) => { e.stopPropagation(); choose(p.email, true); }}>
+                      {displayName(p)}
+                    </button>
+                    {p.email === me ? <span className="sub"> (you)</span> : null}
+                    <div className="sub">{p.email}</div>
                     {p.roleChangedBy ? <div className="sub roles-note">Set by {p.roleChangedBy} on {fmtDate(p.roleChangedAt)}</div> : null}
                   </td>
-                  <td className="sub">{p.lastSeenAt || p.lastSignInAt ? fmtWhen(p.lastSeenAt || p.lastSignInAt) : 'Not yet'}</td>
-                  <td><span className={`role-tag ${p.role}`}>{p.role === 'admin' ? 'Admin' : 'Rep'}</span></td>
+                  <td className="sub roles-seen"><span className="roles-seen-label">Last active </span>{p.lastSeenAt || p.lastSignInAt ? fmtWhen(p.lastSeenAt || p.lastSignInAt) : 'Not yet'}</td>
+                  <td className="roles-role"><span className={`role-tag ${p.role}`}>{p.role === 'admin' ? 'Admin' : 'Rep'}</span></td>
                 </tr>
               ))}
             </tbody>

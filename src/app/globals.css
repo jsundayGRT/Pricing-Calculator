@@ -488,6 +488,28 @@ table.roles th { background: var(--surface-2); color: var(--muted); font-size: 1
 table.roles tbody tr:last-child td { border-bottom: 0; }
 .roles-note { font-size: 12px; margin-top: 2px; }
 @media (max-width: 720px) { .roles-add, .roles-new { grid-template-columns: 1fr; } }
+/* keep the box and the list together instead of across the whole screen */
+.roles-page > * { max-width: 900px; }
+table.roles tbody tr { cursor: pointer; }
+table.roles tbody tr:hover { background: var(--surface-2); }
+table.roles tbody tr.picked { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.roles-pick { all: unset; font-weight: 700; color: var(--text); cursor: pointer; border-radius: 4px; }
+.roles-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.roles-seen-label { display: none; }
+table.roles td.roles-role { white-space: nowrap; }
+/* phones: each person is a card, name and role on top, email and last active below */
+@media (max-width: 640px) {
+  table.roles thead { display: none; }
+  table.roles, table.roles tbody { display: block; }
+  table.roles tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  table.roles tbody tr:last-child { border-bottom: 0; }
+  table.roles tbody td { display: block; padding: 0; border: 0; }
+  table.roles td.roles-who { grid-column: 1; grid-row: 1; min-width: 0; overflow-wrap: anywhere; }
+  table.roles td.roles-role { grid-column: 2; grid-row: 1; align-self: start; }
+  table.roles td.roles-seen { grid-column: 1 / -1; grid-row: 2; margin-top: 4px; font-size: 12px; }
+  .roles-seen-label { display: inline; }
+  .roles-seen-label::after { content: '· '; }
+}
 table.exec {
   width: 100%;
   border-collapse: collapse;
