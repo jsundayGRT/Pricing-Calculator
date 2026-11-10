@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { isAdmin, listPeople, recordSeen, recordSignIn, removePerson, roleForEmail, RoleError, setRole } from '../../src/lib/admin';
 import { store } from '../../src/lib/store';
+import { isBlocked } from '../../src/lib/access';
 import { recordActivity } from '../../src/lib/activity';
 import { upsertQuote } from '../../src/lib/quotes';
 import { setStoreForTests, type Store } from '../../src/lib/store';
@@ -121,22 +122,25 @@ test('locking a request or acting on one counts as being active', async () => {
   expect(after?.lastSeenAt && after.lastSeenAt > (jay?.lastSeenAt as string)).toBe(true);
 });
 
-test('removing someone takes them off the list and away from admin, until they use the app again', async () => {
+test('removing someone blocks them and takes away admin, until an admin lets them back in', async () => {
   await recordSignIn(sam);
   await setRole(jared, sam.email, 'admin');
   const people = await removePerson(jared, sam.email);
-  expect(people.map((p) => p.email)).not.toContain(sam.email);
+  expect(people.find((p) => p.email === sam.email)?.removedAt).toBeTruthy();
+  expect(await isBlocked('Sam.Rep@guardrail.tech')).toBe(true);
   expect(await isAdmin(sam)).toBe(false);
+  await expect(removePerson(jared, sam.email)).rejects.toThrow('not on the list'); // already removed
 
-  await new Promise((r) => setTimeout(r, 5));
-  await recordSeen(sam); // they open the app again
-  expect((await listPeople()).find((p) => p.email === sam.email)).toMatchObject({ role: 'rep' });
+  await setRole(jared, sam.email, 'rep'); // let back in
+  expect(await isBlocked(sam.email)).toBe(false);
+  expect((await listPeople()).find((p) => p.email === sam.email)).toMatchObject({ role: 'rep', removedAt: undefined });
 });
 
 test('a built-in admin who is removed stays a rep', async () => {
   await removePerson(jared, 'dena.lumbang@guardrail.tech');
-  expect((await listPeople()).map((p) => p.email)).not.toContain('dena.lumbang@guardrail.tech');
+  expect((await listPeople()).find((p) => p.email === 'dena.lumbang@guardrail.tech')?.removedAt).toBeTruthy();
   expect(await roleForEmail('dena.lumbang@guardrail.tech')).toBe('rep');
+  expect(await isBlocked('dena.lumbang@guardrail.tech')).toBe(true);
 });
 
 test('admins cannot remove themselves or the last admin', async () => {

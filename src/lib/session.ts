@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
+import { isBlocked } from './access';
 import { getAuthConfig } from './auth-config';
 
 export const SESSION_COOKIE = 'grt_session';
@@ -45,11 +46,14 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
   }
 }
 
+// Someone removed on Manage roles counts as signed out, even with a sign-in that hasn't expired.
 export async function readSession(): Promise<SessionUser | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  return verifySessionToken(token);
+  const user = await verifySessionToken(token);
+  if (!user || (await isBlocked(user.email))) return null;
+  return user;
 }
 
 export async function createOauthStateToken(payload: Record<string, string>) {

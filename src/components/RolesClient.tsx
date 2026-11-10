@@ -68,9 +68,10 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not save the role.');
+      const wasRemoved = !!(people || []).find((p) => p.email === email.trim().toLowerCase())?.removedAt;
       setPeople(data.people);
       const who = data.people.find((p: PersonView) => p.email === email.trim().toLowerCase());
-      setSaved(`${who ? displayName(who) : email} is now ${role === 'admin' ? 'an admin' : 'a rep'}.`);
+      setSaved(`${who ? displayName(who) : email} ${wasRemoved ? 'can sign in again as' : 'is now'} ${role === 'admin' ? 'an admin' : 'a rep'}.`);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the role.');
@@ -85,7 +86,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
     if (!picked) return;
     const name = displayName(picked);
     const access = picked.role === 'admin' ? ' and lose admin access' : '';
-    if (!confirm(`Remove ${name}?\n\nThey'll leave this list${access}. Their locked requests stay. If they use the app again, they'll come back as a rep.`)) return;
+    if (!confirm(`Remove ${name}?\n\nThey'll be signed out and can't sign in to the Pricing Calculator again${access}. Their locked requests stay. You can let them back in from this page.`)) return;
     setError(''); setSaved(''); setBusy(picked.email);
     try {
       const res = await fetch('/api/admin/roles', {
@@ -106,6 +107,8 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
   }
 
   const picked = (people || []).find((p) => p.email === pick) || null;
+  const active = (people || []).filter((p) => !p.removedAt);
+  const removed = (people || []).filter((p) => p.removedAt);
   const isNew = pick === NEW;
   const self = !!picked && picked.email === me;
 
@@ -126,7 +129,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
       await save(picked.email, role);
     }
   }
-  const unchanged = !!picked && picked.role === role;
+  const unchanged = !!picked && !picked.removedAt && picked.role === role;
 
   return (
     <main className="page roles-page">
@@ -151,12 +154,17 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
           <label htmlFor="role-person">Person</label>
           <select id="role-person" value={pick} onChange={(e) => choose(e.target.value)} disabled={!people}>
             <option value="" disabled>{people ? 'Choose a person' : 'Loading people…'}</option>
-            {(people || []).map((p) => (
+            {active.map((p) => (
               <option key={p.email} value={p.email}>
                 {displayName(p)} ({p.email}){p.email === me ? ' · you' : ''}
               </option>
             ))}
             <option value={NEW}>Someone new…</option>
+            {removed.length ? (
+              <optgroup label="Removed (can't sign in)">
+                {removed.map((p) => <option key={p.email} value={p.email}>{displayName(p)} ({p.email})</option>)}
+              </optgroup>
+            ) : null}
           </select>
         </div>
         <div>
@@ -181,7 +189,13 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
           </div>
         ) : null}
         {self ? <p className="sub roles-hint">You can&apos;t change your own role. Ask another admin.</p> : null}
-        {picked && !self ? (
+        {picked && picked.removedAt ? (
+          <p className="sub roles-hint">
+            {displayName(picked)} was removed{picked.roleChangedBy ? ` by ${picked.roleChangedBy}` : ''} on {fmtDate(picked.removedAt)} and can&apos;t sign in.
+            Choose a role and Save to let them back in.
+          </p>
+        ) : null}
+        {picked && !self && !picked.removedAt ? (
           <div className="roles-hint roles-picked">
             <p className="sub">
               {displayName(picked)} is {picked.role === 'admin' ? 'an admin' : 'a rep'}
@@ -204,7 +218,7 @@ export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: st
               <tr><th>Person</th><th>Last active</th><th>Role</th></tr>
             </thead>
             <tbody>
-              {(people || []).map((p) => (
+              {active.map((p) => (
                 // clicking a row picks that person in the box above
                 <tr key={p.email} className={p.email === pick ? 'picked' : undefined} onClick={() => choose(p.email, true)}>
                   <td className="roles-who">

@@ -74,13 +74,26 @@ test('admins manage who is an admin or a rep from the user menu', async ({ brows
   await expect(r.getByRole('link', { name: 'Executive Dashboard' })).toHaveCount(0);
   expect((await r.request.delete('/api/admin/roles', { data: { email: 'jared.sunday@guardrail.tech' } })).status()).toBe(403);
 
-  // remove the rep: asks first, then they leave the list
+  // remove the rep: asks first, then they leave the list and are signed out
   await admin.getByRole('row', { name: /Playwright Rep/ }).click();
   admin.once('dialog', (d) => { expect(d.message()).toContain('Remove Playwright Rep?'); void d.accept(); });
   await admin.getByRole('button', { name: 'Remove Playwright Rep' }).click();
   await expect(admin.getByRole('status')).toHaveText('Playwright Rep was removed.');
   await expect(admin.getByRole('row', { name: /Playwright Rep/ })).toHaveCount(0);
   await expect(person).toHaveValue('');
+  await r.goto('/');
+  await expect(r).toHaveURL(/\/login/);
+  expect((await r.request.get('/api/quotes')).status()).toBe(401);
+
+  // let them back in from the Removed group in the dropdown
+  await person.selectOption({ label: `${rep.name} (${rep.email})` });
+  await expect(admin.getByText(/was removed .* can.t sign in/)).toBeVisible();
+  await expect(admin.getByRole('button', { name: /^Remove/ })).toHaveCount(0);
+  await role.selectOption('rep');
+  await saveBtn.click();
+  await expect(admin.getByRole('status')).toHaveText('Playwright Rep can sign in again as a rep.');
+  await r.goto('/');
+  await expect(r).not.toHaveURL(/\/login/);
   // you can't remove yourself: no button
   await person.selectOption({ label: 'Jared Sunday (jared.sunday@guardrail.tech) · you' });
   await expect(admin.getByRole('button', { name: /^Remove/ })).toHaveCount(0);

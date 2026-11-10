@@ -1,6 +1,7 @@
 import type { SessionUser } from './session';
 import { listActivity } from './activity';
 import { listAllQuotes } from './quotes';
+import { readSavedRoles, ROLES_KEY, type RoleEntry, type UserRole } from './access';
 import { store, usingRedis } from './store';
 
 // Who is an admin. Admins pick roles on the Manage roles page; anyone nobody has picked a role
@@ -11,7 +12,7 @@ const DEFAULT_ADMINS = [
   'dena.lumbang@guardrail.tech',
 ];
 
-export type UserRole = 'admin' | 'rep';
+export type { UserRole };
 
 // Someone the app knows: from signing in, owning a request, or being added on Manage roles.
 export type Person = {
@@ -22,6 +23,7 @@ export type Person = {
   lastSeenAt?: string | null; // last time they opened a page in the app
   roleChangedBy?: string;
   roleChangedAt?: string;
+  removedAt?: string; // removed: can't sign in until an admin saves a role for them again
 };
 
 export type PersonView = Person & { role: UserRole; defaultAdmin: boolean };
@@ -29,9 +31,7 @@ export type PersonView = Person & { role: UserRole; defaultAdmin: boolean };
 // Roles and activity are saved separately, so a page view recording activity can never
 // overwrite a role an admin is changing at the same moment. ('people' is the older combined
 // record, still read for the roles saved in it.)
-const ROLES_KEY = 'roles', SEEN_KEY = 'seen', LEGACY_KEY = 'people';
-// removedAt: taken off Manage roles; they show again (as a rep) once they use the app after it.
-type RoleEntry = { role: UserRole; name?: string; roleChangedBy?: string; roleChangedAt?: string; removedAt?: string };
+const SEEN_KEY = 'seen', LEGACY_KEY = 'people';
 type SeenEntry = { name?: string; lastSignInAt?: string | null; lastSeenAt?: string | null };
 const norm = (email: string) => email.trim().toLowerCase();
 
@@ -50,7 +50,7 @@ export function isAdminEmail(email?: string | null) {
 }
 
 async function readRoles(): Promise<Record<string, RoleEntry>> {
-  const saved = await store().getValue<Record<string, RoleEntry>>(ROLES_KEY);
+  const saved = await readSavedRoles();
   if (saved) return saved;
   const legacy = (await store().getValue<Record<string, Person>>(LEGACY_KEY)) || {};
   return Object.fromEntries(Object.entries(legacy).filter(([, p]) => p.role).map(([e, p]) => [e, { role: p.role as UserRole, name: p.name, roleChangedBy: p.roleChangedBy, roleChangedAt: p.roleChangedAt }]));
@@ -63,7 +63,8 @@ async function readSeen(): Promise<Record<string, SeenEntry>> {
   return Object.fromEntries(Object.entries(legacy).map(([e, p]) => [e, { name: p.name, lastSignInAt: p.lastSignInAt, lastSeenAt: p.lastSeenAt }]));
 }
 
-const roleOf = (email: string, entry?: { role?: UserRole }): UserRole => entry?.role || (isAdminEmail(email) ? 'admin' : 'rep');
+const roleOf = (email: string, entry?: { role?: UserRole; removedAt?: string }): UserRole =>
+  entry?.removedAt ? 'rep' : entry?.role || (isAdminEmail(email) ? 'admin' : 'rep');
 
 export async function roleForEmail(email?: string | null): Promise<UserRole> {
   if (!email) return 'rep';
@@ -132,15 +133,10 @@ export async function listPeople(): Promise<PersonView[]> {
   for (const email of adminEmails()) merge(email, {});
   for (const q of quotes) if (q.ownerEmail) { merge(norm(q.ownerEmail), { name: q.ownerName || '' }); saw(q.ownerEmail, q.lockedAt); }
   for (const ev of events) saw(ev.email, ev.at);
-  for (const [email, r] of Object.entries(roles)) merge(email, { name: r.name, role: r.role, roleChangedBy: r.roleChangedBy, roleChangedAt: r.roleChangedAt });
+  for (const [email, r] of Object.entries(roles)) merge(email, { name: r.name, role: r.role, roleChangedBy: r.roleChangedBy, roleChangedAt: r.roleChangedAt, removedAt: r.removedAt });
   for (const [email, x] of Object.entries(seen)) { merge(email, { name: x.name, lastSignInAt: x.lastSignInAt }); saw(email, x.lastSeenAt); saw(email, x.lastSignInAt); }
   for (const [email, at] of latest) if (all.has(email)) all.set(email, { ...(all.get(email) as Person), lastSeenAt: at });
-  const removed = (p: Person) => {
-    const at = roles[p.email]?.removedAt;
-    return !!at && !((p.lastSeenAt || '') > at);
-  };
   return [...all.values()]
-    .filter((p) => !removed(p))
     .map((p) => ({ ...p, role: roleOf(p.email, p), defaultAdmin: isAdminEmail(p.email) }))
     .sort((a, b) => (a.role === b.role ? (a.name || a.email).localeCompare(b.name || b.email) : a.role === 'admin' ? -1 : 1));
 }
@@ -155,8 +151,9 @@ export async function setRole(by: SessionUser, emailIn: string, role: UserRole, 
   if (domain && !email.endsWith('@' + domain)) throw new RoleError(`Only @${domain} accounts can sign in.`);
   if (email === norm(by.email) && role !== 'admin') throw new RoleError("You can't remove your own admin access. Ask another admin.");
   const before = await listPeople();
-  if (role === 'rep' && !before.some((p) => p.role === 'admin' && p.email !== email)) throw new RoleError('There has to be at least one admin.');
+  if (role === 'rep' && !before.some((p) => p.role === 'admin' && !p.removedAt && p.email !== email)) throw new RoleError('There has to be at least one admin.');
 
+  // saving a role for a removed person lets them back in
   const roles = await readRoles();
   roles[email] = {
     role,
@@ -168,17 +165,16 @@ export async function setRole(by: SessionUser, emailIn: string, role: UserRole, 
   return listPeople();
 }
 
-// Takes someone off Manage roles: they lose admin access at once (even a built-in admin) and their
-// last-active date is forgotten. Their requests stay. Anyone at the company can still sign in, so
-// if they use the app again they come back as a rep.
+// Removes someone: they're signed out and can't sign in again, and lose admin access (even a
+// built-in admin). Their requests stay. Saving a role for them on Manage roles lets them back in.
 export async function removePerson(by: SessionUser, emailIn: string) {
   const email = norm(String(emailIn || ''));
   if (!email) throw new RoleError('Choose a person to remove.');
   if (email === norm(by.email)) throw new RoleError("You can't remove yourself. Ask another admin.");
   const before = await listPeople();
   const person = before.find((p) => p.email === email);
-  if (!person) throw new RoleError('That person is not on the list.');
-  if (person.role === 'admin' && !before.some((p) => p.role === 'admin' && p.email !== email)) throw new RoleError('There has to be at least one admin.');
+  if (!person || person.removedAt) throw new RoleError('That person is not on the list.');
+  if (person.role === 'admin' && !before.some((p) => p.role === 'admin' && !p.removedAt && p.email !== email)) throw new RoleError('There has to be at least one admin.');
 
   const now = new Date().toISOString();
   const roles = await readRoles();

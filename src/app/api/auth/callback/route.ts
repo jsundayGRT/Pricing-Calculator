@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { BLOCKED_MESSAGE, isBlocked } from '@/lib/access';
 import { recordSignIn } from '@/lib/admin';
 import { getBaseUrl } from '@/lib/auth-config';
 import {
@@ -50,6 +51,7 @@ export async function GET(request: Request) {
     const claims = claimsFromIdToken(tokens.id_token);
     const user = userFromClaims(claims);
     assertAllowedUser(user);
+    if (await isBlocked(user.email)) throw new Error(BLOCKED_MESSAGE);
 
     await recordSignIn(user);
     const sessionToken = await createSessionToken(user);
