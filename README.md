@@ -109,7 +109,9 @@ npm run test:unit   # HubSpot sync against a mocked HubSpot API; no browser or a
 
 When a locked request needs a **Deal Review**, the app posts it to a Slack channel with **Approve** and **Decline** buttons. Anyone in the channel can decide. **Decline** opens a pop-up asking for the reason (required). A decision works exactly like approving or not approving on the Executive Dashboard (an approval sends the request to HubSpot), and the message is updated to show who decided and why. Reps see who approved or declined each request, and the reason, on their Dashboard. A decision made on the Executive Dashboard updates the Slack message too, so nobody acts on it twice. If Slack is down or not configured, locking works as before.
 
-The message shows the customer, request ID, rep, Year 1 price, requested and applied discount, margin against target, term, customer size, HubSpot deal and the reason for review, plus a link to the Executive Dashboard. Keep the channel to people who may see margins.
+The message shows the customer, request ID, rep, Year 1 price, requested and applied discount, margin against target, term and total, modules, customer size, HubSpot deal and the reason for review, with links to preview the proposal and to the Executive Dashboard. The proposal itself is posted in the message's thread: the PDF in the template's design (marked as pending review), or the rep's edited Word file when they attached one; a new edit attached while it's in review is posted there too. Keep the channel to people who may see margins.
+
+Posting the file needs the `files:write` scope (in the manifest). An app installed before it was added needs it once: **OAuth & Permissions → Scopes → Bot Token Scopes → Add `files:write`**, then **Reinstall to Workspace** (the bot token stays the same). Until then the message posts without the file and still has the preview link.
 
 ### Set it up
 

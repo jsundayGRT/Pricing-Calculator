@@ -35,10 +35,16 @@ test.beforeEach(() => {
   process.env.SLACK_SIGNING_SECRET = 'shh';
   calls = [];
   setSlackFetchForTests((async (url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).startsWith('https://files.slack.com/')) {
+      const bytes = Buffer.from(init!.body as Uint8Array);
+      calls.push({ method: 'upload', body: bytes.subarray(0, 8).toString('latin1') });
+      return new Response('OK');
+    }
     const method = String(url).split('/api/')[1];
     const raw = String(init?.body ?? '');
     const body = raw.startsWith('{') ? JSON.parse(raw) : raw;
     calls.push({ method, body });
+    if (method === 'files.getUploadURLExternal') return Response.json({ ok: true, upload_url: 'https://files.slack.com/upload/v1/abc', file_id: 'F0PROPOSAL' });
     if (method === 'chat.postMessage') return Response.json({ ok: true, channel: 'C0DEALS', ts: '1730000000.000100' });
     if (method === 'users.lookupByEmail') {
       return String(body).includes('avery%40guardrail.tech')
@@ -96,9 +102,19 @@ test('a Deal Review posts to the channel with Approve and Decline', async () => 
   expect(text).toContain('https://calc.example/executive');
   expect((await getQuoteById(record.id))!.slack).toEqual({ channel: 'C0DEALS', ts: '1730000000.000100' });
 
+  expect(text).toContain(`https://calc.example/api/quotes/${record.id}/proposal?format=html`); // preview link
+
+  // the proposal PDF goes in the message's thread
+  expect(String(calls.find((c) => c.method === 'files.getUploadURLExternal')!.body)).toContain('filename=Guardrail+Proposal+-+Northwind+-+GRT-SLACK1.pdf');
+  expect(calls.find((c) => c.method === 'upload')!.body).toMatch(/^%PDF-/);
+  expect(calls.find((c) => c.method === 'files.completeUploadExternal')!.body).toEqual({
+    files: [{ id: 'F0PROPOSAL', title: 'Proposal (PDF)' }], channel_id: 'C0DEALS', thread_ts: '1730000000.000100', initial_comment: 'The proposal for review.',
+  });
+
   // Posting again (a retry, or re-saving the same version) doesn't duplicate the message.
   await postDealReview(record.id, 'https://calc.example');
   expect(calls.filter((c) => c.method === 'chat.postMessage').length).toBe(1);
+  expect(calls.filter((c) => c.method === 'files.completeUploadExternal').length).toBe(1);
 });
 
 test('a standard request is not posted', async () => {
@@ -225,4 +241,27 @@ test('a rep without a Slack account is noted in the change history', async () =>
     type: 'slack-failed',
     detail: 'Could not message the rep in Slack: no Slack user has the email nobody@guardrail.tech',
   });
+});
+
+test('a rep-edited proposal is posted as their Word file; a missing files:write scope keeps the message', async () => {
+  const record = await lock('DEAL REVIEW');
+  const { saveProposalUpload } = await import('../../src/lib/quotes');
+  const { readFileSync } = await import('node:fs');
+  await saveProposalUpload(record.id, readFileSync(path.join(__dirname, '..', '..', 'content', 'proposal-template.docx')), { name: 'mine.docx', by: 'Avery Rep' });
+  await postDealReview(record.id, 'https://calc.example');
+  expect(calls.find((c) => c.method === 'upload')!.body).toMatch(/^PK/);
+  expect((calls.find((c) => c.method === 'files.completeUploadExternal')!.body as { files: { title: string }[] }).files[0].title).toBe('Proposal (edited by Avery Rep)');
+  expect(JSON.stringify(calls.find((c) => c.method === 'chat.postMessage')!.body)).toContain('The rep edited the proposal in Word');
+
+  // without the scope, the upload fails quietly and the review message is still there
+  const other = await upsertQuote({ ownerId: 'u1', ownerEmail: 'avery@guardrail.tech', ownerName: 'Avery Rep',
+    snapshot: { requestId: 'GRT-SLACK2', version: 1, customerName: 'Contoso', status: 'DEAL REVIEW', rep: 'Avery Rep', inputs: {}, customer: { finalPrice: 1000 } } });
+  setSlackFetchForTests((async (url: string | URL | Request) => {
+    const method = String(url).split('/api/')[1];
+    if (method === 'chat.postMessage') return Response.json({ ok: true, channel: 'C0DEALS', ts: '2' });
+    if (method === 'files.getUploadURLExternal') return Response.json({ ok: false, error: 'missing_scope' });
+    return Response.json({ ok: true });
+  }) as typeof fetch);
+  await postDealReview(other.id, 'https://calc.example');
+  expect((await getQuoteById(other.id))!.slack).toEqual({ channel: 'C0DEALS', ts: '2' });
 });

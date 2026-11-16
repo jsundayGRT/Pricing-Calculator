@@ -2,14 +2,19 @@
 // Approve / Decline buttons is posted to SLACK_DEAL_REVIEW_CHANNEL. Clicking a button decides the
 // request (same as the Executive Dashboard) and the message is updated to show who decided.
 //
-// Settings: SLACK_BOT_TOKEN (xoxb-…, scopes chat:write, users:read, users:read.email),
+// The proposal itself (the PDF in the template's design, or the rep's edited Word file) is posted
+// in the message's thread, so reviewers read what they approve.
+//
+// Settings: SLACK_BOT_TOKEN (xoxb-…, scopes chat:write, files:write, users:read, users:read.email),
 // SLACK_SIGNING_SECRET, SLACK_DEAL_REVIEW_CHANNEL (channel ID, e.g. C0123ABCD). The bot must be
 // invited to the channel.
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { recordActivity } from './activity';
 import { quoteExpiry } from './expiry';
-import { decisionOf, getQuoteById, setQuoteSlack, type QuoteRecord } from './quotes';
+import { DRAFT_NOTE, proposalFileName } from './proposal';
+import { buildProposalPdf, proposalPdfFileName } from './proposal-pdf';
+import { decisionOf, getQuoteById, readProposalUpload, setQuoteSlack, type QuoteRecord } from './quotes';
 import { summarizeForExec, type ExecQuoteSummary } from './quote-view';
 
 export const APPROVE_ACTION = 'deal_review_approve';
@@ -74,6 +79,13 @@ function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// The whole contract over its term, in the request's currency.
+function termTotal(quote: QuoteRecord, currency: string | null) {
+  const c = (quote.snapshot.customer || {}) as { schedule?: { totalContractValue?: number }; fx?: { rate?: number } };
+  const total = c.schedule?.totalContractValue;
+  return typeof total === 'number' ? money(total * (c.fx?.rate && c.fx.rate > 0 ? c.fx.rate : 1), currency) : '';
+}
+
 function summaryBlocks(quote: QuoteRecord, s: ExecQuoteSummary, appUrl: string) {
   const deal = quote.hubspot?.dealName ? esc(quote.hubspot.dealName) : '—';
   const fields = [
@@ -82,7 +94,8 @@ function summaryBlocks(quote: QuoteRecord, s: ExecQuoteSummary, appUrl: string) 
     `*Final price · Year 1*\n${money(s.finalPrice, s.currency)}`,
     `*Discount requested / applied*\n${pct(s.discountRequestedPct)} / ${pct(s.discountAppliedPct)}`,
     `*Margin / target*\n${pct(s.finalMarginPct)} / ${pct(s.regionalTargetPct)}`,
-    `*Term*\n${esc(s.term || '—')}`,
+    `*Term · total*\n${esc(s.term || '—')}${termTotal(quote, s.currency) ? ` · ${termTotal(quote, s.currency)}` : ''}`,
+    `*Modules*\n${esc(s.modules.join(', ') || '—')}`,
     `*Customer size*\n${esc([s.band, s.seats != null ? `${s.seats.toLocaleString('en-US')} employees` : null].filter(Boolean).join(', ') || '—')}`,
     `*HubSpot deal*\n${deal}`,
   ];
@@ -94,7 +107,10 @@ function summaryBlocks(quote: QuoteRecord, s: ExecQuoteSummary, appUrl: string) 
       : []),
     {
       type: 'context',
-      elements: [{ type: 'mrkdwn', text: `<${appUrl}/executive|Open in the Executive Dashboard>` }],
+      elements: [{
+        type: 'mrkdwn',
+        text: `<${appUrl}/api/quotes/${encodeURIComponent(quote.id)}/proposal?format=html|Preview the proposal> · <${appUrl}/executive|Open in the Executive Dashboard>${quote.proposalUpload ? ' · The rep edited the proposal in Word' : ''}`,
+      }],
     },
   ];
 }
@@ -193,8 +209,33 @@ export async function postDealReview(recordId: string, appUrl: string) {
       unfurl_links: false,
     });
     await setQuoteSlack(quote.id, { channel: res.channel, ts: res.ts });
+    await postProposalFile(quote, { channel: res.channel, ts: res.ts }, 'The proposal for review.');
   } catch (err) {
     console.error(`[slack] posting the Deal Review for ${recordId} failed:`, err);
+  }
+}
+
+// The proposal as a file in the review message's thread: the rep's edited Word file when they
+// attached one, otherwise the PDF in the template's design (marked as pending review). Needs the
+// files:write scope; without it the message still has the preview link. Never throws.
+export async function postProposalFile(quote: QuoteRecord, thread: { channel: string; ts: string }, comment: string) {
+  try {
+    const upload = quote.proposalUpload ? await readProposalUpload(quote.id) : null;
+    const file = upload
+      ? { bytes: Buffer.from(upload), name: proposalFileName(quote), title: `Proposal (edited by ${quote.proposalUpload!.by})` }
+      : { bytes: buildProposalPdf(quote, { note: DRAFT_NOTE }), name: proposalPdfFileName(quote), title: 'Proposal (PDF)' };
+    const slot = await slackApi<{ upload_url: string; file_id: string }>('files.getUploadURLExternal',
+      { filename: file.name, length: file.bytes.length }, { form: true });
+    const put = await (fetchOverride ?? fetch)(slot.upload_url, { method: 'POST', body: new Uint8Array(file.bytes) });
+    if (!put.ok) throw new Error(`upload failed: ${put.status}`);
+    await slackApi('files.completeUploadExternal', {
+      files: [{ id: slot.file_id, title: file.title }],
+      channel_id: thread.channel,
+      thread_ts: thread.ts,
+      initial_comment: comment,
+    });
+  } catch (err) {
+    console.error(`[slack] posting the proposal for ${quote.requestId} failed:`, err);
   }
 }
 

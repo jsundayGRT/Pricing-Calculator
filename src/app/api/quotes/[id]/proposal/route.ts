@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { recordActivity } from '@/lib/activity';
 import { isAdmin } from '@/lib/admin';
 import { docxToHtml } from '@/lib/docx-html';
@@ -6,6 +6,7 @@ import { buildProposal, DRAFT_NOTE, isWordFile, proposalFileName, withoutDraftNo
 import { buildProposalPdf, proposalPdfFileName } from '@/lib/proposal-pdf';
 import { getQuoteById, readProposalUpload, removeProposalUpload, saveProposalUpload, type QuoteRecord } from '@/lib/quotes';
 import { readSession, type SessionUser } from '@/lib/session';
+import { postProposalFile, slackEnabled } from '@/lib/slack';
 
 // The customer proposal (Word) for a locked request: the rep's own edit when they attached one,
 // otherwise the one built from Guardrail's template.
@@ -110,6 +111,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const saved = await saveProposalUpload(quote.id, bytes, { name, by: session.name || session.email });
   if (!saved) return NextResponse.json({ error: 'not found' }, { status: 404 });
   await recordActivity('note', saved, { name: session.name, email: session.email }, `Attached an edited proposal (${saved.proposalUpload!.name})`);
+  // reviewers see the new version in the Deal Review thread
+  if (saved.slack && slackEnabled() && saved.status === 'DEAL REVIEW') {
+    after(() => postProposalFile(saved, saved.slack!, `${saved.proposalUpload!.by} attached an edited proposal.`));
+  }
   return NextResponse.json({ proposalUpload: saved.proposalUpload });
 }
 
