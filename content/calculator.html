@@ -132,6 +132,7 @@ h3 { font-size: 15px; margin: 0 0 8px; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
 .switch[aria-checked="true"] { background: var(--accent); }
 .switch[aria-checked="true"]::after { transform: translateX(18px); }
+.switch[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 
 input[type=text], input[type=number], input[type=password], input[type=date], select, textarea {
   font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%;
@@ -642,8 +643,8 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
         <fieldset class="field plain"><legend class="label">Traffic Light modules</legend><div class="tiles" id="modules"></div>
           <div class="hint" id="modules-hint">Choose at least one module, or turn on AI Command Center below.</div></fieldset>
         <div class="option">
-          <div><b id="cc-label">AI Command Center</b></div>
-          <button class="switch" role="switch" id="commandCenter" aria-labelledby="cc-label"></button>
+          <div><b id="cc-label">AI Command Center</b><div class="hint hidden" id="cc-hint">Included with Drift.</div></div>
+          <button class="switch" role="switch" id="commandCenter" aria-labelledby="cc-label" aria-describedby="cc-hint"></button>
         </div>
         <div class="option">
           <div><b id="onprem-label">On-prem / dedicated infrastructure</b><div class="hint" id="onprem-hint">Scoped and priced by the team.</div></div>
@@ -1818,12 +1819,21 @@ document.addEventListener('toggle', (e) => {
       h.textContent = `Priced on the ${state.band} band (${bandRange(state.band)}). The price changes when the count moves into another band.`;
     }
   }
-  ['commandCenter', 'onPrem', 'earlyPay', 'pilotCredit'].forEach((id) => $('#' + id).addEventListener('click', () => { state[id] = !state[id]; sync(); recalc(); }));
+  ['commandCenter', 'onPrem', 'earlyPay', 'pilotCredit'].forEach((id) => $('#' + id).addEventListener('click', () => {
+    // Drift needs AI Command Center: it stays on while Drift is picked
+    if (id === 'commandCenter' && needsCommandCenter()) return;
+    state[id] = !state[id]; sync(); recalc();
+  }));
+  function needsCommandCenter() { return !!state.modules.drift; }
   // pilot modules can't be chosen without the module itself (enforced in sync)
   $('#seats').addEventListener('input', (e) => { state.seats = e.target.value; recalc(); });
   $('#scoped').addEventListener('input', (e) => { state.scopedOnPremPrice = e.target.value; recalc(); });
 
   function sync() {
+    // Drift comes with AI Command Center (also when an older request is opened)
+    if (needsCommandCenter()) state.commandCenter = true;
+    $('#commandCenter').setAttribute('aria-disabled', String(needsCommandCenter()));
+    $('#cc-hint').classList.toggle('hidden', !needsCommandCenter());
     $('#band').value = state.band || ''; $('#location').value = state.location || '';
     for (const k of ['term']) $$('#' + k + ' button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === state[k])));
     $$('#modules .chip').forEach((b) => b.setAttribute('aria-pressed', String(!!state.modules[b.dataset.k])));

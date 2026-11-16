@@ -134,3 +134,29 @@ test('revising an older version saves the next version instead of overwriting', 
   expect(versions.map((q) => q.version).sort()).toEqual([1, 2, 3]);
   for (const q of versions) await page.request.delete(`/api/quotes/${q.id}`);
 });
+
+test('picking Drift turns on AI Command Center, which stays on while Drift is picked', async ({ page, context }) => {
+  await signIn(context);
+  const frame = await openCalculator(page);
+  await frame.locator('#empcount').fill('40');
+  await frame.locator('#location').selectOption('US');
+  const cc = frame.locator('#commandCenter');
+  await expect(cc).toHaveAttribute('aria-checked', 'false');
+
+  await frame.locator('#modules .chip[data-k="drift"]').click();
+  await expect(cc).toHaveAttribute('aria-checked', 'true');
+  await expect(cc).toHaveAttribute('aria-disabled', 'true');
+  await expect(frame.locator('#cc-hint')).toHaveText('Included with Drift.');
+  await expect(frame.locator('#out')).toContainText('AI Command Center');
+
+  await expect(cc).toBeDisabled();
+  await cc.dispatchEvent('click'); // a click still can't turn it off while Drift is picked
+  await expect(cc).toHaveAttribute('aria-checked', 'true');
+
+  // without Drift it is a choice again
+  await frame.locator('#modules .chip[data-k="drift"]').click();
+  await expect(cc).toHaveAttribute('aria-disabled', 'false');
+  await expect(frame.locator('#cc-hint')).toBeHidden();
+  await cc.click();
+  await expect(cc).toHaveAttribute('aria-checked', 'false');
+});
