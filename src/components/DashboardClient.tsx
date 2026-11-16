@@ -345,6 +345,11 @@ export function DashboardClient({ userName }: { userName: string }) {
                       {downloading === q.id ? 'Preparing…' : 'Download PDF'}
                     </button>
                   ) : null}
+                  {canDownload(q) ? (
+                    <a className="btn small" href={`/api/quotes/${encodeURIComponent(q.id)}/proposal`} download>
+                      Proposal (Word)
+                    </a>
+                  ) : null}
                   <a className="btn small" href={`/calculator?revise=${encodeURIComponent(q.id)}`}>
                     Open / revise
                   </a>

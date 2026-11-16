@@ -37,7 +37,15 @@ Entra redirect URI:
 
 `https://YOUR_DOMAIN/api/auth/callback`
 
+## Review and proposals
+
+The calculator is a pricing estimator and requirements gatherer. **Send for review** saves the request for an admin to review, whatever its pricing (pricing beyond the standard limits is flagged as Deal Review); admins approve or decline on the Executive Dashboard or in Slack, and the rep is told.
+
+The customer proposal is Guardrail's Word template, `content/proposal-template.docx`, filled in from the request (`src/lib/proposal.ts`): customer, rep, dates, yearly prices, the modules chosen and the diagnostic (the request's pilot). Admins can download it while reviewing (**Proposal (Word)** on a request's detail); the rep can once it's approved (Dashboard card, or the calculator). To change the wording or design, replace that file, keeping its `[...]` placeholders. Until the calculator has its own ramp, machines are the request's governed employees.
+
 ## HubSpot integration
+
+**Off by default.** For now admins log reviewed proposals in HubSpot by hand, so the app writes nothing to HubSpot and the calculator has no deal picker. Set `HUBSPOT_SYNC=1` (with the HubSpot settings below) to turn the sync described here back on.
 
 When a rep locks a pricing request, the server sends it to the HubSpot deal the rep picked. A request that needs a **Deal Review** waits: it is sent only once it is approved (on the Executive Dashboard or in Slack), and a declined one is never sent. What is sent:
 
@@ -72,6 +80,7 @@ The pricing request form has a required **HubSpot deal** dropdown listing the op
 
 | Variable | Required | Description |
 | --- | --- | --- |
+| `HUBSPOT_SYNC` | No | `1` turns the HubSpot sync and the calculator's deal picker on. Off when unset. |
 | `HUBSPOT_TOKEN` | For the integration | Private app access token. Server only. |
 | `HUBSPOT_QUOTE_TEMPLATE_ID` | For the integration | Quote template used for new quotes |
 | `HUBSPOT_QUOTE_EXPIRY_DAYS` | No | Days until a quote expires (default `30`) |

@@ -109,25 +109,8 @@ test('pricing that needs Deal Review offers no sample', async ({ page, context }
   await pickShadow(frame);
   await expect(frame.locator('#sample-row')).toBeVisible();
   await frame.locator('#pilot .chip[data-k="content"]').click(); // a non-standard pilot needs approval
-  await expect(frame.locator('#lockbtn')).toHaveText('Lock for Deal Review');
+  await expect(frame.locator('#out .status-row.review')).toBeVisible();
   await expect(frame.locator('#sample-row')).toBeHidden();
-});
-
-test('a locked quote downloads as Word', async ({ page, context }) => {
-  await signIn(context);
-  const frame = await openCalculator(page);
-  await frame.locator('#empcount').fill('60');
-  await pickShadow(frame);
-  await frame.locator('#repname').fill('Avery Rep');
-  await frame.locator('#cname').fill('Word Export Test');
-  const saved = await lock(page, frame);
-
-  await expect(frame.locator('#docxbtn')).toBeVisible();
-  const dl = page.waitForEvent('download');
-  await frame.locator('#docxbtn').click();
-  expect((await dl).suggestedFilename()).toBe(`Guardrail Quote - Word Export Test - ${saved.requestId}.docx`);
-
-  await page.request.delete(`/api/quotes/${saved.id}`);
 });
 
 test('revising an older version saves the next version instead of overwriting', async ({ page, context }) => {

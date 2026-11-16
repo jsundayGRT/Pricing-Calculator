@@ -36,6 +36,12 @@ export function hubspotEnabled() {
   return process.env.HUBSPOT_DRY_RUN === '1' || !!process.env.HUBSPOT_TOKEN;
 }
 
+// Whether the app writes to HubSpot at all. Off unless HUBSPOT_SYNC=1: for now admins log reviewed
+// proposals in HubSpot by hand, so nothing (deal picker, quotes, line items, notes) is automatic.
+export function hubspotSyncOn() {
+  return process.env.HUBSPOT_SYNC === '1' && hubspotEnabled();
+}
+
 export function createHubSpotClient(opts: HubSpotClientOptions = {}) {
   const token = opts.token ?? process.env.HUBSPOT_TOKEN ?? '';
   const dryRun = opts.dryRun ?? process.env.HUBSPOT_DRY_RUN === '1';

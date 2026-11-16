@@ -93,7 +93,8 @@ export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
     year1Due: num(customer.year1DueAtSigning),
     currency: quote.currency || str(fx.currency) || 'USD',
     dealNote: str(customer.dealNote),
-    reviewReason: str(internal.reviewReason),
+    // every request is reviewed now; say so when the pricing itself needed nothing special
+    reviewReason: str(internal.reviewReason) || (snap.pricingStatus === 'STANDARD' ? 'Standard pricing (every proposal is reviewed)' : null),
     finalMarginPct: num(internal.finalMarginPct),
     regionalTargetPct: num(internal.regionalTargetPct),
     gapToTargetPts: num(internal.gapToTargetPts),

@@ -1,4 +1,5 @@
 import { after, NextResponse } from 'next/server';
+import { hubspotSyncOn } from '@/lib/hubspot/client';
 import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
 import { quoteExpiry } from '@/lib/expiry';
 import { decisionOf, listQuotesForUser, saveQuotePdf, upsertQuote } from '@/lib/quotes';
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     if (pdf) await saveQuotePdf(record.id, pdf);
     // Sync after the response: a HubSpot or Slack problem never blocks the lock. A Deal Review
     // waits for approval before anything goes to HubSpot.
-    if (record.hubspot?.dealId && record.status !== 'DEAL REVIEW') after(() => syncRequestToHubSpot(record.id));
+    if (hubspotSyncOn() && record.hubspot?.dealId && record.status !== 'DEAL REVIEW') after(() => syncRequestToHubSpot(record.id));
     if (record.status === 'DEAL REVIEW' && !record.slack) {
       const appUrl = new URL(request.url).origin;
       after(() => postDealReview(record.id, appUrl));

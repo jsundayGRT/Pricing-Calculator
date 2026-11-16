@@ -688,7 +688,7 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
         <div id="out" class="hidden"></div>
       </div>
       <div class="card lock hidden" id="lock">
-        <h2>Lock in this request</h2>
+        <h2>Send for review</h2>
         <div class="row2">
           <div class="field"><label class="label" for="repname">Rep name</label><input id="repname" type="text" maxlength="100" placeholder="Your name" autocomplete="name" aria-describedby="lockerr"></div>
           <div class="field"><label class="label" for="cname">Customer or opportunity</label><input id="cname" type="text" maxlength="200" placeholder="Customer name" aria-describedby="lockerr"></div>
@@ -702,9 +702,9 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
         </div>
         <div class="field valid-field"><label class="label" for="validuntil">Quote valid until</label><input id="validuntil" type="date" aria-describedby="valid-hint lockerr"><div class="hint" id="valid-hint"></div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn primary grow" id="lockbtn" type="button">Lock in pricing request</button>
+          <button class="btn primary grow" id="lockbtn" type="button">Send for review</button>
           <button class="btn icon-btn hidden" id="printbtn" type="button" title="Download quote PDF" aria-label="Download quote PDF"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <button class="btn icon-btn hidden" id="docxbtn" type="button" title="Download quote as Word, to edit" aria-label="Download quote as Word">Word</button>
+          <button class="btn icon-btn hidden" id="docxbtn" type="button" title="Download the proposal (Word), to send to the customer" aria-label="Download proposal">Proposal</button>
         </div>
         <div class="err" id="lockerr" role="alert"></div>
         <div class="sample-row" id="sample-row">
@@ -2507,8 +2507,8 @@ async function downloadQuoteDocx(v) {
     $('#valid-hint').innerHTML = days != null && days < 0
       ? 'Choose today or a later date.'
       : long
-        ? `<span class="warn-text">${days} days needs Deal Review.</span> Up to ${stdValidDays()} days (${esc(longDate(std))}) needs no approval.`
-        : `Up to ${stdValidDays()} days (${esc(longDate(std))}) needs no approval; a later date goes to Deal Review.`;
+        ? `<span class="warn-text">${days} days is flagged for Deal Review.</span> Up to ${stdValidDays()} days (${esc(longDate(std))}) is standard.`
+        : `Up to ${stdValidDays()} days (${esc(longDate(std))}) is standard; a later date is flagged for Deal Review.`;
   }
 
   function payload() {
@@ -2665,7 +2665,6 @@ async function downloadQuoteDocx(v) {
     empty.classList.add('hidden'); out.classList.remove('hidden'); lock.classList.remove('hidden');
     out.innerHTML = salesSummaryHtml(r.customer, fxBoxHtml(fx), r.inputs);
     animatePrice(r.customer);
-    $('#lockbtn').textContent = r.customer.dealStatus === 'DEAL REVIEW' ? 'Lock for Deal Review' : 'Lock in pricing request';
     // pricing that needs approval has no quote document, sample or not
     $('#sample-row').classList.toggle('hidden', r.customer.dealStatus === 'DEAL REVIEW');
     showValidity();
@@ -2737,7 +2736,8 @@ async function downloadQuoteDocx(v) {
   async function loadMyDeals() {
     try {
       const res = await fetch('/api/hubspot/deals', { credentials: 'same-origin', cache: 'no-store' });
-      if (res.status === 503) { hubspotOff = true; fillMyDeals('HubSpot is not connected'); $('#hubspot').disabled = true; showDealHint(); return; }
+      // HubSpot sync off: requests lock without a deal and admins log them in HubSpot themselves
+      if (res.status === 503) { hubspotOff = true; $('.deal-field').classList.add('hidden'); return; }
       if (!res.ok) throw new Error();
       const data = await res.json();
       dealAdmin = !!data.admin; myDeals = data.deals || [];
@@ -2822,7 +2822,9 @@ async function downloadQuoteDocx(v) {
       schema: 'grt-pricing-request/1', requestId, version, customerName: name, rep, stage,
       hubspotRecord: pickedDeal ? pickedDeal.id : null, hubspotDeal: pickedDeal ? { ...pickedDeal } : null,
       lockedAt: new Date().toISOString(), assumptionsVersion: store.version, assumptionsNote: store.note, assumptionsHash: configHash(cfg),
-      status: lastResult.customer.dealStatus, inputs: lastResult.inputs,
+      // Every request is reviewed before a proposal goes out; pricingStatus keeps whether the
+      // pricing itself was within the standard limits.
+      status: 'DEAL REVIEW', pricingStatus: lastResult.customer.dealStatus, inputs: lastResult.inputs,
       customer: lastResult.customer,
       // Executive-only economics (never shown on the sales calculator UI).
       internal: lastResult.internal,
@@ -2830,17 +2832,19 @@ async function downloadQuoteDocx(v) {
     deepFreeze(snap);
     reviseOf = { requestId, version, customerName: name, hubspotDeal: pickedDeal };
     lockedSinceChange = true; lastLocked = snap;
-    const review = snap.status === 'DEAL REVIEW';
     showBanner(snap, true);
     saveHistory(snap); renderHistory();
-    $('#printbtn').classList.toggle('hidden', !canDownload(snap)); $('#docxbtn').classList.toggle('hidden', !canDownload(snap));
+    $('#printbtn').classList.toggle('hidden', !canDownload(snap)); $('#docxbtn').classList.add('hidden');
     const label = version > 1 ? `${requestId}, version ${version}` : requestId;
-    toast(review
-      ? `Locked ${label}. Sent for approval; the quote PDF is available once it's approved.`
-      : `Locked ${label}.`, 'ok');
+    toast(`Sent ${label} for review. You can download the proposal once it's approved.`, 'ok');
   });
   $('#printbtn').addEventListener('click', () => { if (lastLocked) downloadQuotePdf(withApproval(lastLocked)); });
-  $('#docxbtn').addEventListener('click', () => { if (lastLocked) downloadQuoteDocx(withApproval(lastLocked)).catch(() => toast('Could not build the Word file.')); });
+  // the proposal comes from the server (Guardrail's Word template), so it needs the saved request
+  $('#docxbtn').addEventListener('click', () => {
+    if (!lastLockedId) return;
+    const a = document.createElement('a'); a.href = `/api/quotes/${encodeURIComponent(lastLockedId)}/proposal`; a.download = '';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
 
   // ---- sample pricing: the current price as a quote document, without locking, saving or HubSpot
   function sampleSnap() {
@@ -2892,7 +2896,9 @@ async function downloadQuoteDocx(v) {
     $('#cname').focus();
   }
 
-  function loadForRevision(s) {
+  let lastLockedId = null; // the saved request behind lastLocked, once known
+  function loadForRevision(s, id = null) {
+    lastLockedId = id;
     applyInputs(s);
     reviseOf = { requestId: s.requestId, version: s.version, customerName: s.customerName, checking: true };
     // The next version follows the latest one saved, so revising an older version never
@@ -2913,7 +2919,7 @@ async function downloadQuoteDocx(v) {
     // Opening an approved (or Standard) request from the dashboard offers its quote PDF until
     // anything is changed; recalc() hides it again on the next edit.
     lastLocked = s;
-    $('#printbtn').classList.toggle('hidden', !canDownload(s)); $('#docxbtn').classList.toggle('hidden', !canDownload(s));
+    $('#printbtn').classList.toggle('hidden', !canDownload(s)); $('#docxbtn').classList.toggle('hidden', !canDownload(s) || !id);
   }
 
   async function latestVersion(requestId, version) {
@@ -2982,7 +2988,7 @@ async function downloadQuoteDocx(v) {
       const data = await res.json();
       if (data.quote && data.quote.snapshot) {
         if (copy) { loadAsCopy(data.quote.snapshot); return; }
-        loadForRevision(data.quote.snapshot);
+        loadForRevision(data.quote.snapshot, data.quote.id);
         toast('Loaded ' + data.quote.requestId + ' from your dashboard.');
       }
     } catch { /* ignore */ }

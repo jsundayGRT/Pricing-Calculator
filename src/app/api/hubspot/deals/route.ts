@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/admin';
-import { hubspotEnabled } from '@/lib/hubspot/client';
+import { hubspotSyncOn } from '@/lib/hubspot/client';
 import { dealsForOwnerEmail, searchDeals } from '@/lib/hubspot/deals';
 import { readSession } from '@/lib/session';
 
@@ -9,7 +9,8 @@ import { readSession } from '@/lib/session';
 export async function GET(request: Request) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
-  if (!hubspotEnabled()) return NextResponse.json({ error: 'HubSpot is not configured' }, { status: 503 });
+  // the deal picker only exists while requests sync to HubSpot
+  if (!hubspotSyncOn()) return NextResponse.json({ error: 'HubSpot sync is off', off: true }, { status: 503 });
 
   const admin = await isAdmin(session);
   const q = new URL(request.url).searchParams.get('q');

@@ -452,7 +452,15 @@ export function ExecutiveSummaryClient() {
                     : 'Loading…'}
                 </p>
               </div>
-              <button className="btn small" type="button" onClick={() => setSelectedId(null)}>Close</button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {/* reviewers read the proposal the rep will send before deciding */}
+                {detail ? (
+                  <a className="btn small" href={`/api/quotes/${encodeURIComponent(detail.summary.id)}/proposal`} download>
+                    Proposal (Word)
+                  </a>
+                ) : null}
+                <button className="btn small" type="button" onClick={() => setSelectedId(null)}>Close</button>
+              </div>
             </div>
 
             {detailLoading || !detail ? (
