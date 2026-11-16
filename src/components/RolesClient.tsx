@@ -29,7 +29,7 @@ function displayName(p: { name?: string; email: string }) {
 }
 
 // Admins choose who is an admin and who is a rep. Admins see the Executive Dashboard, approve
-// Deal Reviews, search every HubSpot deal and manage roles; reps price and lock their own requests.
+// Deal Reviews and manage roles; reps price and lock their own requests.
 const NEW = '__new__';
 
 export function RolesClient({ myEmail, temporaryStorage = false }: { myEmail: string; temporaryStorage?: boolean }) {

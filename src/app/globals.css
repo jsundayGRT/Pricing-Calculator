@@ -295,7 +295,6 @@ html, body { overflow-x: clip; }
 .quote-price { font-size: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--text); margin: 0 0 10px; }
 .quote-price span { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
 .meta-line { font-size: 12.5px; }
-.meta-line.hs > div { display: inline; }
 .btn.small.danger, .btn.roles-remove { color: #F87171; border-color: rgba(248, 113, 113, .45); background: transparent; }
 .btn.small.danger:hover, .btn.roles-remove:hover { color: #fff; background: #E01E5A; border-color: #E01E5A; }
 .pill {

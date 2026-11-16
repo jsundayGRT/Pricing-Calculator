@@ -4,8 +4,8 @@ import {
   deleteQuoteForUser,
   getQuoteById,
   listAllQuotes,
-  readQuotePdf,
-  saveQuotePdf,
+  readProposalUpload,
+  saveProposalUpload,
   upsertQuote,
 } from '../../src/lib/quotes';
 import { listActivity } from '../../src/lib/activity';
@@ -51,7 +51,7 @@ test.afterEach(() => {
   delete process.env.KV_REST_API_TOKEN;
 });
 
-test('requests, decisions and PDFs are kept in Redis', async () => {
+test('requests, decisions and edited proposals are kept in Redis', async () => {
   expect(usingRedis()).toBe(true);
   const record = await upsertQuote({
     ownerId: 'u1',
@@ -59,7 +59,7 @@ test('requests, decisions and PDFs are kept in Redis', async () => {
     ownerName: 'Avery Rep',
     snapshot: { requestId: 'GRT-R1', version: 1, customerName: 'Northwind', status: 'DEAL REVIEW' },
   });
-  await saveQuotePdf(record.id, new TextEncoder().encode('%PDF-1.7 hi'));
+  await saveProposalUpload(record.id, new TextEncoder().encode('PK edited'), { name: 'mine.docx', by: 'Avery Rep' });
 
   // Same request and version again: updated in place, not duplicated.
   await upsertQuote({
@@ -72,12 +72,13 @@ test('requests, decisions and PDFs are kept in Redis', async () => {
 
   await approveQuote(record.id, { name: 'Susan', email: 's@guardrail.tech' });
   expect((await getQuoteById(record.id))!.status).toBe('APPROVED');
-  expect(new TextDecoder().decode((await readQuotePdf(record.id))!)).toBe('%PDF-1.7 hi');
+  expect(new TextDecoder().decode((await readProposalUpload(record.id))!)).toBe('PK edited');
+  expect((await getQuoteById(record.id))!.proposalUpload!.name).toBe('mine.docx'); // kept when re-saved
 
   expect(await deleteQuoteForUser('someone-else', record.id)).toBe(false);
   expect(await deleteQuoteForUser('u1', record.id)).toBe(true);
   expect(await getQuoteById(record.id)).toBeNull();
-  expect(await readQuotePdf(record.id)).toBeNull();
+  expect(await readProposalUpload(record.id)).toBeNull();
 
   // The change history is kept in Redis too, newest first.
   expect((await listActivity()).map((e) => e.type)).toEqual(['deleted', 'approved', 'locked']);

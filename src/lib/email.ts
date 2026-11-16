@@ -96,7 +96,6 @@ export function decisionEmail(quote: QuoteRecord, appUrl: string): Email | null 
     ['Customer', esc(quote.customerName)],
     ['Request', esc(ref)],
     ['Year 1 price', esc(money(quote.finalPrice, quote.currency))],
-    ...(quote.hubspot?.dealName ? [['HubSpot deal', esc(quote.hubspot.dealName)]] : []),
     [approved ? 'Approved by' : 'Declined by', esc(decision.by)],
     ...(!approved && decision.note ? [['Reason', esc(decision.note)]] : []),
     ...(expires ? [['Quote valid until', esc(longDate(expires))]] : []),

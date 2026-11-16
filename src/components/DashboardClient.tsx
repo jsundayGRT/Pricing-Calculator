@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Decision, HubSpotSync } from '@/lib/quotes';
+import type { Decision } from '@/lib/quotes';
 import { ExpiryTag } from './ExpiryTag';
-import { HubSpotSyncLine } from './HubSpotSyncLine';
 
 type QuoteSummary = {
   id: string;
@@ -15,7 +14,6 @@ type QuoteSummary = {
   lockedAt: string;
   finalPrice?: number | null;
   currency?: string | null;
-  hubspot?: HubSpotSync | null;
   decision?: Decision | null;
   expiresAt?: string | null;
   proposalUpload?: { name: string; at: string; by: string } | null;
@@ -216,7 +214,7 @@ export function DashboardClient({ userName }: { userName: string }) {
         if (filter === 'review' && !isReview(q)) return false;
         if (filter === 'standard' && isReview(q)) return false;
         if (!term) return true;
-        return [q.customerName, q.requestId, q.stage, q.hubspot?.dealName]
+        return [q.customerName, q.requestId, q.stage]
           .some((v) => v && v.toLowerCase().includes(term));
       })
       .sort(SORTS[sort]);
@@ -359,12 +357,6 @@ export function DashboardClient({ userName }: { userName: string }) {
                   <div className="meta-line">
                     {[q.requestId + (q.version > 1 ? ` v${q.version}` : ''), q.stage, `locked ${fmtDate(q.lockedAt)}`].filter(Boolean).join(' · ')}
                   </div>
-                  {q.hubspot?.dealId ? (
-                    <div className="meta-line hs">
-                      {q.hubspot.dealName ? <>Deal: {q.hubspot.dealName} · </> : null}
-                      <HubSpotSyncLine hubspot={q.hubspot} status={q.status} />
-                    </div>
-                  ) : null}
                 </div>
                 <div className="quote-actions">
                   {/* the proposal PDF, in the Word template's design (an edited proposal is saved as PDF from Word) */}

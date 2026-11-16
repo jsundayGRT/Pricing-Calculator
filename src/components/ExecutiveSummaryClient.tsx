@@ -3,11 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ActivityEvent } from '@/lib/activity';
 import type { ExecQuoteSummary } from '@/lib/quote-view';
-import type { HubSpotSync } from '@/lib/quotes';
 import { ActivityList, mergeHistory } from './ActivityLog';
 import { ExpiryTag } from './ExpiryTag';
 import { ExecReports } from './ExecReports';
-import { hubspotLabel, quoteLink } from './HubSpotSyncLine';
 
 type DetailPayload = {
   summary: ExecQuoteSummary;
@@ -15,16 +13,11 @@ type DetailPayload = {
     snapshot: Record<string, unknown>;
     ownerEmail: string;
     ownerName: string;
-    hubspot?: HubSpotSync | null;
   };
   activity?: ActivityEvent[];
 };
 
 type View = 'requests' | 'reports' | 'activity';
-
-function fmtWhen(iso?: string | null) {
-  return iso ? fmtDate(iso) : '—';
-}
 
 const MODULE_LABELS: Record<string, string> = {
   codeAi: 'Code + AI',
@@ -130,24 +123,6 @@ export function ExecutiveSummaryClient() {
       resetDecisionForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save this decision');
-    } finally {
-      setApproving(false);
-    }
-  }
-
-  async function retrySync(id: string) {
-    setApproving(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/admin/quotes/${encodeURIComponent(id)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'retry-sync' }),
-      });
-      if (!res.ok) throw new Error('Could not retry the HubSpot sync');
-      setDetail(await res.json());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not retry the HubSpot sync');
     } finally {
       setApproving(false);
     }
@@ -534,31 +509,6 @@ export function ExecutiveSummaryClient() {
                     { quoteId: detail.summary.id, requestId: detail.summary.requestId, version: detail.summary.version, customerName: detail.summary.customerName },
                   )} />
                 </div>
-
-                {detail.quote.hubspot?.dealId ? (
-                  <div className="card" style={{ marginBottom: 16 }}>
-                    <h2>HubSpot</h2>
-                    {detail.quote.hubspot.status === 'failed' ? (
-                      <div className="flag bad">HubSpot sync failed{detail.quote.hubspot.error ? `: ${detail.quote.hubspot.error}` : ''}</div>
-                    ) : null}
-                    <table className="kv"><tbody>
-                      <tr><td>Deal</td><td>{detail.quote.hubspot.dealName || detail.quote.hubspot.dealId}</td></tr>
-                      <tr><td>Status</td><td>{hubspotLabel(detail.quote.hubspot, detail.summary.status)}</td></tr>
-                      <tr><td>Quote</td><td>{quoteLink(detail.quote.hubspot)
-                        ? <a href={quoteLink(detail.quote.hubspot)!} target="_blank" rel="noopener noreferrer">Open in HubSpot</a>
-                        : '—'}</td></tr>
-                      <tr><td>Last synced</td><td>{fmtWhen(detail.quote.hubspot.syncedAt)}</td></tr>
-                      <tr><td>Attempts</td><td>{detail.quote.hubspot.attempts ?? 0}</td></tr>
-                    </tbody></table>
-                    {detail.quote.hubspot.status === 'failed' || detail.quote.hubspot.status === 'pending' ? (
-                      <div className="review-actions">
-                        <button className="btn primary" type="button" disabled={approving} onClick={() => void retrySync(detail.summary.id)}>
-                          {approving ? 'Syncing…' : 'Retry sync'}
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
 
                 <div className="card" style={{ marginBottom: 16 }}>
                   <h2>Customer view</h2>

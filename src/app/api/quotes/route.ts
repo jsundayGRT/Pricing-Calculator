@@ -1,6 +1,4 @@
 import { after, NextResponse } from 'next/server';
-import { hubspotSyncOn } from '@/lib/hubspot/client';
-import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
 import { quoteExpiry } from '@/lib/expiry';
 import { isWordFile } from '@/lib/proposal';
 import { decisionOf, listQuotesForUser, saveProposalUpload, upsertQuote, type QuoteRecord } from '@/lib/quotes';
@@ -41,9 +39,7 @@ export async function POST(request: Request) {
     let saved = record;
     if (proposal) saved = (await saveProposalUpload(record.id, proposal, { name: String(body?.proposalName || 'proposal.docx'), by: session.name || session.email })) || record;
     const proposalError = !proposal && body?.proposal ? 'The attached proposal is not a Word document (.docx) under 3 MB.' : undefined;
-    // Sync after the response: a HubSpot or Slack problem never blocks the lock. A Deal Review
-    // waits for approval before anything goes to HubSpot.
-    if (hubspotSyncOn() && record.hubspot?.dealId && record.status !== 'DEAL REVIEW') after(() => syncRequestToHubSpot(record.id));
+    // Slack after the response: a Slack problem never blocks sending for review.
     if (record.status === 'DEAL REVIEW' && !record.slack) {
       const appUrl = new URL(request.url).origin;
       after(() => postDealReview(record.id, appUrl));

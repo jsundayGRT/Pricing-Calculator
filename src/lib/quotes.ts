@@ -2,26 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { recordActivity } from './activity';
 import { store } from './store';
 
-// 'awaiting-approval': a Deal Review isn't sent to HubSpot until it is approved.
-// replaced: a newer version of the request was synced and this version's draft quote archived
-export type HubSpotSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped' | 'awaiting-approval' | 'replaced';
-
-// What the HubSpot sync knows about a request. Only IDs and links: nothing priced lives here.
-export type HubSpotSync = {
-  dealId: string | null;
-  dealName: string | null;
-  status: HubSpotSyncStatus;
-  quoteId?: string | null;
-  quoteUrl?: string | null;
-  fileId?: string | null;
-  noteId?: string | null;
-  lineItemIds?: string[];
-  error?: string | null;
-  attempts?: number;
-  lastAttemptAt?: string | null;
-  syncedAt?: string | null;
-};
-
 export type QuoteRecord = {
   id: string;
   ownerId: string;
@@ -36,7 +16,6 @@ export type QuoteRecord = {
   finalPrice?: number | null;
   currency?: string | null;
   snapshot: Record<string, unknown>;
-  hubspot?: HubSpotSync | null;
   // The Deal Review message posted to Slack, so it can be updated once someone decides.
   slack?: { channel: string; ts: string } | null;
   // The rep's own edit of the proposal (Word), used instead of the one built from the template.
@@ -44,16 +23,6 @@ export type QuoteRecord = {
   createdAt: string;
   updatedAt: string;
 };
-
-// The customer quote PDF the calculator built at lock time, kept so the HubSpot sync (and a
-// retry) can upload the same file the rep downloads.
-export async function saveQuotePdf(id: string, bytes: Uint8Array) {
-  await store().putPdf(id, bytes);
-}
-
-export async function readQuotePdf(id: string): Promise<Uint8Array | null> {
-  return store().getPdf(id);
-}
 
 // The rep's edited proposal: kept with the request, and what reviewers read and approve.
 export async function saveProposalUpload(id: string, bytes: Uint8Array, info: { name: string; by: string }) {
@@ -116,15 +85,6 @@ export async function upsertQuote(input: {
     (q) => q.ownerId === input.ownerId && q.requestId === requestId && q.version === version,
   );
 
-  const deal = (snap.hubspotDeal || {}) as Record<string, unknown>;
-  const dealId = deal.id ? String(deal.id) : null;
-  const dealName = deal.name ? String(deal.name) : null;
-  // Re-saving the same version keeps its HubSpot quote (the sync updates it instead of
-  // creating a duplicate) unless the deal changed.
-  const hubspot: HubSpotSync | null = existing?.hubspot && existing.hubspot.dealId === dealId
-    ? { ...existing.hubspot, dealName }
-    : dealId ? { dealId, dealName, status: snap.status === 'DEAL REVIEW' ? 'awaiting-approval' : 'pending' } : null;
-
   const record: QuoteRecord = {
     id: existing?.id || randomUUID(),
     ownerId: input.ownerId,
@@ -139,7 +99,6 @@ export async function upsertQuote(input: {
     finalPrice: typeof customer.finalPrice === 'number' ? customer.finalPrice : null,
     currency: typeof fx.currency === 'string' ? fx.currency : 'USD',
     snapshot: snap,
-    hubspot,
     slack: existing?.slack ?? null,
     proposalUpload: existing?.proposalUpload ?? null,
     createdAt: existing?.createdAt || now,
@@ -253,18 +212,6 @@ async function decideQuote(
   quote.updatedAt = now;
   await store().put(quote);
   await recordActivity(action === 'approve' ? 'approved' : 'declined', quote, approver, text);
-  return quote;
-}
-
-// Re-reads the record right before writing so a background sync doesn't undo a decision
-// made in the meantime.
-export async function updateQuoteHubSpot(id: string, patch: Partial<HubSpotSync>) {
-  const quote = await getQuoteById(id);
-  if (!quote) return null;
-  const prev: HubSpotSync = quote.hubspot || { dealId: null, dealName: null, status: 'pending' };
-  quote.hubspot = { ...prev, ...patch };
-  quote.updatedAt = new Date().toISOString();
-  await store().put(quote);
   return quote;
 }
 

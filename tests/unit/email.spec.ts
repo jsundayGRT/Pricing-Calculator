@@ -49,7 +49,6 @@ function lock(status: string, extra: Record<string, unknown> = {}) {
       status,
       lockedAt: '2026-11-01T15:00:00.000Z',
       customer: { finalPrice: 100594, quoteValidDays: 30, fx: { currency: 'USD' } },
-      hubspotDeal: { id: '555', name: 'Northwind – Platform' },
       ...extra,
     },
   });

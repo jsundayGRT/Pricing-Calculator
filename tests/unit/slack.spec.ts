@@ -75,7 +75,6 @@ function lock(status: string) {
       inputs: { band: 'SMB', seats: 0, term: '1-Year', modules: { shadow: true } },
       customer: { finalPrice: 100594, fx: { currency: 'USD' }, included: { governedEmployees: 100, customerEmployees: 80 } },
       internal: { finalMarginPct: 0.41, regionalTargetPct: 0.55, reviewReason: 'Discount at the margin floor' },
-      hubspotDeal: { id: '555', name: 'Northwind – Platform' },
     },
   });
 }
@@ -100,6 +99,7 @@ test('a Deal Review posts to the channel with Approve and Decline', async () => 
   expect(text).toContain('Discount at the margin floor');
   expect(text).toContain('SMB, 80 employees');
   expect(text).toContain('https://calc.example/executive');
+  expect(text).not.toContain('HubSpot'); // nothing about HubSpot: deals are logged there by hand
   expect((await getQuoteById(record.id))!.slack).toEqual({ channel: 'C0DEALS', ts: '1730000000.000100' });
 
   expect(text).toContain(`https://calc.example/api/quotes/${record.id}/proposal?format=html`); // preview link

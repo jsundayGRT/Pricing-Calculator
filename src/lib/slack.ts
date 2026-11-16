@@ -87,7 +87,6 @@ function termTotal(quote: QuoteRecord, currency: string | null) {
 }
 
 function summaryBlocks(quote: QuoteRecord, s: ExecQuoteSummary, appUrl: string) {
-  const deal = quote.hubspot?.dealName ? esc(quote.hubspot.dealName) : '—';
   const fields = [
     `*Request*\n${esc(s.requestId)} v${s.version}`,
     `*Rep*\n${esc(s.rep)}`,
@@ -97,7 +96,6 @@ function summaryBlocks(quote: QuoteRecord, s: ExecQuoteSummary, appUrl: string) 
     `*Term · total*\n${esc(s.term || '—')}${termTotal(quote, s.currency) ? ` · ${termTotal(quote, s.currency)}` : ''}`,
     `*Modules*\n${esc(s.modules.join(', ') || '—')}`,
     `*Customer size*\n${esc([s.band, s.seats != null ? `${s.seats.toLocaleString('en-US')} employees` : null].filter(Boolean).join(', ') || '—')}`,
-    `*HubSpot deal*\n${deal}`,
   ];
   return [
     { type: 'header', text: { type: 'plain_text', text: `Deal Review: ${s.customerName}`.slice(0, 150) } },
@@ -283,7 +281,6 @@ export function repDecisionBlocks(quote: QuoteRecord, appUrl: string) {
     `*Request*\n${esc(quote.requestId)} v${quote.version}`,
     `*Final price · Year 1*\n${money(quote.finalPrice ?? null, quote.currency ?? null)}`,
     `*${approved ? 'Approved' : 'Declined'} by*\n${esc(decision.by)}`,
-    ...(quote.hubspot?.dealName ? [`*HubSpot deal*\n${esc(quote.hubspot.dealName)}`] : []),
     ...(expires
       ? [`*Quote valid until*\n${new Date(expires).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}`]
       : []),

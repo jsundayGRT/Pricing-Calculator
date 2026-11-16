@@ -14,7 +14,7 @@ React (Next.js) app with **Microsoft Entra ID** sign-in and a **per-user dashboa
 | `/api/admin/quotes` | Admin list/detail of every locked request |
 | `/api/admin/activity` | Admin change history: every lock, decision, note, removal and rep email |
 
-When locking, the rep picks **Quote valid until**: up to **Quote valid for (days)** from today (30 by default, in the calculator settings) needs no approval; a later date sends the request to Deal Review. The date goes on the proposal and the HubSpot quote, and each quote on the Dashboard shows it (amber in the last week, red once expired). An approved Deal Review keeps the date that was picked. **Duplicate** starts a new request with the same setup, priced with the current price list.
+When locking, the rep picks **Quote valid until**: up to **Quote valid for (days)** from today (30 by default, in the calculator settings) needs no approval; a later date sends the request to Deal Review. The date goes on the proposal, and each quote on the Dashboard shows it (amber in the last week, red once expired). An approved Deal Review keeps the date that was picked. **Duplicate** starts a new request with the same setup, priced with the current price list.
 
 The Executive Dashboard has three views: **Requests** (the table), **Reports** (Deal Review rate, average discount and margin, time to a decision and Year 1 value in US dollars, by rep or by month, for whatever the filters select) and **Activity** (the change history).
 
@@ -32,6 +32,7 @@ After you lock a pricing request in the calculator, it is saved to **your** dash
 | `SESSION_SECRET` | Yes | Long random string (`openssl rand -base64 48`) |
 | `AZURE_AD_ALLOWED_EMAIL_DOMAIN` | No | Restrict to one email domain |
 | `APP_BASE_URL` | No | Public origin override |
+| `DATA_DIR` | No | Folder for the request store and the reps' edited proposals (local only; Vercel uses Redis) |
 
 Entra redirect URI:
 
@@ -45,71 +46,17 @@ The customer proposal is Guardrail's Word template, `content/proposal-template.d
 
 Before review, the rep can **Preview** the proposal (a page in a new tab, `src/lib/docx-html.ts`), download it with **Edit in Word** (marked "DRAFT ESTIMATE"), and attach their edit with **Attach edit** on the Send for review card, or from their Dashboard while the request is in review (`PUT /api/quotes/:id/proposal`, Word files up to 3 MB, kept with the request). Reviewers see that the rep edited it, and the approved proposal is then the rep's file with the draft line removed. **Use template** goes back to the built one.
 
-The proposal PDF (`src/lib/proposal-pdf.ts`, drawn by the server with `src/lib/pdf-kit.ts`) has the template's design: its cover, Who we are with the diagram, Your price year by year, Next steps and the notes, with the template's pictures and wording, and the same numbers and sentences as the Word file (`proposalFacts`). It is the PDF on an approved request (calculator and Dashboard), and the file uploaded to HubSpot. If the template's wording changes, change it in `proposal-pdf.ts` too. A request with the rep's own Word edit has no PDF from the app: the rep saves their Word file as a PDF. **Preview** shows the Word file page by page, with its header and footer; printing that page gives the same pages.
+The proposal PDF (`src/lib/proposal-pdf.ts`, drawn by the server with `src/lib/pdf-kit.ts`) has the template's design: its cover, Who we are with the diagram, Your price year by year, Next steps and the notes, with the template's pictures and wording, and the same numbers and sentences as the Word file (`proposalFacts`). It is the PDF on an approved request (calculator and Dashboard) and the file posted in the Slack review thread. If the template's wording changes, change it in `proposal-pdf.ts` too. A request with the rep's own Word edit has no PDF from the app: the rep saves their Word file as a PDF. **Preview** shows the Word file page by page, with its header and footer; printing that page gives the same pages.
 
-## HubSpot integration
+## HubSpot
 
-**Off by default.** For now admins log reviewed proposals in HubSpot by hand, so the app writes nothing to HubSpot and the calculator has no deal picker. Set `HUBSPOT_SYNC=1` (with the HubSpot settings below) to turn the sync described here back on.
-
-When a rep locks a pricing request, the server sends it to the HubSpot deal the rep picked. A request that needs a **Deal Review** waits: it is sent only once it is approved (on the Executive Dashboard or in Slack), and a declined one is never sent. What is sent:
-
-1. One line item per priced product (customer-facing prices only: list price, discount, annual billing over the contract term; implementation is one-time). Cost, margin and every other executive-only figure stay in the app.
-2. A **Draft** quote titled `<Deal name> – Pricing – <request ID> v<version>`, expiring in `HUBSPOT_QUOTE_EXPIRY_DAYS`, using the `HUBSPOT_QUOTE_TEMPLATE_ID` template, and associated with the deal, its line items, the deal's primary company and its first contact.
-3. The deal's **Amount** is set to the quote total (Year 1, after all discounts), and its **Pricing request ID** property is set (the property is created on first use).
-4. The proposal PDF (drawn by the server in the Word template's design) is uploaded to the private **Pricing Calculator** folder in HubSpot Files. HubSpot quotes can't hold attachments, so the quote's **Comments to buyer** links to the PDF (the link opens only for signed-in HubSpot users), and the PDF is also attached to a note on the deal: *Pricing request … locked by … on …. Quote: …*
-
-Each locked version gets its own HubSpot quote. When a newer version syncs, an older version's quote that is still a draft is archived along with its line items (HubSpot can restore archived records for 90 days), so only the latest pricing sits on the deal; a quote that was already published to the customer is kept. An older version is never synced back onto the deal once a newer one is there. Syncing a version again (a retry, or an approval after the lock) updates that quote instead of creating a second one, replaces its line items, and keeps a quote someone already published in its published state. Pilot fees are not added to the quote.
-
-The sync runs after the lock is saved. If HubSpot fails, the lock still stands and the request shows **HubSpot sync failed**. HubSpot rate limits (429) are retried with backoff.
-
-The pricing request form has a required **HubSpot deal** dropdown listing the open deals the signed-in rep owns in the Guardrail Sales Pipeline (matched to their HubSpot user by email). Admins can also search every deal in the pipeline. If the HubSpot key can't read owners, everyone gets the search box instead. If HubSpot isn't configured, the field says so and requests lock without a deal.
-
-### Create the private app
-
-1. In HubSpot go to **Settings → Integrations → Private Apps → Create a private app**, name it *Guardrail Pricing Calculator*.
-2. On **Scopes**, add:
-   - `crm.objects.deals.read`, `crm.objects.deals.write`
-   - `crm.objects.owners.read` (to list each rep's own deals)
-   - `crm.objects.line_items.write`
-   - `crm.objects.quotes.write`
-   - `crm.objects.contacts.read`, `crm.objects.companies.read`
-   - `files`
-   - `crm.objects.notes.write` (in some portals this is covered by the contacts or deals write scope)
-   - `crm.schemas.deals.write` — only needed once, so the app can create the **Pricing request ID** deal property. Without it, create a single-line text deal property with internal name `pricing_request_id` yourself.
-3. Create the app and copy its access token into `HUBSPOT_TOKEN`. The token stays on the server; the browser only ever talks to this app's own API.
-4. Find the quote template ID: **Settings → Objects → Quotes → Templates**, open the template and copy the number in its URL into `HUBSPOT_QUOTE_TEMPLATE_ID`.
-5. Quotes in a currency other than USD (AUS, LATAM) need that currency turned on in **Settings → Account defaults → Currencies**.
-
-### HubSpot environment variables
-
-| Variable | Required | Description |
-| --- | --- | --- |
-| `HUBSPOT_SYNC` | No | `1` turns the HubSpot sync and the calculator's deal picker on. Off when unset. |
-| `HUBSPOT_TOKEN` | For the integration | Private app access token. Server only. |
-| `HUBSPOT_QUOTE_TEMPLATE_ID` | For the integration | Quote template used for new quotes |
-| `HUBSPOT_QUOTE_EXPIRY_DAYS` | No | Days until a quote expires (default `30`) |
-| `HUBSPOT_PIPELINE_ID` | No | Deal pipeline to search. Default: the pipeline labelled *Guardrail Sales Pipeline* |
-| `HUBSPOT_PORTAL_ID` | No | HubSpot account ID for quote links. Looked up from the token when unset |
-| `HUBSPOT_DRY_RUN` | No | `1` logs every HubSpot payload to the server log and calls nothing (fake deals and IDs) |
-| `DATA_DIR` | No | Folder for the request store and the reps' edited proposals |
-
-### Retry a failed sync
-
-Open the request on the **Executive Dashboard** (admins only). The **HubSpot** card shows the status, the error, and a link to the quote once it exists. Press **Retry sync**: it updates the existing quote rather than creating another. The server log has the full error (`[hubspot] sync failed for …`).
-
-A retry uploads the proposal PDF only if the first attempt didn't get that far.
-
-### Tests
-
-```bash
-npm run test:unit   # HubSpot sync against a mocked HubSpot API; no browser or app needed
-```
+The app doesn't connect to HubSpot. Once a request is approved, an admin logs the deal and its proposal in HubSpot by hand.
 
 ## Slack Deal Review approvals
 
-When a locked request needs a **Deal Review**, the app posts it to a Slack channel with **Approve** and **Decline** buttons. Anyone in the channel can decide. **Decline** opens a pop-up asking for the reason (required). A decision works exactly like approving or not approving on the Executive Dashboard (an approval sends the request to HubSpot), and the message is updated to show who decided and why. Reps see who approved or declined each request, and the reason, on their Dashboard. A decision made on the Executive Dashboard updates the Slack message too, so nobody acts on it twice. If Slack is down or not configured, locking works as before.
+When a locked request needs a **Deal Review**, the app posts it to a Slack channel with **Approve** and **Decline** buttons. Anyone in the channel can decide. **Decline** opens a pop-up asking for the reason (required). A decision works exactly like approving or not approving on the Executive Dashboard and the message is updated to show who decided and why. Reps see who approved or declined each request, and the reason, on their Dashboard. A decision made on the Executive Dashboard updates the Slack message too, so nobody acts on it twice. If Slack is down or not configured, locking works as before.
 
-The message shows the customer, request ID, rep, Year 1 price, requested and applied discount, margin against target, term and total, modules, customer size, HubSpot deal and the reason for review, with links to preview the proposal and to the Executive Dashboard. The proposal itself is posted in the message's thread: the PDF in the template's design (marked as pending review), or the rep's edited Word file when they attached one; a new edit attached while it's in review is posted there too. Keep the channel to people who may see margins.
+The message shows the customer, request ID, rep, Year 1 price, requested and applied discount, margin against target, term and total, modules, customer size and the reason for review, with links to preview the proposal and to the Executive Dashboard. The proposal itself is posted in the message's thread: the PDF in the template's design (marked as pending review), or the rep's edited Word file when they attached one; a new edit attached while it's in review is posted there too. Keep the channel to people who may see margins.
 
 Posting the file needs the `files:write` scope (in the manifest). An app installed before it was added needs it once: **OAuth & Permissions → Scopes → Bot Token Scopes → Add `files:write`**, then **Reinstall to Workspace** (the bot token stays the same). Until then the message posts without the file and still has the preview link.
 
@@ -154,6 +101,11 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+```bash
+npm test            # browser tests against the dev server
+npm run test:unit   # unit tests (proposal, PDF, Slack, email, storage); no browser or app needed
+```
 
 ## Deploy
 

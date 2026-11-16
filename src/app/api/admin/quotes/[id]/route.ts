@@ -2,8 +2,6 @@ import { after, NextResponse } from 'next/server';
 import { listActivity } from '@/lib/activity';
 import { isAdmin } from '@/lib/admin';
 import { notifyRepOfDecision } from '@/lib/notify';
-import { hubspotSyncOn } from '@/lib/hubspot/client';
-import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
 import { addQuoteLog, approveQuote, declineQuote, getQuoteById } from '@/lib/quotes';
 import { summarizeForExec } from '@/lib/quote-view';
 import { readSession } from '@/lib/session';
@@ -35,15 +33,6 @@ export async function POST(request: Request, { params }: Params) {
   const body = await request.json().catch(() => ({}));
   const actor = { name: session.name, email: session.email };
   const { id } = await params;
-  if (body?.action === 'retry-sync') {
-    const existing = await getQuoteById(id);
-    if (!existing) return NextResponse.json({ error: 'not found' }, { status: 404 });
-    if (!existing.hubspot?.dealId) return NextResponse.json({ error: 'no HubSpot deal on this request' }, { status: 400 });
-    if (!hubspotSyncOn()) return NextResponse.json({ error: 'HubSpot sync is turned off (HUBSPOT_SYNC is not 1)' }, { status: 400 });
-    await syncRequestToHubSpot(id);
-    const quote = (await getQuoteById(id))!;
-    return NextResponse.json({ summary: summarizeForExec(quote), quote, activity: await listActivity({ requestId: quote.requestId }) });
-  }
   const note = typeof body?.note === 'string' ? body.note : '';
   // A decision is final: an approved or declined request can't be decided again.
   if (body?.action === 'approve' || body?.action === 'decline') {
@@ -74,8 +63,6 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: 'note required' }, { status: 400 });
   }
   if (!quote) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  // Approval updates the HubSpot quote (same quote, not a new one), after the response.
-  if (hubspotSyncOn() && body?.action === 'approve' && quote.hubspot?.dealId) after(() => syncRequestToHubSpot(quote.id));
   // A decision made here also closes out the Slack message, so nobody acts on it twice.
   const appUrl = new URL(request.url).origin;
   if (body?.action !== 'log' && quote.slack) after(() => refreshDealReviewMessage(quote.id, appUrl));

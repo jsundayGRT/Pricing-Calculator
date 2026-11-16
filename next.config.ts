@@ -6,9 +6,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/api/quotes/[id]/proposal': ['./content/proposal-template.docx'],
     '/api/proposal/draft': ['./content/proposal-template.docx'],
-    // the HubSpot sync draws the proposal PDF, with the template's pictures
-    '/api/admin/quotes/[id]': ['./content/proposal-template.docx'],
-    '/api/slack/interactions': ['./content/proposal-template.docx'],
+    // sending for review posts the proposal PDF to Slack
     '/api/quotes': ['./content/proposal-template.docx'],
   },
 };

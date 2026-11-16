@@ -76,6 +76,7 @@ test('Edit in Word downloads the draft proposal without saving anything; the est
   await pickShadow(frame);
   await frame.locator('#cname').fill('Bank of the Rockies');
   await expect(frame.locator('#stage')).toHaveCount(0); // no Stage field
+  await expect(frame.locator('#hubspot')).toHaveCount(0); // no HubSpot deal to pick
   await expect(frame.locator('#samplepdf')).toHaveCount(0); // no separate estimate row
 
   let posts = 0;
