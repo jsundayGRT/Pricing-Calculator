@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { buildProposal, leftoverPlaceholders, proposalFileName } from '../../src/lib/proposal';
+import { buildProposal, DRAFT_NOTE, leftoverPlaceholders, proposalFileName } from '../../src/lib/proposal';
 import { approveQuote, getQuoteById, upsertQuote } from '../../src/lib/quotes';
 import { readZip } from '../../src/lib/zip';
 
@@ -79,4 +79,12 @@ test('an approved request uses its approved valid-until date', async () => {
   const q = await locked({ band: 'SMB', modules: { shadow: 'Y' }, term: '1-Year' });
   await approveQuote(q.id, { name: 'Dena', email: 'dena.lumbang@guardrail.tech' });
   expect(text(buildProposal((await getQuoteById(q.id))!))).toContain('December 16, 2026');
+});
+
+test('a draft is marked so it is not sent before review', async () => {
+  const q = await locked({ band: 'SMB', modules: { shadow: 'Y' }, term: '1-Year' });
+  const draft = buildProposal(q, { draft: true });
+  expect(leftoverPlaceholders(draft)).toEqual([]);
+  expect(text(draft)).toContain(DRAFT_NOTE);
+  expect(text(buildProposal(q))).not.toContain('DRAFT ESTIMATE');
 });

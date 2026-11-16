@@ -3,6 +3,7 @@ import type { FrameLocator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { openCalculator } from './drive';
 import { signIn } from './session';
+import { readZip } from '../src/lib/zip';
 
 type Saved = { id: string; requestId: string; version: number; customerName: string };
 
@@ -68,7 +69,7 @@ test('AI Command Center is off by default and a product is needed for a price', 
   await expect(frame.locator('#out .hero .amount')).toBeVisible();
 });
 
-test('sample pricing downloads as PDF and Word without saving anything', async ({ page, context }) => {
+test('an estimate downloads as a PDF and a draft proposal without saving anything', async ({ page, context }) => {
   await signIn(context);
   const frame = await openCalculator(page);
   await frame.locator('#empcount').fill('40');
@@ -89,14 +90,13 @@ test('sample pricing downloads as PDF and Word without saving anything', async (
   const docxDl = page.waitForEvent('download');
   await frame.locator('#sampledocx').click();
   const docx = await docxDl;
-  expect(docx.suggestedFilename()).toMatch(/\.docx$/);
-  const zip = readFileSync(await docx.path()).toString('latin1');
-  expect(zip.startsWith('PK')).toBe(true);
-  expect(zip).toContain('word/document.xml');
-  expect(zip).toContain('Bank of the Rockies');
-  expect(zip).toContain('Not a quote');
-  // the band box shows the band's range, as the calculator does
-  expect(readFileSync(await docx.path()).toString('utf8')).toContain('21–100 employees');
+  // the draft proposal: Guardrail's template, marked as a draft
+  expect(docx.suggestedFilename()).toMatch(/^Guardrail Draft Proposal - Bank of the Rockies - \d{4}-\d{2}-\d{2}\.docx$/);
+  const entries = readZip(readFileSync(await docx.path()));
+  const xml = entries.find((e) => e.name === 'word/document.xml')!.data.toString('utf8');
+  expect(xml).toContain('Bank of the Rockies');
+  expect(xml).toContain('DRAFT ESTIMATE');
+  expect(xml).toContain('Traffic Light: Shadow');
 
   await page.waitForTimeout(500);
   expect(posts).toBe(0);

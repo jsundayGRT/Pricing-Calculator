@@ -96,7 +96,14 @@ export function proposalFileName(record: Pick<QuoteRecord, 'customerName' | 'req
   return `Guardrail Proposal - ${name} - ${record.requestId}${record.version > 1 ? `-v${record.version}` : ''}.docx`;
 }
 
-export function buildProposal(record: QuoteRecord, opts: { template?: Uint8Array; now?: Date } = {}) {
+// A draft proposal is the rep's estimate in the template before review: marked so it isn't sent.
+export const DRAFT_NOTE = 'DRAFT ESTIMATE: not reviewed. Do not send to the customer until it is approved.';
+export function draftFileName(customerName: string, now = new Date()) {
+  const name = customerName.replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60) || 'Estimate';
+  return `Guardrail Draft Proposal - ${name} - ${now.toISOString().slice(0, 10)}.docx`;
+}
+
+export function buildProposal(record: QuoteRecord, opts: { template?: Uint8Array; now?: Date; draft?: boolean } = {}) {
   const snap = record.snapshot as Snapshot;
   const c = snap.customer || {};
   const rate = c.fx?.rate && c.fx.rate > 0 ? c.fx.rate : 1;
@@ -214,6 +221,11 @@ export function buildProposal(record: QuoteRecord, opts: { template?: Uint8Array
   x = replaceAll(x, '$[Avg] avg', machines ? `${$(total / years / machines / 12)} avg` : '—');
   // the template marks what to fill in with yellow highlighting; filled in, it goes
   const unmark = (xml: string) => xml.replace(/<w:highlight w:val="yellow"\/>/g, '');
+  if (opts.draft) {
+    const note = `<w:p><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="FDECEC"/><w:spacing w:after="160"/></w:pPr>`
+      + `<w:r><w:rPr><w:b/><w:color w:val="B42318"/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${esc(DRAFT_NOTE)}</w:t></w:r></w:p>`;
+    x = x.replace(/<w:body>/, `<w:body>${note}`);
+  }
   part('word/document.xml').data = Buffer.from(unmark(x), 'utf8');
 
   const header = part('word/header1.xml');

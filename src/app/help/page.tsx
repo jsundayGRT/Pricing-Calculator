@@ -37,7 +37,7 @@ export default async function HelpPage() {
             <li>Press <b>Send for review</b>. Every proposal is reviewed before it goes to a customer; it is saved to your Dashboard.</li>
             <li>Once it&apos;s approved, download the <b>Proposal (Word)</b> from your Dashboard, check it, save it as a PDF and send it. The quote PDF is there too.</li>
           </ol>
-          <p className="sub">Just pricing it out? Use <b>Sample PDF</b> or <b>Sample Word</b> for an estimate: nothing is saved.</p>
+          <p className="sub">Just pricing it out? <b>Estimate PDF</b> gives the pricing, and <b>Draft proposal</b> puts it in the Guardrail proposal template, marked as a draft. Nothing is saved, and neither goes to the customer: send for review first.</p>
         </div>
 
         <div className="card">

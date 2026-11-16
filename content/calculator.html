@@ -708,8 +708,8 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
         </div>
         <div class="err" id="lockerr" role="alert"></div>
         <div class="sample-row" id="sample-row">
-          <span>Sample pricing, without a deal or saving</span>
-          <div class="sample-acts"><button class="btn small" id="samplepdf" type="button">Sample PDF</button><button class="btn small" id="sampledocx" type="button">Sample Word</button></div>
+          <span>Estimate only: not saved or reviewed, not for the customer</span>
+          <div class="sample-acts"><button class="btn small" id="samplepdf" type="button" title="The current estimate as a PDF, marked as sample pricing">Estimate PDF</button><button class="btn small" id="sampledocx" type="button" title="The current estimate in the Guardrail proposal template, marked as a draft">Draft proposal</button></div>
         </div>
       </div>
     </aside>
@@ -2127,211 +2127,6 @@ function downloadQuotePdf(v, opts) {
 }
 
 
-// ===== Quote as a Word document (no libraries): the same content as the quote PDF, in a file
-// the rep can edit, e.g. to change terms while negotiating. A .docx is a zip of XML parts.
-const CRC_TABLE = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
-  return t;
-})();
-function crc32(b) { let c = 0xffffffff; for (let k = 0; k < b.length; k++) c = CRC_TABLE[(c ^ b[k]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
-// A zip with stored (uncompressed) entries, which is all Word needs. files: [{ name, data }]
-function zipStored(files) {
-  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
-  const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
-  const local = [], central = []; let off = 0;
-  for (const f of files) {
-    const name = pdfBytes(f.name), data = typeof f.data === 'string' ? pdfBytes(f.data) : f.data, crc = crc32(data);
-    const h = new DataView(new ArrayBuffer(30));
-    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
-    h.setUint16(10, time, true); h.setUint16(12, date, true); h.setUint32(14, crc, true);
-    h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
-    local.push(new Uint8Array(h.buffer), name, data);
-    const e = new DataView(new ArrayBuffer(46));
-    e.setUint32(0, 0x02014b50, true); e.setUint16(4, 20, true); e.setUint16(6, 20, true); e.setUint16(8, 0x0800, true);
-    e.setUint16(12, time, true); e.setUint16(14, date, true); e.setUint32(16, crc, true);
-    e.setUint32(20, data.length, true); e.setUint32(24, data.length, true); e.setUint16(28, name.length, true); e.setUint32(42, off, true);
-    central.push(new Uint8Array(e.buffer), name);
-    off += 30 + name.length + data.length;
-  }
-  const size = central.reduce((s, p) => s + p.length, 0), end = new DataView(new ArrayBuffer(22));
-  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
-  end.setUint32(12, size, true); end.setUint32(16, off, true);
-  return pdfConcat([...local, ...central, new Uint8Array(end.buffer)]);
-}
-// The logo the PDF draws, as a PNG for Word.
-async function quoteLogoPng() {
-  const logo = typeof PDF_LOGO !== 'undefined' ? PDF_LOGO : null;
-  if (!logo || typeof DecompressionStream === 'undefined') return null;
-  try {
-    const inflate = async (b64) => new Uint8Array(await new Response(new Blob([Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
-    const [rgb, alpha] = await Promise.all([inflate(logo.rgb), inflate(logo.alpha)]);
-    const cv = document.createElement('canvas'); cv.width = logo.w; cv.height = logo.h;
-    const ctx = cv.getContext('2d'), img = ctx.createImageData(logo.w, logo.h);
-    for (let p = 0; p < logo.w * logo.h; p++) img.data.set([rgb[p * 3], rgb[p * 3 + 1], rgb[p * 3 + 2], alpha[p]], p * 4);
-    ctx.putImageData(img, 0, 0);
-    const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
-    return blob ? { w: logo.w, h: logo.h, bytes: new Uint8Array(await blob.arrayBuffer()) } : null;
-  } catch { return null; }
-}
-
-async function buildQuoteDocx(v) {
-  const c = v.customer, i = v.inputs, fx = c.fx || { currency: 'USD', rate: 1 }, m = moneyFor(fx);
-  const vu = validUntil(c, v.lockedAt, v.approval && v.approval.at), ref = quoteRef(v);
-  // the PDF's colours
-  const C = { navy: '0B0D3F', blue: '5878B8', blueSoft: 'EEF2FB', heroText: 'B9C6EA', heroRule: '2A2E66', ink: '14162E', body: '2B2F45',
-    muted: '6B7189', rule: 'E3E6EF', panel: 'F5F7FC', ok: '0F8A5F', okSoft: 'E6F5EE', warn: 'A0640F', warnSoft: 'FFF5E3', white: 'FFFFFF' };
-  const W = 10080; // text width in twips: Letter with 0.75in margins
-  const tw = (pt) => Math.round(pt * 20);
-  const x = (s) => String(s ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f￾￿]/g, '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-  const rPr = ({ size = 9.5, bold = false, color = C.body, caps = false, spacing = 0, shade = null } = {}) =>
-    `<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>${bold ? '<w:b/>' : ''}${caps ? '<w:caps/>' : ''}<w:color w:val="${color}"/>${spacing ? `<w:spacing w:val="${tw(spacing)}"/>` : ''}`
-    + `<w:sz w:val="${Math.round(size * 2)}"/><w:szCs w:val="${Math.round(size * 2)}"/>${shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>` : ''}</w:rPr>`;
-  const run = (t, o) => `<w:r>${rPr(o)}<w:t xml:space="preserve">${x(t)}</w:t></w:r>`;
-  const caps = (t, o = {}) => run(t, { size: 7.5, bold: true, color: C.blue, caps: true, spacing: 1.1, ...o });
-  const border = (side, color, eighths, space = 0) => `<w:${side} w:val="single" w:sz="${eighths}" w:space="${space}" w:color="${color}"/>`;
-  const para = (runs, { before = 0, after = 0, align, shade, indent = 0, hanging = 0, pBdr = '', keepNext = false, tabs = '' } = {}) =>
-    `<w:p><w:pPr>${keepNext ? '<w:keepNext/>' : ''}${pBdr ? `<w:pBdr>${pBdr}</w:pBdr>` : ''}${shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>` : ''}${tabs}`
-    + `<w:spacing w:before="${tw(before)}" w:after="${tw(after)}"/>${indent || hanging ? `<w:ind w:left="${tw(indent)}"${hanging ? ` w:hanging="${tw(hanging)}"` : ''}/>` : ''}${align ? `<w:jc w:val="${align}"/>` : ''}</w:pPr>${runs}</w:p>`;
-  const NIL = '<w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/>';
-  // mar: cell padding in points; gap: space between cells in points
-  const table = (cols, rows, { top = '', mar = [0, 0, 0, 0], gap = 0 } = {}) =>
-    `<w:tbl><w:tblPr><w:tblW w:w="${W}" w:type="dxa"/>${gap ? `<w:tblCellSpacing w:w="${tw(gap / 2)}" w:type="dxa"/>` : ''}<w:tblBorders>${top ? top + NIL.replace('<w:top w:val="nil"/>', '') : NIL}</w:tblBorders><w:tblLayout w:type="fixed"/>`
-    + `<w:tblCellMar><w:top w:w="${tw(mar[0])}" w:type="dxa"/><w:left w:w="${tw(mar[1])}" w:type="dxa"/><w:bottom w:w="${tw(mar[2])}" w:type="dxa"/><w:right w:w="${tw(mar[3])}" w:type="dxa"/></w:tblCellMar></w:tblPr>`
-    + `<w:tblGrid>${cols.map((w) => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.join('')}</w:tbl>`;
-  // cells: [{ body, w, span, shade, top, bottom, vAlign }]
-  const row = (cells) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${cells.map((cl) => {
-    const b = [cl.top && border('top', ...cl.top), cl.bottom && border('bottom', ...cl.bottom)].filter(Boolean).join('');
-    return `<w:tc><w:tcPr><w:tcW w:w="${cl.w}" w:type="dxa"/>${cl.span ? `<w:gridSpan w:val="${cl.span}"/>` : ''}${b ? `<w:tcBorders>${b}</w:tcBorders>` : ''}${cl.shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${cl.shade}"/>` : ''}${cl.vAlign ? `<w:vAlign w:val="${cl.vAlign}"/>` : ''}</w:tcPr>${cl.body || para('')}</w:tc>`;
-  }).join('')}</w:tr>`;
-  const sectionTitle = (t) => para(caps(t, { size: 8.5, spacing: 1.4 }), { before: 20, after: 4, keepNext: true, pBdr: border('bottom', C.navy, 8, 4) });
-  const space = (pt) => para('', { before: pt });
-
-  const logo = await quoteLogoPng();
-  const body = [];
-  // ---- header: logo, and the quote reference on the right, under the navy strip
-  const logoH = 34 * 12700, logoW = logo ? Math.round(logoH * logo.w / logo.h) : 0; // EMU
-  const logoRun = logo
-    ? `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${logoW}" cy="${logoH}"/><wp:docPr id="1" name="Guardrail Technologies"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="logo.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${logoW}" cy="${logoH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`
-    : run('GUARDRAIL', { size: 20, bold: true, color: C.navy });
-  const locked = new Date(v.lockedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-  body.push(table([5040, 5040], [row([
-    { w: 5040, vAlign: 'center', body: para(logoRun) },
-    { w: 5040, vAlign: 'center', body: para(caps(v.sample ? 'Sample pricing' : 'Quote', { size: 8, spacing: 2 }), { align: 'right' })
-      + para(run(v.sample ? 'Not a quote' : ref, { size: 13, bold: true, color: C.navy }), { align: 'right', before: 2 })
-      + para(run(locked, { size: 9, color: C.muted }), { align: 'right', before: 2 }) },
-  ])], { top: border('top', C.navy, 36, 0), mar: [16, 0, 0, 0] }));
-
-  // ---- prepared for, status and validity
-  const pending = v.status === 'DEAL REVIEW' && !v.approval;
-  const approved = !!v.approval || v.status === 'APPROVED';
-  const pill = v.sample ? ['SAMPLE', C.blueSoft, C.navy] : pending ? ['PENDING DEAL REVIEW', C.warnSoft, C.warn] : approved ? ['APPROVED', C.okSoft, C.ok] : null;
-  body.push(table([6720, 3360], [row([
-    { w: 6720, body: para(caps('Prepared for'))
-      + para(run(v.customerName, { size: 22, bold: true, color: C.navy }), { before: 4 })
-      + para(run(`Prepared by ${v.rep ? v.rep + ' · ' : ''}Guardrail Technologies Inc.${v.stage ? ` · ${v.stage}` : ''}`, { color: C.muted }), { before: 4 }) },
-    { w: 3360, body: (pill ? para(run(` ${pill[0]} `, { size: 7.5, bold: true, color: pill[2], spacing: 0.8, shade: pill[1] }), { align: 'right' }) : '')
-      + (v.sample ? '' : para(run('Valid until', { size: 8, color: C.muted }), { align: 'right', before: 6 }) + para(run(vu.date, { size: 10.5, bold: true, color: C.ink }), { align: 'right', before: 2 })) },
-  ])], { mar: [26, 0, 10, 0] }));
-  const notice = v.sample ? [SAMPLE_NOTE, C.blueSoft, C.navy] : pending ? ['This pricing is pending executive approval (Deal Review) and is not final until approved.', C.warnSoft, C.warn] : null;
-  if (notice) body.push(table([W], [row([{ w: W, shade: notice[1], body: para(run(notice[0], { size: 9, color: notice[2] })) }])], { mar: [7, 12, 7, 12] }), space(6));
-
-  // ---- summary card: the Year 1 total, then three key figures
-  const D = c.discounts || {}, third = Math.floor(W / 3);
-  const cols = [
-    ['Due at signing', m(c.year1DueAtSigning), c.pilot && c.pilot.creditApplied ? 'After pilot credit' : 'Year 1'],
-    ['Annual recurring', m(c.annualRecurringPrice), 'List price per year'],
-    ['You save', D.total ? m(D.total) : '—', D.total ? `${fmtPct(D.totalPctOfMSRP)} off list price` : 'List price'],
-  ];
-  body.push(table([third, third, W - 2 * third], [
-    row([{ w: W, span: 3, shade: C.navy, bottom: [C.heroRule, 6, 0], body: para(caps('Year 1 total', { color: C.heroText }))
-      + para(run(m(c.finalPrice), { size: 30, bold: true, color: C.white }), { before: 4 })
-      + para(run(`After all discounts · ${fx.rate > 0 ? fx.currency : 'USD'}`, { size: 9, color: C.heroText }), { before: 2, after: 6 }) }]),
-    row(cols.map(([l, val, sub], k) => ({ w: k < 2 ? third : W - 2 * third, shade: C.navy, body: para(caps(l, { color: C.heroText, size: 6.8, spacing: 0.9 }), { before: 6 })
-      + para(run(val, { size: 13.5, bold: true, color: C.white }), { before: 3 }) + para(run(sub, { size: 7.5, color: C.heroText }), { before: 2, after: 4 }) }))),
-  ], { mar: [10, 22, 6, 22] }));
-
-  // ---- detail tiles
-  const ev = employeesView(c, i);
-  const tiles = [
-    ['Employee band', i.band, bandRangeText(i.band, c.included.governedEmployees)],
-    ['Contract term', i.term, i.earlyPay ? 'Early Pay applied' : (c.schedule && c.schedule.years > 1 ? `${c.schedule.years} years` : 'Annual')],
-    [ev.label, fmtNum(ev.n), ev.note ? ev.note.replace(/ \(.*\)$/, '') : 'Covered by this quote'],
-    ['Currency', fx.rate > 0 ? fx.currency : 'USD', fx.currency !== 'USD' && fx.rate > 0 ? `1 USD = ${Number(fx.rate).toLocaleString('en-US', { maximumFractionDigits: 4 })} ${fx.currency}` : 'US dollars'],
-  ];
-  const quarter = Math.floor(W / 4);
-  body.push(space(4), table([quarter, quarter, quarter, W - 3 * quarter], [row(tiles.map(([l, val, sub], k) => ({ w: k < 3 ? quarter : W - 3 * quarter, shade: C.panel,
-    body: para(caps(l, { size: 6.8, spacing: 0.8, color: C.muted })) + para(run(String(val), { size: 13, bold: true, color: C.navy }), { before: 3 }) + para(run(sub, { size: 7.5, color: C.muted }), { before: 2 }) })))],
-  { mar: [8, 10, 8, 10], gap: 8 }));
-
-  // ---- what's included, as tags
-  const names = Object.fromEntries(c.lines.modules.map((mm) => [mm.key, mm.name.replace('Traffic Light for ', '')]));
-  const tags = Object.entries(i.modules || {}).filter(([, on]) => on).map(([k]) => `Traffic Light: ${names[k]}`);
-  if (i.commandCenter) tags.push('AI Command Center');
-  tags.push(`${fmtNum(c.included.developerWorkseats)} developer workseats`, `${fmtNum(c.included.workflows)} governed workflows`);
-  body.push(para(caps('Included', { size: 7, color: C.muted, spacing: 1 }) + run('   ') + tags.map((t) => run(`  ${t.replace(/ /g, ' ')}  `, { size: 8, bold: true, color: C.navy, shade: C.blueSoft })).join(run('  ')), { before: 12 }));
-
-  // ---- pricing table: the same lines the calculator shows
-  body.push(sectionTitle('Pricing'));
-  const LW = 7680, VW = W - LW, rows = [];
-  quotePriceGroups(c).forEach((g) => g.forEach((r) => {
-    if (r.kind === 'section') { rows.push(row([{ w: W, span: 2, body: para(caps(r.label, { size: 7.5, spacing: 1 }), { before: 12, keepNext: true }) }])); return; }
-    if (r.kind === 'grand' || r.kind === 'due') {
-      const due = r.kind === 'due', shade = due ? C.navy : C.blueSoft, color = due ? C.white : C.navy;
-      rows.push(row([{ w: LW, shade, vAlign: 'center', body: para(run(r.label, { size: due ? 10.5 : 10, bold: true, color }), { before: 5, after: 5, indent: 10 }) },
-        { w: VW, shade, vAlign: 'center', body: para(run(r.val, { size: due ? 13 : 12, bold: true, color }), { align: 'right', before: 5, after: 5 }) }]));
-      return;
-    }
-    const size = r.sub ? 8.8 : 9.4, top = r.total ? [C.navy, 5, 0] : null, bottom = r.total ? null : [C.rule, 3, 0];
-    rows.push(row([
-      { w: LW, top, bottom, body: para(run(r.label, { size, bold: r.bold, color: r.sub ? C.muted : r.total ? C.ink : C.body }), { before: 3, after: 3, indent: r.sub ? 16 : 0 }) },
-      { w: VW, top, bottom, body: para(r.val ? run(r.val, { size, bold: r.bold, color: r.disc ? C.ok : r.sub ? C.muted : C.ink }) : '', { align: 'right', before: 3, after: 3 }) },
-    ]));
-  }));
-  body.push(table([LW, VW], rows, { mar: [0, 0, 0, 10] }));
-  if (c.onPremNote) body.push(para(run(`Dedicated infrastructure: ${c.lines.dedicatedTenant ? 'priced as scoped.' : 'to be scoped and quoted separately.'}`, { size: 8.5, color: C.muted }), { before: 8 }));
-
-  // ---- next steps
-  body.push(sectionTitle('Next steps'));
-  quoteSteps(v, m, vu).forEach((st, k) => body.push(para(run(String(k + 1), { bold: true, color: C.blue }) + '<w:r><w:tab/></w:r>' + run(st),
-    { before: 6, indent: 22, hanging: 22, tabs: `<w:tabs><w:tab w:val="left" w:pos="${tw(22)}"/></w:tabs>` })));
-
-  // ---- terms and contact
-  body.push(space(12), table([W], [row([{ w: W, shade: C.panel, body: para(caps('Terms', { size: 7, color: C.muted, spacing: 1 }), { after: 4 })
-    + quoteNotes(v).map((n) => para(run(n, { size: 8, color: C.muted }), { after: 4 })).join('') }])], { mar: [10, 14, 8, 14] }));
-  body.push(para(run(quoteAsk(v), { bold: true, color: C.navy }), { before: 14 }));
-
-  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"';
-  const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
-  const small = { size: 7.5, color: C.muted }, fc = (type) => `<w:r>${rPr(small)}<w:fldChar w:fldCharType="${type}"/></w:r>`;
-  const field = (instr) => `${fc('begin')}<w:r>${rPr(small)}<w:instrText xml:space="preserve"> ${instr} </w:instrText></w:r>${fc('separate')}${run('1', small)}${fc('end')}`;
-  const footer = `${XML}<w:ftr ${NS}>${para(run('Guardrail Technologies Inc.', { size: 7.5, bold: true, color: C.navy }) + run(`   ${v.sample ? 'Sample pricing' : `Quote ${ref}`} · Confidential`, small)
-    + '<w:r><w:tab/></w:r>' + run('Page ', small) + field('PAGE') + run(' of ', small) + field('NUMPAGES'),
-  { pBdr: border('top', C.rule, 5, 6), tabs: `<w:tabs><w:tab w:val="right" w:pos="${W}"/></w:tabs>` })}</w:ftr>`;
-  const docXml = `${XML}<w:document ${NS}><w:body>${body.join('')}`
-    + `<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080" w:header="540" w:footer="540" w:gutter="0"/></w:sectPr></w:body></w:document>`;
-  const styles = `${XML}<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:color w:val="${C.body}"/><w:sz w:val="19"/><w:szCs w:val="19"/><w:lang w:val="en-US"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="252" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>`;
-  const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-  const docRels = `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="${REL}/styles" Target="styles.xml"/><Relationship Id="rIdFooter" Type="${REL}/footer" Target="footer1.xml"/>${logo ? `<Relationship Id="rIdLogo" Type="${REL}/image" Target="media/logo.png"/>` : ''}</Relationships>`;
-  const core = `${XML}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${x('Guardrail pricing quote - ' + v.customerName)}</dc:title><dc:subject>${x(v.sample ? 'Sample pricing' : v.requestId + ' version ' + v.version)}</dc:subject><dc:creator>${x(v.rep || 'Guardrail Pricing Calculator')}</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString().slice(0, 19)}Z</dcterms:created></cp:coreProperties>`;
-  const types = `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>`
-    + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>';
-  const rootRels = `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`;
-  return zipStored([
-    { name: '[Content_Types].xml', data: types }, { name: '_rels/.rels', data: rootRels }, { name: 'docProps/core.xml', data: core },
-    { name: 'word/document.xml', data: docXml }, { name: 'word/styles.xml', data: styles }, { name: 'word/footer1.xml', data: footer },
-    { name: 'word/_rels/document.xml.rels', data: docRels }, ...(logo ? [{ name: 'word/media/logo.png', data: logo.bytes }] : []),
-  ]);
-}
-async function downloadQuoteDocx(v) {
-  const bytes = await buildQuoteDocx(v);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
-  a.download = quoteFileName(v, 'docx'); document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
-
-
 // ===== Sales calculator (one page, no tabs). Uses Engine (src/engine.js), Schema (src/config-schema.js)
 // and the shared display helpers from public/common.js, all inlined by the build.
 // Prices are updated in the executive file, which saves a new copy of this calculator.
@@ -2507,8 +2302,8 @@ async function downloadQuoteDocx(v) {
     $('#valid-hint').innerHTML = days != null && days < 0
       ? 'Choose today or a later date.'
       : long
-        ? `<span class="warn-text">${days} days is flagged for Deal Review.</span> Up to ${stdValidDays()} days (${esc(longDate(std))}) is standard.`
-        : `Up to ${stdValidDays()} days (${esc(longDate(std))}) is standard; a later date is flagged for Deal Review.`;
+        ? `<span class="warn-text">${days} days is longer than standard; reviewers will check it.</span> Up to ${stdValidDays()} days (${esc(longDate(std))}) is standard.`
+        : `Up to ${stdValidDays()} days (${esc(longDate(std))}) is standard. The proposal goes out once a reviewer approves it.`;
   }
 
   function payload() {
@@ -2857,7 +2652,17 @@ async function downloadQuoteDocx(v) {
   }
   const sampleOk = () => lastResult && canDownload({ status: lastResult.customer.dealStatus });
   $('#samplepdf').addEventListener('click', () => { if (sampleOk()) downloadQuotePdf(sampleSnap()); });
-  $('#sampledocx').addEventListener('click', () => { if (sampleOk()) downloadQuoteDocx(sampleSnap()).catch(() => toast('Could not build the Word file.')); });
+  // the draft proposal comes from the server, in Guardrail's Word template, marked as a draft
+  $('#sampledocx').addEventListener('click', async () => {
+    if (!sampleOk()) return;
+    try {
+      const res = await fetch('/api/proposal/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot: sampleSnap() }) });
+      if (!res.ok) throw new Error(String(res.status));
+      const name = decodeURIComponent((/filename\*=UTF-8''([^;]+)/.exec(res.headers.get('Content-Disposition') || '') || [])[1] || 'Guardrail Draft Proposal.docx');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } catch { toast('Could not build the draft proposal.'); }
+  });
 
   function showBanner(s, justLocked, latest = s.version) {
     const b = $('#revise-banner'); b.classList.remove('hidden');
