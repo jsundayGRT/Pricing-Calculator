@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { docxToHtml } from '@/lib/docx-html';
 import { buildProposal, draftFileName } from '@/lib/proposal';
 import type { QuoteRecord } from '@/lib/quotes';
 import { readSession } from '@/lib/session';
 
 // A draft proposal: the calculator's current estimate in Guardrail's Word template, marked as a
 // draft that hasn't been reviewed. Nothing is saved; the proposal to send comes after approval.
+// ?format=html previews it in the browser instead.
 export async function POST(request: Request) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: 'signed out' }, { status: 401 });
@@ -24,6 +26,15 @@ export async function POST(request: Request) {
   };
   try {
     const docx = buildProposal(record, { draft: true, now });
+    if (new URL(request.url).searchParams.get('format') === 'html') {
+      return new NextResponse(docxToHtml(docx, { title: `${customerName} · draft proposal`, note: 'Not saved or reviewed' }), {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+          'Cache-Control': 'private, no-store',
+        },
+      });
+    }
     return new NextResponse(new Uint8Array(docx), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

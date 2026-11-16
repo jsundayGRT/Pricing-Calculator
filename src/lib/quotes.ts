@@ -39,6 +39,8 @@ export type QuoteRecord = {
   hubspot?: HubSpotSync | null;
   // The Deal Review message posted to Slack, so it can be updated once someone decides.
   slack?: { channel: string; ts: string } | null;
+  // The rep's own edit of the proposal (Word), used instead of the one built from the template.
+  proposalUpload?: { name: string; size: number; at: string; by: string } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -51,6 +53,29 @@ export async function saveQuotePdf(id: string, bytes: Uint8Array) {
 
 export async function readQuotePdf(id: string): Promise<Uint8Array | null> {
   return store().getPdf(id);
+}
+
+// The rep's edited proposal: kept with the request, and what reviewers read and approve.
+export async function saveProposalUpload(id: string, bytes: Uint8Array, info: { name: string; by: string }) {
+  const quote = await getQuoteById(id);
+  if (!quote) return null;
+  await store().putPdf(id, bytes, 'docx');
+  quote.proposalUpload = { name: info.name.slice(0, 120), size: bytes.length, at: new Date().toISOString(), by: info.by };
+  quote.updatedAt = quote.proposalUpload.at;
+  await store().put(quote);
+  return quote;
+}
+export async function readProposalUpload(id: string) {
+  return store().getPdf(id, 'docx');
+}
+export async function removeProposalUpload(id: string) {
+  const quote = await getQuoteById(id);
+  if (!quote) return null;
+  await store().removePdf(id, 'docx');
+  quote.proposalUpload = null;
+  quote.updatedAt = new Date().toISOString();
+  await store().put(quote);
+  return quote;
 }
 
 const byLockedDesc = (a: QuoteRecord, b: QuoteRecord) => String(b.lockedAt).localeCompare(String(a.lockedAt));
@@ -116,6 +141,7 @@ export async function upsertQuote(input: {
     snapshot: snap,
     hubspot,
     slack: existing?.slack ?? null,
+    proposalUpload: existing?.proposalUpload ?? null,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
@@ -255,6 +281,7 @@ export async function deleteQuoteForUser(ownerId: string, id: string) {
   if (!quote) return false;
   await store().remove(id);
   await store().removePdf(id);
+  await store().removePdf(id, 'docx');
   await recordActivity('deleted', quote, { name: quote.ownerName, email: quote.ownerEmail }, 'Removed from the dashboard');
   return true;
 }

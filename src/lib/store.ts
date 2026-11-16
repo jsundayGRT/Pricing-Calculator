@@ -13,9 +13,10 @@ export type Store = {
   get<T>(id: string): Promise<T | null>;
   put<T extends { id: string }>(record: T): Promise<void>;
   remove(id: string): Promise<boolean>;
-  putPdf(id: string, bytes: Uint8Array): Promise<void>;
-  getPdf(id: string): Promise<Uint8Array | null>;
-  removePdf(id: string): Promise<void>;
+  // A request's files: its quote PDF ('pdf') and the rep's edited proposal ('docx').
+  putPdf(id: string, bytes: Uint8Array, kind?: FileKind): Promise<void>;
+  getPdf(id: string, kind?: FileKind): Promise<Uint8Array | null>;
+  removePdf(id: string, kind?: FileKind): Promise<void>;
   // The activity log: newest first, capped at EVENT_LIMIT.
   addEvent<T>(event: T): Promise<void>;
   events<T>(): Promise<T[]>;
@@ -24,11 +25,13 @@ export type Store = {
   putValue<T>(key: string, value: T): Promise<void>;
 };
 
+export type FileKind = 'pdf' | 'docx';
+
 export const EVENT_LIMIT = 1000;
 
 const QUOTES_KEY = 'grt:quotes';
 const EVENTS_KEY = 'grt:events';
-const pdfKey = (id: string) => `grt:pdf:${id}`;
+const pdfKey = (id: string, kind: FileKind = 'pdf') => `grt:${kind}:${id}`;
 const valueKey = (key: string) => `grt:value:${key}`;
 
 function redisConfig() {
@@ -84,15 +87,15 @@ function redisStore(url: string, token: string): Store {
     async remove(id) {
       return (await cmd<number>('HDEL', QUOTES_KEY, id)) > 0;
     },
-    async putPdf(id, bytes) {
-      await cmd('SET', pdfKey(id), Buffer.from(bytes).toString('base64'));
+    async putPdf(id, bytes, kind) {
+      await cmd('SET', pdfKey(id, kind), Buffer.from(bytes).toString('base64'));
     },
-    async getPdf(id) {
-      const raw = await cmd<string | null>('GET', pdfKey(id));
+    async getPdf(id, kind) {
+      const raw = await cmd<string | null>('GET', pdfKey(id, kind));
       return raw ? new Uint8Array(Buffer.from(raw, 'base64')) : null;
     },
-    async removePdf(id) {
-      await cmd('DEL', pdfKey(id));
+    async removePdf(id, kind) {
+      await cmd('DEL', pdfKey(id, kind));
     },
     async addEvent(event) {
       await cmd('LPUSH', EVENTS_KEY, JSON.stringify(event));
@@ -131,7 +134,7 @@ function fileStore(): Store {
       return {};
     }
   }
-  const pdfPath = (id: string) => path.join(dataDir(), 'quote-pdfs', `${id.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`);
+  const pdfPath = (id: string, kind: FileKind = 'pdf') => path.join(dataDir(), 'quote-pdfs', `${id.replace(/[^a-zA-Z0-9-]/g, '')}.${kind}`);
 
   function read(): { id: string }[] {
     try {
@@ -164,20 +167,20 @@ function fileStore(): Store {
       write(kept);
       return true;
     },
-    async putPdf(id, bytes) {
-      const p = pdfPath(id);
+    async putPdf(id, bytes, kind) {
+      const p = pdfPath(id, kind);
       mkdirSync(path.dirname(p), { recursive: true });
       writeFileSync(p, bytes);
     },
-    async getPdf(id) {
+    async getPdf(id, kind) {
       try {
-        return readFileSync(pdfPath(id));
+        return readFileSync(pdfPath(id, kind));
       } catch {
         return null;
       }
     },
-    async removePdf(id) {
-      try { unlinkSync(pdfPath(id)); } catch { /* no PDF saved */ }
+    async removePdf(id, kind) {
+      try { unlinkSync(pdfPath(id, kind)); } catch { /* no PDF saved */ }
     },
     async addEvent(event) {
       const list = await this.events();

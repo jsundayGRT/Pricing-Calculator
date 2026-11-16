@@ -43,6 +43,8 @@ The calculator is a pricing estimator and requirements gatherer. **Send for revi
 
 The customer proposal is Guardrail's Word template, `content/proposal-template.docx`, filled in from the request (`src/lib/proposal.ts`): customer, rep, dates, yearly prices, the modules chosen and the diagnostic (the request's pilot). Admins can download it while reviewing (**Proposal (Word)** on a request's detail); the rep can once it's approved (Dashboard card, or the calculator). To change the wording or design, replace that file, keeping its `[...]` placeholders. Until the calculator has its own ramp, machines are the request's governed employees.
 
+Before review, the rep can **Preview proposal** (a page in a new tab, `src/lib/docx-html.ts`), download the **Draft proposal** (marked "DRAFT ESTIMATE"), edit it in Word and attach it on the Send for review card, or from their Dashboard while the request is in review (`PUT /api/quotes/:id/proposal`, Word files up to 3 MB, kept with the request). Reviewers see that the rep edited it, and the approved proposal is then the rep's file with the draft line removed. **Use template** goes back to the built one.
+
 ## HubSpot integration
 
 **Off by default.** For now admins log reviewed proposals in HubSpot by hand, so the app writes nothing to HubSpot and the calculator has no deal picker. Set `HUBSPOT_SYNC=1` (with the HubSpot settings below) to turn the sync described here back on.

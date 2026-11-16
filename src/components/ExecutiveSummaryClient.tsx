@@ -451,9 +451,19 @@ export function ExecutiveSummaryClient() {
                     ? `${detail.summary.requestId}${detail.summary.version > 1 ? ` · v${detail.summary.version}` : ''} · ${fmtDate(detail.summary.lockedAt)} · ${detail.summary.rep}`
                     : 'Loading…'}
                 </p>
+                {detail?.summary.proposalUpload ? (
+                  <p className="sub" style={{ marginTop: 4 }}>
+                    <b>Edited proposal:</b> {detail.summary.proposalUpload.by} attached their own version ({detail.summary.proposalUpload.name}). Check its wording and prices against the request.
+                  </p>
+                ) : null}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {/* reviewers read the proposal the rep will send before deciding */}
+                {detail ? (
+                  <a className="btn small" href={`/api/quotes/${encodeURIComponent(detail.summary.id)}/proposal?format=html`} target="_blank" rel="noopener">
+                    Preview proposal
+                  </a>
+                ) : null}
                 {detail ? (
                   <a className="btn small" href={`/api/quotes/${encodeURIComponent(detail.summary.id)}/proposal`} download>
                     Proposal (Word)

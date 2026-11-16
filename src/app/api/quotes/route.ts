@@ -2,7 +2,8 @@ import { after, NextResponse } from 'next/server';
 import { hubspotSyncOn } from '@/lib/hubspot/client';
 import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
 import { quoteExpiry } from '@/lib/expiry';
-import { decisionOf, listQuotesForUser, saveQuotePdf, upsertQuote } from '@/lib/quotes';
+import { isWordFile } from '@/lib/proposal';
+import { decisionOf, listQuotesForUser, saveProposalUpload, saveQuotePdf, upsertQuote, type QuoteRecord } from '@/lib/quotes';
 import { readSession } from '@/lib/session';
 import { postDealReview } from '@/lib/slack';
 
@@ -38,6 +39,11 @@ export async function POST(request: Request) {
     // The calculator sends the customer quote PDF it built, for the HubSpot sync to upload.
     const pdf = decodePdf(body?.pdf);
     if (pdf) await saveQuotePdf(record.id, pdf);
+    // The rep's edited proposal, when they attached one: what reviewers read and approve.
+    const proposal = decodeDocx(body?.proposal);
+    let saved = record;
+    if (proposal) saved = (await saveProposalUpload(record.id, proposal, { name: String(body?.proposalName || 'proposal.docx'), by: session.name || session.email })) || record;
+    const proposalError = !proposal && body?.proposal ? 'The attached proposal is not a Word document (.docx) under 3 MB.' : undefined;
     // Sync after the response: a HubSpot or Slack problem never blocks the lock. A Deal Review
     // waits for approval before anything goes to HubSpot.
     if (hubspotSyncOn() && record.hubspot?.dealId && record.status !== 'DEAL REVIEW') after(() => syncRequestToHubSpot(record.id));
@@ -45,16 +51,27 @@ export async function POST(request: Request) {
       const appUrl = new URL(request.url).origin;
       after(() => postDealReview(record.id, appUrl));
     }
-    const { snapshot: _ignored, ...summary } = record;
-    void _ignored;
-    return NextResponse.json({ quote: summary }, { status: 201 });
+    return NextResponse.json({ quote: summaryOf(saved), proposalError }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unable to save quote';
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
+function summaryOf(record: QuoteRecord) {
+  const { snapshot: _ignored, ...summary } = record;
+  void _ignored;
+  return summary;
+}
+
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
+const MAX_PROPOSAL_BYTES = 3 * 1024 * 1024;
+
+function decodeDocx(value: unknown): Uint8Array | null {
+  if (typeof value !== 'string' || !value) return null;
+  const bytes = Buffer.from(value, 'base64');
+  return bytes.length <= MAX_PROPOSAL_BYTES && isWordFile(bytes) ? bytes : null;
+}
 
 function decodePdf(value: unknown): Uint8Array | null {
   if (typeof value !== 'string' || !value) return null;

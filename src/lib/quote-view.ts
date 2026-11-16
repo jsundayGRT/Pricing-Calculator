@@ -47,6 +47,8 @@ export type ExecQuoteSummary = {
   // When it was approved or declined (the full time, from the request's history).
   decidedAt: string | null;
   expiresAt: string | null;
+  // The rep attached their own edit of the proposal (Word).
+  proposalUpload: { name: string; at: string; by: string } | null;
 };
 
 export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
@@ -68,6 +70,7 @@ export function summarizeForExec(quote: QuoteRecord): ExecQuoteSummary {
 
   return {
     id: quote.id,
+    proposalUpload: quote.proposalUpload ? { name: quote.proposalUpload.name, at: quote.proposalUpload.at, by: quote.proposalUpload.by } : null,
     requestId: quote.requestId,
     version: quote.version,
     lockedAt: quote.lockedAt,

@@ -34,6 +34,7 @@ export default async function HelpPage() {
           <h2>Send it for review</h2>
           <ol>
             <li>Enter the customer name and check the valid-until date.</li>
+            <li>Want different wording? Click <b>Preview proposal</b> to read it, or <b>Draft proposal</b> to edit it in Word, then <b>Attach your edit</b>. Reviewers read and approve your version. You can also attach or replace it from your Dashboard while it&apos;s in review.</li>
             <li>Press <b>Send for review</b>. Every proposal is reviewed before it goes to a customer; it is saved to your Dashboard.</li>
             <li>Once it&apos;s approved, download the <b>Proposal (Word)</b> from your Dashboard, check it, save it as a PDF and send it. The quote PDF is there too.</li>
           </ol>

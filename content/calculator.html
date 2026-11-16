@@ -152,6 +152,9 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .btn.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 .sample-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
 .sample-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.attach-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.attach-row .file-name { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.visually-hidden-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn.small { padding: 5px 10px; font-weight: 500; font-size: 13px; }
 .btn.link { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 500; }
@@ -701,6 +704,14 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
             </select></div></div>
         </div>
         <div class="field valid-field"><label class="label" for="validuntil">Quote valid until</label><input id="validuntil" type="date" aria-describedby="valid-hint lockerr"><div class="hint" id="valid-hint"></div></div>
+        <div class="field attach-field"><span class="label" id="attach-label">Proposal</span>
+          <div class="attach-row">
+            <input id="proposalfile" class="visually-hidden-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-labelledby="attach-label" aria-describedby="attach-hint">
+            <span class="file-name" id="attach-name">From the Guardrail template</span>
+            <button class="btn small" id="attachbtn" type="button">Attach your edit</button>
+            <button class="btn small hidden" id="attachclear" type="button">Remove</button>
+          </div>
+          <div class="hint" id="attach-hint">Want to change the wording? Download the draft proposal below, edit it in Word, and attach it here. Reviewers read and approve your version.</div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary grow" id="lockbtn" type="button">Send for review</button>
           <button class="btn icon-btn hidden" id="printbtn" type="button" title="Download quote PDF" aria-label="Download quote PDF"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -709,7 +720,7 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
         <div class="err" id="lockerr" role="alert"></div>
         <div class="sample-row" id="sample-row">
           <span>Estimate only: not saved or reviewed, not for the customer</span>
-          <div class="sample-acts"><button class="btn small" id="samplepdf" type="button" title="The current estimate as a PDF, marked as sample pricing">Estimate PDF</button><button class="btn small" id="sampledocx" type="button" title="The current estimate in the Guardrail proposal template, marked as a draft">Draft proposal</button></div>
+          <div class="sample-acts"><button class="btn small" id="samplepdf" type="button" title="The current estimate as a PDF, marked as sample pricing">Estimate PDF</button><button class="btn small" id="previewbtn" type="button" title="See the proposal for this estimate in a new tab">Preview proposal</button><button class="btn small" id="sampledocx" type="button" title="The current estimate in the Guardrail proposal template (Word), marked as a draft, to edit">Draft proposal</button></div>
         </div>
       </div>
     </aside>
@@ -2460,8 +2471,8 @@ function downloadQuotePdf(v, opts) {
     empty.classList.add('hidden'); out.classList.remove('hidden'); lock.classList.remove('hidden');
     out.innerHTML = salesSummaryHtml(r.customer, fxBoxHtml(fx), r.inputs);
     animatePrice(r.customer);
-    // pricing that needs approval has no quote document, sample or not
-    $('#sample-row').classList.toggle('hidden', r.customer.dealStatus === 'DEAL REVIEW');
+    // pricing that needs approval has no estimate PDF; the draft proposal (marked as a draft) stays
+    $('#samplepdf').classList.toggle('hidden', r.customer.dealStatus === 'DEAL REVIEW');
     showValidity();
     showDiscountsSoFar(r.customer);
     updateMobileBar(r.customer);
@@ -2628,10 +2639,17 @@ function downloadQuotePdf(v, opts) {
     reviseOf = { requestId, version, customerName: name, hubspotDeal: pickedDeal };
     lockedSinceChange = true; lastLocked = snap;
     showBanner(snap, true);
-    saveHistory(snap); renderHistory();
+    const attached = attachedProposal;
+    saveHistory(snap, attached).then((r) => {
+      if (r && r.quote && lastLocked === snap) lastLockedId = r.quote.id;
+      if (r && r.proposalError) toast(`Sent for review, but ${r.proposalError.charAt(0).toLowerCase() + r.proposalError.slice(1)} Attach it again from your dashboard.`);
+      else if (attached && !(r && r.quote && r.quote.proposalUpload)) toast('Sent for review, but your edited proposal did not upload. Attach it again from your dashboard.');
+    });
+    renderHistory();
+    clearAttachment();
     $('#printbtn').classList.toggle('hidden', !canDownload(snap)); $('#docxbtn').classList.add('hidden');
     const label = version > 1 ? `${requestId}, version ${version}` : requestId;
-    toast(`Sent ${label} for review. You can download the proposal once it's approved.`, 'ok');
+    toast(`Sent ${label} for review${attached ? ' with your edited proposal' : ''}. You can download the proposal once it's approved.`, 'ok');
   });
   $('#printbtn').addEventListener('click', () => { if (lastLocked) downloadQuotePdf(withApproval(lastLocked)); });
   // the proposal comes from the server (Guardrail's Word template), so it needs the saved request
@@ -2654,7 +2672,7 @@ function downloadQuotePdf(v, opts) {
   $('#samplepdf').addEventListener('click', () => { if (sampleOk()) downloadQuotePdf(sampleSnap()); });
   // the draft proposal comes from the server, in Guardrail's Word template, marked as a draft
   $('#sampledocx').addEventListener('click', async () => {
-    if (!sampleOk()) return;
+    if (!lastResult) return;
     try {
       const res = await fetch('/api/proposal/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot: sampleSnap() }) });
       if (!res.ok) throw new Error(String(res.status));
@@ -2662,6 +2680,41 @@ function downloadQuotePdf(v, opts) {
       const a = document.createElement('a'); a.href = URL.createObjectURL(await res.blob()); a.download = name;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     } catch { toast('Could not build the draft proposal.'); }
+  });
+  // Preview: the proposal for the current estimate, as a page in a new tab
+  $('#previewbtn').addEventListener('click', async () => {
+    if (!lastResult) return;
+    const w = window.open('', '_blank'); // opened now, while the click still allows a new tab
+    try {
+      const res = await fetch('/api/proposal/draft?format=html', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot: sampleSnap() }) });
+      if (!res.ok) throw new Error(String(res.status));
+      const url = URL.createObjectURL(new Blob([await res.text()], { type: 'text/html' }));
+      if (w) w.location.href = url; else location.assign(url);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch { if (w) w.close(); toast('Could not build the preview.'); }
+  });
+
+  // The rep's own edit of the proposal (Word), sent with the request for review
+  let attachedProposal = null; // { name, base64 }
+  const MAX_PROPOSAL = 3 * 1024 * 1024;
+  function clearAttachment() {
+    attachedProposal = null; $('#proposalfile').value = '';
+    $('#attach-name').textContent = 'From the Guardrail template';
+    $('#attachbtn').textContent = 'Attach your edit'; $('#attachclear').classList.add('hidden');
+  }
+  $('#attachbtn').addEventListener('click', () => $('#proposalfile').click());
+  $('#attachclear').addEventListener('click', clearAttachment);
+  $('#proposalfile').addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    $('#lockerr').textContent = '';
+    if (!/\.docx$/i.test(f.name)) { clearAttachment(); $('#lockerr').textContent = 'Attach a Word document (.docx).'; return; }
+    if (f.size > MAX_PROPOSAL) { clearAttachment(); $('#lockerr').textContent = 'The proposal is over 3 MB. Make it smaller (for example, compress its pictures) and attach it again.'; return; }
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) { clearAttachment(); $('#lockerr').textContent = 'That file is not a Word document (.docx).'; return; }
+    attachedProposal = { name: f.name, base64: bytesToBase64(bytes) };
+    $('#attach-name').textContent = f.name;
+    $('#attachbtn').textContent = 'Replace'; $('#attachclear').classList.remove('hidden');
   });
 
   function showBanner(s, justLocked, latest = s.version) {
@@ -2739,18 +2792,18 @@ function downloadQuotePdf(v, opts) {
   // ---- this browser's locked requests (a convenience; the quote PDFs are the record)
   const HKEY = 'grt-pricing-history-v1';
   function readHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } }
-  function saveHistory(snap) {
+  function saveHistory(snap, proposal = null) {
     try { const h = readHistory().filter((x) => !(x.requestId === snap.requestId && x.version === snap.version)); h.unshift(snap); localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 50))); } catch { /* storage unavailable */ }
     // Persist to the signed-in user's server dashboard (best-effort), with the customer quote
     // PDF so the server can attach it to the HubSpot deal.
     let pdf = null;
     try { pdf = bytesToBase64(buildQuotePdf(withApproval(snap))); } catch { /* save without the PDF */ }
-    fetch('/api/quotes', {
+    return fetch('/api/quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
       credentials: 'same-origin',
-      body: JSON.stringify({ snapshot: snap, pdf }),
-    }).catch(() => { /* offline / signed out */ });
+      body: JSON.stringify({ snapshot: snap, pdf, ...(proposal ? { proposal: proposal.base64, proposalName: proposal.name } : {}) }),
+    }).then((res) => (res.ok ? res.json() : null)).catch(() => null /* offline / signed out */);
   }
   function renderHistory() { /* Locked requests are listed on the dashboard. */ }
 

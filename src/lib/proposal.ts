@@ -243,3 +243,25 @@ export function leftoverPlaceholders(docx: Uint8Array) {
   const x = textOf(readZip(docx).find((e) => e.name === 'word/document.xml')!.data.toString('utf8'));
   return [...new Set(x.match(/\[[^\]]{1,30}\]|\$X[X,]+/g) || [])];
 }
+
+// Whether bytes are a Word document (.docx) this app can read: a zip with the document part.
+export function isWordFile(bytes: Uint8Array) {
+  if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) return false;
+  try {
+    return readZip(bytes).some((e) => e.name === 'word/document.xml');
+  } catch {
+    return false;
+  }
+}
+
+// Takes the draft line out of a proposal (a rep's edit of the draft), once it is approved.
+export function withoutDraftNote(docx: Uint8Array) {
+  const zip = readZip(docx);
+  const doc = zip.find((e) => e.name === 'word/document.xml');
+  if (!doc) return docx;
+  const x = doc.data.toString('utf8');
+  const y = setParagraph(x, 'DRAFT ESTIMATE', null);
+  if (y === x) return docx;
+  doc.data = Buffer.from(y, 'utf8');
+  return writeZip(zip);
+}

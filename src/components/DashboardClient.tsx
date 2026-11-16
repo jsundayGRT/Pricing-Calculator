@@ -18,6 +18,7 @@ type QuoteSummary = {
   hubspot?: HubSpotSync | null;
   decision?: Decision | null;
   expiresAt?: string | null;
+  proposalUpload?: { name: string; at: string; by: string } | null;
 };
 
 function fmtDay(day: string) {
@@ -73,6 +74,63 @@ const SORTS: Record<Sort, (a: QuoteSummary, b: QuoteSummary) => number> = {
 };
 
 // The rarely used actions, out of the way of the everyday ones.
+// While a request is in review, the rep can attach their own edit of the proposal (Word), or
+// go back to the one built from the template.
+function ProposalAttach({ quote, onChange }: { quote: QuoteSummary; onChange: (p: QuoteSummary['proposalUpload']) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const url = `/api/quotes/${encodeURIComponent(quote.id)}/proposal`;
+  async function upload(file: File) {
+    setError('');
+    if (!/\.docx$/i.test(file.name)) return setError('Attach a Word document (.docx).');
+    if (file.size > 3 * 1024 * 1024) return setError('The file is over 3 MB.');
+    setBusy(true);
+    try {
+      const res = await fetch(url, { method: 'PUT', body: file, headers: { 'X-File-Name': encodeURIComponent(file.name) } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'The proposal could not be attached.');
+      onChange(data.proposalUpload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The proposal could not be attached.');
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = '';
+    }
+  }
+  async function remove() {
+    setBusy(true); setError('');
+    try {
+      const res = await fetch(url, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not remove it.');
+      onChange(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove it.');
+    } finally { setBusy(false); }
+  }
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }}
+      />
+      <button className="btn small" type="button" disabled={busy} onClick={() => input.current?.click()}
+        title="Attach your own edit of the proposal (Word) for the reviewers">
+        {busy ? 'Saving…' : quote.proposalUpload ? 'Replace proposal' : 'Attach edited proposal'}
+      </button>
+      {quote.proposalUpload ? (
+        <button className="btn small" type="button" disabled={busy} onClick={() => void remove()} title="Use the proposal built from the Guardrail template">
+          Use template
+        </button>
+      ) : null}
+      {error ? <div className="meta-line" role="alert" style={{ color: 'var(--danger, #b42318)', flexBasis: '100%' }}>{error}</div> : null}
+    </>
+  );
+}
+
 function CardMenu({ label, onRemove, busy }: { label: string; onRemove: () => void; busy: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -324,6 +382,7 @@ export function DashboardClient({ userName }: { userName: string }) {
                 {q.expiresAt ? <div className="card-expiry"><ExpiryTag expiresAt={q.expiresAt} /></div> : null}
                 <div className="quote-meta">
                   <DecisionLine decision={q.decision} />
+                  {q.proposalUpload ? <div className="meta-line">Your edited proposal: {q.proposalUpload.name}</div> : null}
                   <div className="meta-line">
                     {[q.requestId + (q.version > 1 ? ` v${q.version}` : ''), q.stage, `locked ${fmtDate(q.lockedAt)}`].filter(Boolean).join(' · ')}
                   </div>
@@ -350,6 +409,10 @@ export function DashboardClient({ userName }: { userName: string }) {
                       Proposal (Word)
                     </a>
                   ) : null}
+                  <a className="btn small" href={`/api/quotes/${encodeURIComponent(q.id)}/proposal?format=html`} target="_blank" rel="noopener">
+                    Preview proposal
+                  </a>
+                  {review ? <ProposalAttach quote={q} onChange={(p) => setQuotes((all) => all && all.map((x) => (x.id === q.id ? { ...x, proposalUpload: p } : x)))} /> : null}
                   <a className="btn small" href={`/calculator?revise=${encodeURIComponent(q.id)}`}>
                     Open / revise
                   </a>

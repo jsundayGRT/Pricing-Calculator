@@ -2,9 +2,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { buildProposal, DRAFT_NOTE, leftoverPlaceholders, proposalFileName } from '../../src/lib/proposal';
+import { docxToHtml } from '../../src/lib/docx-html';
+import { buildProposal, DRAFT_NOTE, isWordFile, leftoverPlaceholders, proposalFileName, withoutDraftNote } from '../../src/lib/proposal';
 import { approveQuote, getQuoteById, upsertQuote } from '../../src/lib/quotes';
-import { readZip } from '../../src/lib/zip';
+import { readZip, writeZip } from '../../src/lib/zip';
 
 // The proposal: Guardrail's Word template filled in from a locked request, priced by the real engine.
 
@@ -87,4 +88,29 @@ test('a draft is marked so it is not sent before review', async () => {
   expect(leftoverPlaceholders(draft)).toEqual([]);
   expect(text(draft)).toContain(DRAFT_NOTE);
   expect(text(buildProposal(q))).not.toContain('DRAFT ESTIMATE');
+});
+
+test('the draft line comes out once approved', async () => {
+  const q = await locked({ band: 'SMB', modules: { shadow: 'Y' }, term: '1-Year' });
+  const draft = buildProposal(q, { draft: true });
+  expect(isWordFile(draft)).toBe(true);
+  expect(isWordFile(Buffer.from('PK not really a zip'))).toBe(false);
+  const clean = withoutDraftNote(draft);
+  expect(text(clean)).not.toContain('DRAFT ESTIMATE');
+  expect(text(clean)).toContain('Bank of the Rockies');
+});
+
+test('a proposal previews as a page: text, tables, pictures, and nothing from the file runs', async () => {
+  const q = await locked({ band: 'SMB', modules: { shadow: 'Y' }, term: '3+ Year', customerName: 'x' });
+  const zip = readZip(buildProposal(q, { draft: true }));
+  const doc = zip.find((e) => e.name === 'word/document.xml')!;
+  doc.data = Buffer.from(doc.data.toString('utf8').replace('Guardrail builds AI control', '&lt;script&gt;alert(1)&lt;/script&gt; Guardrail builds AI control'), 'utf8');
+  const html = docxToHtml(writeZip(zip), { title: 'Bank of the Rockies' });
+  expect(html).toContain('DRAFT ESTIMATE');
+  expect(html).toContain('Bank of the Rockies');
+  expect(html).toContain('<table');
+  expect(html).toContain('data:image/');
+  expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  expect(html).not.toContain('<script>');
+  expect(html).toContain("default-src 'none'");
 });

@@ -102,15 +102,17 @@ test('an estimate downloads as a PDF and a draft proposal without saving anythin
   expect(posts).toBe(0);
 });
 
-test('pricing that needs Deal Review offers no sample', async ({ page, context }) => {
+test('pricing that needs Deal Review offers no estimate PDF, only the draft proposal', async ({ page, context }) => {
   await signIn(context);
   const frame = await openCalculator(page);
   await frame.locator('#empcount').fill('40');
   await pickShadow(frame);
-  await expect(frame.locator('#sample-row')).toBeVisible();
+  await expect(frame.locator('#samplepdf')).toBeVisible();
   await frame.locator('#pilot .chip[data-k="content"]').click(); // a non-standard pilot needs approval
   await expect(frame.locator('#out .status-row.review')).toBeVisible();
-  await expect(frame.locator('#sample-row')).toBeHidden();
+  await expect(frame.locator('#samplepdf')).toBeHidden();
+  await expect(frame.locator('#sampledocx')).toBeVisible();
+  await expect(frame.locator('#previewbtn')).toBeVisible();
 });
 
 test('revising an older version saves the next version instead of overwriting', async ({ page, context }) => {
