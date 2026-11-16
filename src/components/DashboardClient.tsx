@@ -173,7 +173,6 @@ export function DashboardClient({ userName }: { userName: string }) {
   const [quotes, setQuotes] = useState<QuoteSummary[] | null>(null);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [sort, setSort] = useState<Sort>('newest');
   const [search, setSearch] = useState('');
@@ -197,32 +196,6 @@ export function DashboardClient({ userName }: { userName: string }) {
 
   useEffect(() => { void load(); }, []);
 
-  // Download PDF: the calculator builds the quote PDF (the same one it downloads) in a hidden
-  // frame and reports back.
-  const frameRef = useRef<HTMLIFrameElement | null>(null);
-  useEffect(() => {
-    function onMessage(e: MessageEvent) {
-      if (e.origin !== location.origin || e.data?.type !== 'grt-pdf') return;
-      setDownloading(null);
-      if (!e.data.ok) setError(e.data.error || 'The quote PDF could not be built.');
-      const frame = frameRef.current;
-      setTimeout(() => frame?.remove(), 5000);
-    }
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, []);
-
-  function downloadPdf(id: string) {
-    setError('');
-    setDownloading(id);
-    frameRef.current?.remove();
-    const frame = document.createElement('iframe');
-    frame.hidden = true;
-    frame.title = 'Quote PDF';
-    frame.src = `/api/calculator?download=${encodeURIComponent(id)}`;
-    document.body.appendChild(frame);
-    frameRef.current = frame;
-  }
 
   const stats = useMemo(() => {
     const list = quotes || [];
@@ -394,15 +367,11 @@ export function DashboardClient({ userName }: { userName: string }) {
                   ) : null}
                 </div>
                 <div className="quote-actions">
-                  {canDownload(q) ? (
-                    <button
-                      className="btn small"
-                      type="button"
-                      disabled={downloading === q.id}
-                      onClick={() => downloadPdf(q.id)}
-                    >
-                      {downloading === q.id ? 'Preparing…' : 'Download PDF'}
-                    </button>
+                  {/* the proposal PDF, in the Word template's design (an edited proposal is saved as PDF from Word) */}
+                  {canDownload(q) && !q.proposalUpload ? (
+                    <a className="btn small" href={`/api/quotes/${encodeURIComponent(q.id)}/proposal?format=pdf`} download>
+                      Download PDF
+                    </a>
                   ) : null}
                   {canDownload(q) ? (
                     <a className="btn small" href={`/api/quotes/${encodeURIComponent(q.id)}/proposal`} download>

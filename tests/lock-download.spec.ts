@@ -32,10 +32,10 @@ test('every request goes to review, and its PDF and proposal come once it is app
   await page.goto(`/calculator?revise=${encodeURIComponent(quote.id)}`);
   const again = page.frameLocator('iframe.calc-frame');
   // an icon-only button: the label is its hover text and accessible name
-  await expect(again.locator('#printbtn')).toHaveAccessibleName('Download quote PDF');
+  await expect(again.locator('#printbtn')).toHaveAccessibleName('Download proposal PDF');
   const pdf = page.waitForEvent('download');
   await again.locator('#printbtn').click();
-  expect((await pdf).suggestedFilename()).toMatch(/\.pdf$/);
+  expect((await pdf).suggestedFilename()).toMatch(/^Guardrail Proposal - Northwind - GRT-.*\.pdf$/);
   const proposal = page.waitForEvent('download');
   await again.locator('#docxbtn').click();
   const file = await proposal;
@@ -71,11 +71,18 @@ test('a rep gets the proposal only once it is approved; reviewers can read it be
   const res = await admin.request.get(`/api/quotes/${quote.id}/proposal`);
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toContain('wordprocessingml');
+  // and its PDF, in the template's design
+  const pdf = await admin.request.get(`/api/quotes/${quote.id}/proposal?format=pdf`);
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()['content-type']).toBe('application/pdf');
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
   expect((await admin.request.post(`/api/admin/quotes/${quote.id}`, { data: { action: 'approve' } })).ok()).toBe(true);
   await admin.close();
 
   expect((await page.request.get(`/api/quotes/${quote.id}/proposal`)).status()).toBe(200);
+  expect((await page.request.get(`/api/quotes/${quote.id}/proposal?format=pdf`)).status()).toBe(200);
   await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Download PDF' })).toHaveAttribute('href', `/api/quotes/${quote.id}/proposal?format=pdf`);
   await expect(page.getByRole('link', { name: 'Proposal (Word)' })).toHaveAttribute('href', `/api/quotes/${quote.id}/proposal`);
 });
 
@@ -130,6 +137,8 @@ test('a rep previews the draft, attaches their edit, and the approved proposal i
   expect(final).toContain('Edited by the rep.');
   expect(final).not.toContain('DRAFT ESTIMATE');
   expect((await page.request.delete(`/api/quotes/${quote.id}/proposal`)).status()).toBe(409);
+  // an edited proposal's PDF comes from Word, not from here
+  expect((await page.request.get(`/api/quotes/${quote.id}/proposal?format=pdf`)).status()).toBe(409);
 });
 
 test('on the dashboard a rep attaches an edited proposal to a request in review, or goes back to the template', async ({ page, context }) => {

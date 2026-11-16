@@ -2,7 +2,8 @@
 // (linking the customer quote PDF), the deal amount, and the PDF as a note. Safe to run again: a request that
 // already has a quote updates it instead of creating another.
 
-import { getQuoteById, listAllQuotes, readQuotePdf, updateQuoteHubSpot, type HubSpotSync, type QuoteRecord } from '../quotes';
+import { buildProposalPdf, proposalPdfFileName } from '../proposal-pdf';
+import { getQuoteById, listAllQuotes, updateQuoteHubSpot, type HubSpotSync, type QuoteRecord } from '../quotes';
 import { createHubSpotClient, hubspotEnabled, type HubSpotClient } from './client';
 import { buildQuotePricing, lineItemProperties } from './payload';
 
@@ -106,10 +107,10 @@ async function pushToHubSpot(client: HubSpotClient, record: QuoteRecord, dealId:
   // Saved right away so a failure later in the sync doesn't upload it again on retry.
   let fileId = prev.fileId || null;
   if (!fileId) {
-    const pdf = await readQuotePdf(record.id);
-    if (!pdf) throw new Error('No quote PDF was saved with this request. Lock it again from the calculator.');
+    // the proposal PDF in the Word template's design (older requests may have one saved at lock)
+    const pdf = buildProposalPdf(record);
     const form = new FormData();
-    form.append('file', new Blob([new Uint8Array(pdf)],{ type: 'application/pdf' }), pdfFileName(record));
+    form.append('file', new Blob([new Uint8Array(pdf)],{ type: 'application/pdf' }), proposalPdfFileName(record));
     form.append('folderPath', FILES_FOLDER);
     form.append('options', JSON.stringify({ access: 'PRIVATE', overwrite: false, duplicateValidationStrategy: 'NONE' }));
     const uploaded = await request<{ id: string }>('/files/v3/files', { method: 'POST', form });
@@ -215,11 +216,6 @@ async function retireOlderDrafts(client: HubSpotClient, record: QuoteRecord) {
 function expiryDays() {
   const n = Number(process.env.HUBSPOT_QUOTE_EXPIRY_DAYS);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 30;
-}
-
-function pdfFileName(record: QuoteRecord) {
-  const name = record.customerName.replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 60);
-  return `Guardrail Quote - ${name} - ${record.requestId}${record.version > 1 ? `-v${record.version}` : ''}.pdf`;
 }
 
 function escapeHtml(s: string) {

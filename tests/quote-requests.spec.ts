@@ -82,10 +82,11 @@ test('an estimate downloads as a PDF and a draft proposal without saving anythin
   const pdfDl = page.waitForEvent('download');
   await frame.locator('#samplepdf').click();
   const pdf = await pdfDl;
-  expect(pdf.suggestedFilename()).toMatch(/^Guardrail Sample Pricing - Bank of the Rockies - \d{4}-\d{2}-\d{2}\.pdf$/);
+  // the estimate PDF: the proposal's design, marked as a draft
+  expect(pdf.suggestedFilename()).toMatch(/^Guardrail Draft Proposal - Bank of the Rockies - \d{4}-\d{2}-\d{2}\.pdf$/);
   const pdfText = readFileSync(await pdf.path()).toString('latin1');
   expect(pdfText.startsWith('%PDF-')).toBe(true);
-  expect(pdfText).not.toContain('EmbeddedFile'); // no locked request inside a sample
+  expect(pdfText.match(/\/Type \/Page\b/g)?.length).toBe(4);
 
   const docxDl = page.waitForEvent('download');
   await frame.locator('#sampledocx').click();

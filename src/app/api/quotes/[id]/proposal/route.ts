@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { recordActivity } from '@/lib/activity';
 import { isAdmin } from '@/lib/admin';
 import { docxToHtml } from '@/lib/docx-html';
-import { buildProposal, isWordFile, proposalFileName, withoutDraftNote } from '@/lib/proposal';
+import { buildProposal, DRAFT_NOTE, isWordFile, proposalFileName, withoutDraftNote } from '@/lib/proposal';
+import { buildProposalPdf, proposalPdfFileName } from '@/lib/proposal-pdf';
 import { getQuoteById, readProposalUpload, removeProposalUpload, saveProposalUpload, type QuoteRecord } from '@/lib/quotes';
 import { readSession, type SessionUser } from '@/lib/session';
 
@@ -10,6 +11,9 @@ import { readSession, type SessionUser } from '@/lib/session';
 // otherwise the one built from Guardrail's template.
 //   GET                  the Word file. Reviewers (admins) can open it while they review; the
 //                        rep gets it once the request is approved.
+//   GET ?format=pdf      the proposal as a PDF in the template's design, on the same terms as the
+//                        Word file. An edited proposal has no PDF from here: the rep saves their
+//                        Word file as a PDF.
 //   GET ?format=html     a preview in the browser, for the rep and reviewers at any time.
 //   PUT (the .docx)      attach the rep's edited proposal while the request is in review.
 //   DELETE               go back to the proposal built from the template.
@@ -38,9 +42,28 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const r = await load(params);
   if ('error' in r) return r.error;
   const { quote, admin } = r;
-  const html = new URL(request.url).searchParams.get('format') === 'html';
+  const format = new URL(request.url).searchParams.get('format');
+  const html = format === 'html';
   if (!html && !admin && !approved(quote)) {
     return NextResponse.json({ error: 'The proposal is ready once the request is approved.' }, { status: 403 });
+  }
+  if (format === 'pdf') {
+    if (quote.proposalUpload) {
+      return NextResponse.json({ error: 'This proposal was edited in Word. Download the Word file and save it as a PDF.' }, { status: 409 });
+    }
+    try {
+      const pdf = buildProposalPdf(quote, { note: approved(quote) ? null : DRAFT_NOTE });
+      return new NextResponse(new Uint8Array(pdf), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(proposalPdfFileName(quote))}`,
+          'Cache-Control': 'private, no-store',
+        },
+      });
+    } catch (err) {
+      console.error('[proposal] could not draw the PDF', quote.requestId, err);
+      return NextResponse.json({ error: 'The proposal PDF could not be built.' }, { status: 500 });
+    }
   }
 
   try {

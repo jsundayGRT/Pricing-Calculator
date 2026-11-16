@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { docxToHtml } from '../../src/lib/docx-html';
+import { buildProposalPdf, proposalPdfFileName } from '../../src/lib/proposal-pdf';
 import { buildProposal, DRAFT_NOTE, isWordFile, leftoverPlaceholders, proposalFileName, withoutDraftNote } from '../../src/lib/proposal';
 import { approveQuote, getQuoteById, upsertQuote } from '../../src/lib/quotes';
 import { readZip, writeZip } from '../../src/lib/zip';
@@ -113,4 +114,17 @@ test('a proposal previews as a page: text, tables, pictures, and nothing from th
   expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
   expect(html).not.toContain('<script>');
   expect(html).toContain("default-src 'none'");
+});
+
+test('the proposal PDF has the template design: cover, who we are, price, next steps', async () => {
+  const pages = (pdf: Buffer) => pdf.toString('latin1').match(/\/Type \/Page\b/g)?.length;
+  const three = await locked({ band: 'SMB', modules: { shadow: 'Y', drift: 'Y' }, commandCenter: 'Y', pilot: { shadow: 'Y' }, term: '3+ Year' });
+  const pdf = buildProposalPdf(three);
+  expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+  expect(pages(pdf)).toBe(4);
+  expect(pdf.toString('latin1')).toContain('/SMask'); // the logo keeps its transparency
+  expect(proposalPdfFileName(three)).toBe('Guardrail Proposal - Bank of the Rockies - GRT-PROP1.pdf');
+  // a 1-year request with no pilot, all four modules, in another currency, marked as a draft
+  const one = await locked({ band: 'Mid-Market', location: 'AUS', modules: { shadow: 'Y', drift: 'Y', codeAi: 'Y', content: 'Y' }, commandCenter: 'Y', term: '1-Year' }, { currency: 'AUD', rate: 1.5 });
+  expect(pages(buildProposalPdf(one, { note: DRAFT_NOTE }))).toBe(4);
 });

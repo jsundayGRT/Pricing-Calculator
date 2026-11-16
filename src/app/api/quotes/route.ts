@@ -3,7 +3,7 @@ import { hubspotSyncOn } from '@/lib/hubspot/client';
 import { syncRequestToHubSpot } from '@/lib/hubspot/sync';
 import { quoteExpiry } from '@/lib/expiry';
 import { isWordFile } from '@/lib/proposal';
-import { decisionOf, listQuotesForUser, saveProposalUpload, saveQuotePdf, upsertQuote, type QuoteRecord } from '@/lib/quotes';
+import { decisionOf, listQuotesForUser, saveProposalUpload, upsertQuote, type QuoteRecord } from '@/lib/quotes';
 import { readSession } from '@/lib/session';
 import { postDealReview } from '@/lib/slack';
 
@@ -36,9 +36,6 @@ export async function POST(request: Request) {
       ownerName: session.name,
       snapshot,
     });
-    // The calculator sends the customer quote PDF it built, for the HubSpot sync to upload.
-    const pdf = decodePdf(body?.pdf);
-    if (pdf) await saveQuotePdf(record.id, pdf);
     // The rep's edited proposal, when they attached one: what reviewers read and approve.
     const proposal = decodeDocx(body?.proposal);
     let saved = record;
@@ -64,7 +61,6 @@ function summaryOf(record: QuoteRecord) {
   return summary;
 }
 
-const MAX_PDF_BYTES = 5 * 1024 * 1024;
 const MAX_PROPOSAL_BYTES = 3 * 1024 * 1024;
 
 function decodeDocx(value: unknown): Uint8Array | null {
@@ -73,9 +69,3 @@ function decodeDocx(value: unknown): Uint8Array | null {
   return bytes.length <= MAX_PROPOSAL_BYTES && isWordFile(bytes) ? bytes : null;
 }
 
-function decodePdf(value: unknown): Uint8Array | null {
-  if (typeof value !== 'string' || !value) return null;
-  const bytes = Buffer.from(value, 'base64');
-  if (bytes.length > MAX_PDF_BYTES || bytes.subarray(0, 5).toString('latin1') !== '%PDF-') return null;
-  return bytes;
-}

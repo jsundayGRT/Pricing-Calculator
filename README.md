@@ -14,7 +14,7 @@ React (Next.js) app with **Microsoft Entra ID** sign-in and a **per-user dashboa
 | `/api/admin/quotes` | Admin list/detail of every locked request |
 | `/api/admin/activity` | Admin change history: every lock, decision, note, removal and rep email |
 
-When locking, the rep picks **Quote valid until**: up to **Quote valid for (days)** from today (30 by default, in the calculator settings) needs no approval; a later date sends the request to Deal Review. The date goes on the quote PDF and the HubSpot quote, and each quote on the Dashboard shows it (amber in the last week, red once expired). An approved Deal Review keeps the date that was picked. **Duplicate** starts a new request with the same setup, priced with the current price list.
+When locking, the rep picks **Quote valid until**: up to **Quote valid for (days)** from today (30 by default, in the calculator settings) needs no approval; a later date sends the request to Deal Review. The date goes on the proposal and the HubSpot quote, and each quote on the Dashboard shows it (amber in the last week, red once expired). An approved Deal Review keeps the date that was picked. **Duplicate** starts a new request with the same setup, priced with the current price list.
 
 The Executive Dashboard has three views: **Requests** (the table), **Reports** (Deal Review rate, average discount and margin, time to a decision and Year 1 value in US dollars, by rep or by month, for whatever the filters select) and **Activity** (the change history).
 
@@ -45,6 +45,8 @@ The customer proposal is Guardrail's Word template, `content/proposal-template.d
 
 Before review, the rep can **Preview proposal** (a page in a new tab, `src/lib/docx-html.ts`), download the **Draft proposal** (marked "DRAFT ESTIMATE"), edit it in Word and attach it on the Send for review card, or from their Dashboard while the request is in review (`PUT /api/quotes/:id/proposal`, Word files up to 3 MB, kept with the request). Reviewers see that the rep edited it, and the approved proposal is then the rep's file with the draft line removed. **Use template** goes back to the built one.
 
+The proposal PDF (`src/lib/proposal-pdf.ts`, drawn by the server with `src/lib/pdf-kit.ts`) has the template's design: its cover, Who we are with the diagram, Your price year by year, Next steps and the notes, with the template's pictures and wording, and the same numbers and sentences as the Word file (`proposalFacts`). It is the **Estimate PDF** (marked as a draft), the PDF on an approved request (calculator and Dashboard), and the file uploaded to HubSpot. If the template's wording changes, change it in `proposal-pdf.ts` too. A request with the rep's own Word edit has no PDF from the app: the rep saves their Word file as a PDF. **Preview proposal** shows the Word file page by page, with its header and footer; printing that page gives the same pages.
+
 ## HubSpot integration
 
 **Off by default.** For now admins log reviewed proposals in HubSpot by hand, so the app writes nothing to HubSpot and the calculator has no deal picker. Set `HUBSPOT_SYNC=1` (with the HubSpot settings below) to turn the sync described here back on.
@@ -54,7 +56,7 @@ When a rep locks a pricing request, the server sends it to the HubSpot deal the 
 1. One line item per priced product (customer-facing prices only: list price, discount, annual billing over the contract term; implementation is one-time). Cost, margin and every other executive-only figure stay in the app.
 2. A **Draft** quote titled `<Deal name> – Pricing – <request ID> v<version>`, expiring in `HUBSPOT_QUOTE_EXPIRY_DAYS`, using the `HUBSPOT_QUOTE_TEMPLATE_ID` template, and associated with the deal, its line items, the deal's primary company and its first contact.
 3. The deal's **Amount** is set to the quote total (Year 1, after all discounts), and its **Pricing request ID** property is set (the property is created on first use).
-4. The customer quote PDF from the calculator is uploaded to the private **Pricing Calculator** folder in HubSpot Files. HubSpot quotes can't hold attachments, so the quote's **Comments to buyer** links to the PDF (the link opens only for signed-in HubSpot users), and the PDF is also attached to a note on the deal: *Pricing request … locked by … on …. Quote: …*
+4. The proposal PDF (drawn by the server in the Word template's design) is uploaded to the private **Pricing Calculator** folder in HubSpot Files. HubSpot quotes can't hold attachments, so the quote's **Comments to buyer** links to the PDF (the link opens only for signed-in HubSpot users), and the PDF is also attached to a note on the deal: *Pricing request … locked by … on …. Quote: …*
 
 Each locked version gets its own HubSpot quote. When a newer version syncs, an older version's quote that is still a draft is archived along with its line items (HubSpot can restore archived records for 90 days), so only the latest pricing sits on the deal; a quote that was already published to the customer is kept. An older version is never synced back onto the deal once a newer one is there. Syncing a version again (a retry, or an approval after the lock) updates that quote instead of creating a second one, replaces its line items, and keeps a quote someone already published in its published state. Pilot fees are not added to the quote.
 
@@ -89,13 +91,13 @@ The pricing request form has a required **HubSpot deal** dropdown listing the op
 | `HUBSPOT_PIPELINE_ID` | No | Deal pipeline to search. Default: the pipeline labelled *Guardrail Sales Pipeline* |
 | `HUBSPOT_PORTAL_ID` | No | HubSpot account ID for quote links. Looked up from the token when unset |
 | `HUBSPOT_DRY_RUN` | No | `1` logs every HubSpot payload to the server log and calls nothing (fake deals and IDs) |
-| `DATA_DIR` | No | Folder for the request store and saved quote PDFs |
+| `DATA_DIR` | No | Folder for the request store and the reps' edited proposals |
 
 ### Retry a failed sync
 
 Open the request on the **Executive Dashboard** (admins only). The **HubSpot** card shows the status, the error, and a link to the quote once it exists. Press **Retry sync**: it updates the existing quote rather than creating another. The server log has the full error (`[hubspot] sync failed for …`).
 
-A retry re-uses the quote PDF saved at lock time. Requests locked before this integration have no saved PDF; lock a new version from the calculator instead.
+A retry uploads the proposal PDF only if the first attempt didn't get that far.
 
 ### Tests
 
@@ -157,4 +159,4 @@ Push to `main` with the GitHub repo connected to Vercel. Set the env vars in the
 
 ### Storage
 
-Locked requests and their quote PDFs are kept in **Upstash Redis** when it is connected: in Vercel open the project → **Storage** → **Create Database** → **Upstash for Redis** (free plan) and connect it to the project, which adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`; then redeploy. Without those variables the app falls back to a JSON file (`data/quotes.json` locally, `/tmp` on Vercel), which is fine for local development but not on Vercel: `/tmp` is per-instance and temporary, so requests can disappear, and Slack approvals would often find nothing.
+Locked requests and the reps' edited proposals are kept in **Upstash Redis** when it is connected: in Vercel open the project → **Storage** → **Create Database** → **Upstash for Redis** (free plan) and connect it to the project, which adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`; then redeploy. Without those variables the app falls back to a JSON file (`data/quotes.json` locally, `/tmp` on Vercel), which is fine for local development but not on Vercel: `/tmp` is per-instance and temporary, so requests can disappear, and Slack approvals would often find nothing.

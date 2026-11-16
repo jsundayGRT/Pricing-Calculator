@@ -34,7 +34,7 @@ type Snapshot = {
 };
 
 // What each Traffic Light module does, in the template's words where it has them.
-const MODULE_TEXT: Record<string, string> = {
+export const MODULE_TEXT: Record<string, string> = {
   shadow: 'See and control the AI people use in the browser.',
   drift: 'Watch what AI agents do on laptops and servers. Stop the ones that break policy.',
   codeAi: 'Check code, packages and MCP connections from AI coding tools.',
@@ -103,19 +103,16 @@ export function draftFileName(customerName: string, now = new Date()) {
   return `Guardrail Draft Proposal - ${name} - ${now.toISOString().slice(0, 10)}.docx`;
 }
 
-export function buildProposal(record: QuoteRecord, opts: { template?: Uint8Array; now?: Date; draft?: boolean } = {}) {
+// What goes into a proposal, worked out once from a locked request: the Word file and the PDF
+// both use it, so they always say the same thing.
+export function proposalFacts(record: QuoteRecord, now?: Date) {
   const snap = record.snapshot as Snapshot;
   const c = snap.customer || {};
   const rate = c.fx?.rate && c.fx.rate > 0 ? c.fx.rate : 1;
   const currency = c.fx?.rate && c.fx.rate > 0 ? c.fx.currency || 'USD' : 'USD';
-  // template amounts already carry a "$"; another currency replaces it with its code
+  // amounts in the request's currency: "$1,234", or "AUD 1,234"
   const amount = (usd: number) => Math.round(usd * rate).toLocaleString('en-US');
-  const money = (usd: number) => (currency === 'USD' ? amount(usd) : `${currency} ${amount(usd)}`);
-  const dollars = (xml: string, from: string, usd: number | null) => {
-    if (usd == null) return replaceAll(xml, `$${from}`, '—');
-    return replaceAll(xml, `$${from}`, currency === 'USD' ? `$${amount(usd)}` : money(usd));
-  };
-  const $ = (usd: number) => (currency === 'USD' ? `$${amount(usd)}` : money(usd));
+  const $ = (usd: number) => (currency === 'USD' ? `$${amount(usd)}` : `${currency} ${amount(usd)}`);
 
   const sched = c.schedule || {};
   const years = Math.min(3, Math.max(1, sched.years || 1));
@@ -133,7 +130,7 @@ export function buildProposal(record: QuoteRecord, opts: { template?: Uint8Array
   const lockedAt = new Date(snap.lockedAt || record.lockedAt || Date.now());
   const expiry = quoteExpiry(record)
     || (c.validUntil && /^\d{4}-\d{2}-\d{2}$/.test(c.validUntil) ? `${c.validUntil}T12:00:00Z` : null)
-    || new Date((opts.now ?? new Date()).getTime() + (c.quoteValidDays || 30) * 86_400_000).toISOString();
+    || new Date((now ?? new Date()).getTime() + (c.quoteValidDays || 30) * 86_400_000).toISOString();
   const validOn = longDate(new Date(expiry));
   const dated = longDate(lockedAt);
   const rep = snap.rep || record.ownerName || '';
@@ -143,25 +140,47 @@ export function buildProposal(record: QuoteRecord, opts: { template?: Uint8Array
   const picked = Object.entries(snap.inputs?.modules || {}).filter(([, on]) => on).map(([k]) => k);
   const products = [...picked.map((k) => names[k] || k), ...(snap.inputs?.commandCenter ? ['AI Command Center'] : [])];
 
+  const sentences = {
+    investment: `${listOf(products) || 'Guardrail'}, covering ${machines.toLocaleString('en-US')} machines over ${termText}. ${CURRENCY_NAMES[currency] || currency}, all discounts included.`,
+    year1: pilot
+      ? `Year 1 is ${$(y1)} in all${credited ? `: ${$(pilot)} for the diagnostic, paid at signature, plus a Year 1 balance of ${$(balance)}. The diagnostic fee is credited toward Year 1 if you sign by ${validOn}.` : `, plus ${$(pilot)} for the diagnostic, paid at signature.`}`
+      : `Year 1 is ${$(y1)} in all${impl ? `, including ${$(impl)} for one-time implementation` : ''}.`,
+    diagnosticStep: pilot ? `Start the diagnostic (${$(pilot)}${credited ? `, credited toward Year 1 if you sign by ${validOn}` : ''}).` : null,
+    signStep: credited ? `Sign the contract and order form by ${validOn}. Year 1 balance after the diagnostic credit: ${$(balance)}.`
+      : `Sign the contract and order form by ${validOn}. Year 1: ${$(y1)}.`,
+    setupStep: `We set up your first ${machines.toLocaleString('en-US')} machines. We aim to finish setup within 3 months of signing.`,
+    diagnosticRow: credited ? `Runs before Year 1 starts. Its ${$(pilot)} fee is credited toward Year 1.` : `Runs before Year 1 starts. Its ${$(pilot)} fee is paid separately.`,
+    reviewStep: `Review the plan and pricing with ${rep}.`,
+  };
+  const inTerm = (y: number) => y <= years;
+  return {
+    customerName: snap.customerName || record.customerName, rep, email: record.ownerEmail || '', dated, validOn, termText, years, inTerm,
+    currency, currencyName: CURRENCY_NAMES[currency] || currency, $, amount, machines, pilot, credited, y1, balance, impl, total,
+    yearAmount, perMonth, products, picked, names, commandCenter: !!snap.inputs?.commandCenter, sentences,
+  };
+}
+
+export function buildProposal(record: QuoteRecord, opts: { template?: Uint8Array; now?: Date; draft?: boolean } = {}) {
+  const f = proposalFacts(record, opts.now);
+  const { currency, amount, $, years, yearAmount, total, machines, pilot, impl, perMonth, validOn, dated, rep, termText, names, picked, y1, balance } = f;
+  const snap = record.snapshot as Snapshot;
+  const money = (usd: number) => (currency === 'USD' ? amount(usd) : `${currency} ${amount(usd)}`);
+  const dollars = (xml: string, from: string, usd: number | null) => {
+    if (usd == null) return replaceAll(xml, `$${from}`, '—');
+    return replaceAll(xml, `$${from}`, currency === 'USD' ? `$${amount(usd)}` : money(usd));
+  };
+
   const zip = readZip(opts.template ?? readFileSync(path.join(process.cwd(), 'content', 'proposal-template.docx')));
   const part = (name: string) => zip.find((e) => e.name === name)!;
   let x = part('word/document.xml').data.toString('utf8');
 
   // ---- sentences that hold several values: written whole
-  x = setParagraph(x, 'ramping from [#] to [#] machines',
-    `${listOf(products) || 'Guardrail'}, covering ${machines.toLocaleString('en-US')} machines over ${termText}. ${CURRENCY_NAMES[currency] || currency}, all discounts included.`);
-  x = setParagraph(x, 'Year 1 is $[Y1 price] in all', pilot
-    ? `Year 1 is ${$(y1)} in all${credited ? `: ${$(pilot)} for the diagnostic, paid at signature, plus a Year 1 balance of ${$(balance)}. The diagnostic fee is credited toward Year 1 if you sign by ${validOn}.` : `, plus ${$(pilot)} for the diagnostic, paid at signature.`}`
-    : `Year 1 is ${$(y1)} in all${impl ? `, including ${$(impl)} for one-time implementation` : ''}.`);
-  x = setParagraph(x, 'Start the diagnostic ($[Diagnostic]', pilot
-    ? `Start the diagnostic (${$(pilot)}${credited ? `, credited toward Year 1 if you sign by ${validOn}` : ''}).` : null);
-  x = setParagraph(x, 'Year 1 balance after the diagnostic credit',
-    credited ? `Sign the contract and order form by ${validOn}. Year 1 balance after the diagnostic credit: ${$(balance)}.`
-      : `Sign the contract and order form by ${validOn}. Year 1: ${$(y1)}.`);
-  x = setParagraph(x, 'We set up your first [#] machines',
-    `We set up your first ${machines.toLocaleString('en-US')} machines. We aim to finish setup within 3 months of signing.`);
-  x = setParagraph(x, 'Its $[Diagnostic] fee is credited toward Year 1',
-    credited ? `Runs before Year 1 starts. Its ${$(pilot)} fee is credited toward Year 1.` : `Runs before Year 1 starts. Its ${$(pilot)} fee is paid separately.`);
+  x = setParagraph(x, 'ramping from [#] to [#] machines', f.sentences.investment);
+  x = setParagraph(x, 'Year 1 is $[Y1 price] in all', f.sentences.year1);
+  x = setParagraph(x, 'Start the diagnostic ($[Diagnostic]', f.sentences.diagnosticStep);
+  x = setParagraph(x, 'Year 1 balance after the diagnostic credit', f.sentences.signStep);
+  x = setParagraph(x, 'We set up your first [#] machines', f.sentences.setupStep);
+  x = setParagraph(x, 'Its $[Diagnostic] fee is credited toward Year 1', f.sentences.diagnosticRow);
   // the cover shows the valid-until date, which isn't always two weeks out
   // (wording only, inside the note, so its bold label stays as it is)
   x = x.replace('Prices hold for two weeks, until the valid-until date', 'Prices hold until the valid-until date');
@@ -198,7 +217,7 @@ export function buildProposal(record: QuoteRecord, opts: { template?: Uint8Array
   }
 
   // ---- single values
-  x = replaceAll(x, '[CLIENT NAME]', snap.customerName || record.customerName);
+  x = replaceAll(x, '[CLIENT NAME]', f.customerName);
   x = replaceAll(x, '[Rep Name]', rep);
   x = replaceAll(x, '[rep]@guardrail.tech', record.ownerEmail || '');
   x = replaceAll(x, '[Month D, YYYY]', dated);
