@@ -114,7 +114,7 @@ test('a rep previews the draft, attaches their edit, and the approved proposal i
   await frame.locator('#lockbtn').click();
   const quote = (await (await saved).json()).quote as { id: string; proposalUpload: { name: string } };
   expect(quote.proposalUpload.name).toBe('Contoso edited.docx');
-  await expect(frame.locator('#attach-name')).toHaveText('From the Guardrail template');
+  await expect(frame.locator('#attached')).toBeHidden(); // cleared for the next request
 
   // the rep can preview it in review, not download it
   const html = await (await page.request.get(`/api/quotes/${quote.id}/proposal?format=html`)).text();

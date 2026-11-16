@@ -34,11 +34,11 @@ export default async function HelpPage() {
           <h2>Send it for review</h2>
           <ol>
             <li>Enter the customer name and check the valid-until date.</li>
-            <li>Want different wording? Click <b>Preview proposal</b> to read it, or <b>Draft proposal</b> to edit it in Word, then <b>Attach your edit</b>. Reviewers read and approve your version. You can also attach or replace it from your Dashboard while it&apos;s in review.</li>
+            <li>Want different wording? Click <b>Preview</b> to read the proposal, or <b>Edit in Word</b> to change it, then <b>Attach edit</b>. Reviewers read and approve your version. You can also attach or replace it from your Dashboard while it&apos;s in review.</li>
             <li>Press <b>Send for review</b>. Every proposal is reviewed before it goes to a customer; it is saved to your Dashboard.</li>
             <li>Once it&apos;s approved, download the proposal from your Dashboard: <b>Download PDF</b> to send as it is, or <b>Proposal (Word)</b> to keep editing. Both use the Guardrail proposal design. If you attached your own edit, save your Word file as a PDF.</li>
           </ol>
-          <p className="sub">Just pricing it out? <b>Estimate PDF</b> and <b>Draft proposal</b> (Word) give the proposal for the current pricing, marked as a draft. Nothing is saved, and neither goes to the customer: send for review first.</p>
+          <p className="sub">Just pricing it out? <b>Preview</b> and <b>Edit in Word</b> work without sending anything: nothing is saved, and the draft is marked as not for the customer.</p>
         </div>
 
         <div className="card">

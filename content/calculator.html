@@ -150,10 +150,14 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .btn.icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 9px 12px; }
 .btn.icon-btn svg { width: 18px; height: 18px; flex: none; }
 .btn.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
-.sample-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
-.sample-acts { display: flex; gap: 6px; flex-wrap: wrap; }
-.attach-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.attach-row .file-name { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+/* the Send for review card: even spacing between rows of fields */
+.lock .row2 { margin-bottom: 16px; }
+.lock .row2 > .field { margin-bottom: 0; }
+.proposal-acts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.proposal-acts .btn { padding: 9px 8px; font-size: 13.5px; font-weight: 500; justify-content: center; text-align: center; white-space: nowrap; }
+.attached { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+.attached b { font-weight: 600; overflow-wrap: anywhere; }
+.attached .link-btn { margin: 0; flex: none; }
 .visually-hidden-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn.small { padding: 5px 10px; font-weight: 500; font-size: 13px; }
@@ -698,30 +702,24 @@ html.embedded.light .mbar { background: #FFFFFF; border-top: 1px solid var(--bor
         </div>
         <div class="row2">
           <div class="field deal-field"><label class="label" for="hubspot">HubSpot deal</label><div class="select-wrap" id="deal-pick"><select id="hubspot" aria-describedby="deal-hint lockerr"><option value="">Loading your deals…</option></select></div><div class="deal-search hidden" id="deal-search-wrap"><input id="deal-search" type="text" maxlength="100" placeholder="Search all deals by name" autocomplete="off" role="combobox" aria-label="Search all HubSpot deals" aria-autocomplete="list" aria-expanded="false" aria-controls="deal-list" aria-describedby="deal-hint lockerr"><ul class="deal-list hidden" id="deal-list" role="listbox" aria-label="HubSpot deals"></ul></div><div class="hint" id="deal-hint"></div><button type="button" class="link-btn hidden" id="deal-mode"></button></div>
-          <div class="field"><label class="label" for="stage">Stage</label>
-            <div class="select-wrap"><select id="stage">
-              <option>Confirmed</option><option>Revised</option><option>Final (Pilot)</option><option>Final (Contract)</option>
-            </select></div></div>
+          <div class="field valid-field"><label class="label" for="validuntil">Quote valid until</label><input id="validuntil" type="date" aria-describedby="valid-hint lockerr"><div class="hint" id="valid-hint"></div></div>
         </div>
-        <div class="field valid-field"><label class="label" for="validuntil">Quote valid until</label><input id="validuntil" type="date" aria-describedby="valid-hint lockerr"><div class="hint" id="valid-hint"></div></div>
-        <div class="field attach-field"><span class="label" id="attach-label">Proposal</span>
-          <div class="attach-row">
-            <input id="proposalfile" class="visually-hidden-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-labelledby="attach-label" aria-describedby="attach-hint">
-            <span class="file-name" id="attach-name">From the Guardrail template</span>
-            <button class="btn small" id="attachbtn" type="button">Attach your edit</button>
-            <button class="btn small hidden" id="attachclear" type="button">Remove</button>
+        <div class="field proposal-field"><span class="label" id="proposal-label">Proposal</span>
+          <input id="proposalfile" class="visually-hidden-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-labelledby="proposal-label" aria-describedby="attach-hint">
+          <div class="proposal-acts">
+            <button class="btn" id="previewbtn" type="button" title="Read the proposal for this pricing in a new tab">Preview</button>
+            <button class="btn" id="sampledocx" type="button" title="Download the proposal as a Word file, marked as a draft, to change its wording">Edit in Word</button>
+            <button class="btn" id="attachbtn" type="button" title="Attach your edited Word file; reviewers approve your version">Attach edit</button>
           </div>
-          <div class="hint" id="attach-hint">Want to change the wording? Download the draft proposal below, edit it in Word, and attach it here. Reviewers read and approve your version.</div></div>
+          <div class="hint" id="attach-hint">From the Guardrail template. To change the wording, edit it in Word and attach it.</div>
+          <div class="attached hidden" id="attached"><span>Your edit: <b id="attach-name"></b></span><button type="button" class="link-btn" id="attachclear">Remove</button></div>
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary grow" id="lockbtn" type="button">Send for review</button>
           <button class="btn icon-btn hidden" id="printbtn" type="button" title="Download the proposal PDF" aria-label="Download proposal PDF"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <button class="btn icon-btn hidden" id="docxbtn" type="button" title="Download the proposal (Word), to send to the customer" aria-label="Download proposal">Proposal</button>
+          <button class="btn icon-btn hidden" id="docxbtn" type="button" title="Download the proposal (Word)" aria-label="Download proposal (Word)">Word</button>
         </div>
         <div class="err" id="lockerr" role="alert"></div>
-        <div class="sample-row" id="sample-row">
-          <span>Estimate only: not saved or reviewed, not for the customer</span>
-          <div class="sample-acts"><button class="btn small" id="samplepdf" type="button" title="The current estimate as a PDF, marked as sample pricing">Estimate PDF</button><button class="btn small" id="previewbtn" type="button" title="See the proposal for this estimate in a new tab">Preview proposal</button><button class="btn small" id="sampledocx" type="button" title="The current estimate in the Guardrail proposal template (Word), marked as a draft, to edit">Draft proposal</button></div>
-        </div>
       </div>
     </aside>
   </div>
@@ -1883,8 +1881,8 @@ document.addEventListener('toggle', (e) => {
     $('#valid-hint').innerHTML = days != null && days < 0
       ? 'Choose today or a later date.'
       : long
-        ? `<span class="warn-text">${days} days is longer than standard; reviewers will check it.</span> Up to ${stdValidDays()} days (${esc(longDate(std))}) is standard.`
-        : `Up to ${stdValidDays()} days (${esc(longDate(std))}) is standard. The proposal goes out once a reviewer approves it.`;
+        ? `<span class="warn-text">Longer than the standard ${stdValidDays()} days.</span>`
+        : `Up to ${stdValidDays()} days is standard.`;
   }
 
   function payload() {
@@ -2042,7 +2040,6 @@ document.addEventListener('toggle', (e) => {
     out.innerHTML = salesSummaryHtml(r.customer, fxBoxHtml(fx), r.inputs);
     animatePrice(r.customer);
     // pricing that needs approval has no estimate PDF; the draft proposal (marked as a draft) stays
-    $('#samplepdf').classList.toggle('hidden', r.customer.dealStatus === 'DEAL REVIEW');
     showValidity();
     showDiscountsSoFar(r.customer);
     updateMobileBar(r.customer);
@@ -2172,7 +2169,6 @@ document.addEventListener('toggle', (e) => {
 
   $('#lockbtn').addEventListener('click', () => {
     const name = $('#cname').value.trim(), rep = $('#repname').value.trim();
-    const stage = $('#stage').value;
     $('#lockerr').textContent = '';
     $('#repname').removeAttribute('aria-invalid');
     $('#cname').removeAttribute('aria-invalid');
@@ -2190,7 +2186,7 @@ document.addEventListener('toggle', (e) => {
     const requestId = reviseOf ? reviseOf.requestId : newRequestId();
     const version = reviseOf ? reviseOf.version + 1 : 1;
     const snap = {
-      schema: 'grt-pricing-request/1', requestId, version, customerName: name, rep, stage,
+      schema: 'grt-pricing-request/1', requestId, version, customerName: name, rep,
       hubspotRecord: pickedDeal ? pickedDeal.id : null, hubspotDeal: pickedDeal ? { ...pickedDeal } : null,
       lockedAt: new Date().toISOString(), assumptionsVersion: store.version, assumptionsNote: store.note, assumptionsHash: configHash(cfg),
       // Every request is reviewed before a proposal goes out; pricingStatus keeps whether the
@@ -2245,7 +2241,6 @@ document.addEventListener('toggle', (e) => {
       customer: fx.rate ? lastResult.customer : { ...lastResult.customer, fx: { currency: 'USD', rate: 1, source: `Quoted in USD (no ${fx.currency} rate available)` } },
     };
   }
-  $('#samplepdf').addEventListener('click', () => { if (lastResult) downloadFrom('/api/proposal/draft?format=pdf', draftPost(sampleSnap()), 'Could not build the estimate PDF.'); });
   // the draft proposal comes from the server, in Guardrail's Word template, marked as a draft
   $('#sampledocx').addEventListener('click', () => { if (lastResult) downloadFrom('/api/proposal/draft', draftPost(sampleSnap()), 'Could not build the draft proposal.'); });
   // Preview: the proposal for the current estimate, as a page in a new tab
@@ -2266,8 +2261,8 @@ document.addEventListener('toggle', (e) => {
   const MAX_PROPOSAL = 3 * 1024 * 1024;
   function clearAttachment() {
     attachedProposal = null; $('#proposalfile').value = '';
-    $('#attach-name').textContent = 'From the Guardrail template';
-    $('#attachbtn').textContent = 'Attach your edit'; $('#attachclear').classList.add('hidden');
+    $('#attach-name').textContent = ''; $('#attached').classList.add('hidden'); $('#attach-hint').classList.remove('hidden');
+    $('#attachbtn').textContent = 'Attach edit';
   }
   $('#attachbtn').addEventListener('click', () => $('#proposalfile').click());
   $('#attachclear').addEventListener('click', clearAttachment);
@@ -2281,7 +2276,8 @@ document.addEventListener('toggle', (e) => {
     if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) { clearAttachment(); $('#lockerr').textContent = 'That file is not a Word document (.docx).'; return; }
     attachedProposal = { name: f.name, base64: bytesToBase64(bytes) };
     $('#attach-name').textContent = f.name;
-    $('#attachbtn').textContent = 'Replace'; $('#attachclear').classList.remove('hidden');
+    $('#attached').classList.remove('hidden'); $('#attach-hint').classList.add('hidden');
+    $('#attachbtn').textContent = 'Replace edit';
   });
 
   function showBanner(s, justLocked, latest = s.version) {
@@ -2289,7 +2285,7 @@ document.addEventListener('toggle', (e) => {
     b.innerHTML = justLocked
       ? `<span><b>Locked:</b> ${esc(s.requestId)} “${esc(s.customerName)}”${s.version > 1 ? `, version ${s.version}` : ''}. Further changes lock as version ${s.version + 1}.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`
       : `<span><b>Revising</b> ${esc(s.requestId)} “${esc(s.customerName)}” ${latest > s.version ? `from version ${s.version} (latest is version ${latest})` : `(latest version ${s.version})`}. Locking saves version ${latest + 1}; earlier versions stay as they are.</span><button class="btn small" id="newreq" type="button">Start a new request</button>`;
-    $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; setDeal(null); $('#stage').value = 'Confirmed'; state.validUntil = ''; recalc(); };
+    $('#newreq').onclick = () => { reviseOf = null; lastLocked = null; b.classList.add('hidden'); $('#cname').value = ''; setDeal(null); state.validUntil = ''; recalc(); };
   }
 
   // The pricing setup a request was locked with (not who it's for).
@@ -2313,7 +2309,6 @@ document.addEventListener('toggle', (e) => {
     state.validUntil = '';
     $('#cname').value = '';
     setDeal(null);
-    $('#stage').value = 'Confirmed';
     sync(); recalc();
     const b = $('#revise-banner'); b.classList.remove('hidden');
     b.innerHTML = `<span><b>Copied</b> the setup from ${esc(s.requestId)} “${esc(s.customerName)}”. Enter the customer and deal; locking saves a new request.</span><button class="btn small" id="newreq" type="button">Start from scratch</button>`;
@@ -2338,8 +2333,6 @@ document.addEventListener('toggle', (e) => {
     if (s.rep) $('#repname').value = s.rep;
     // requests locked before the deal picker only have a pasted link: the rep picks the deal again
     setDeal(s.hubspotDeal && s.hubspotDeal.id ? s.hubspotDeal : null);
-    // keep the stage the request was locked with (older requests without one start as Revised)
-    $('#stage').value = ['Confirmed', 'Revised', 'Final (Pilot)', 'Final (Contract)'].includes(s.stage) ? s.stage : 'Revised';
     sync(); recalc(); showBanner(s, false);
     // Opening an approved (or Standard) request from the dashboard offers its quote PDF until
     // anything is changed; recalc() hides it again on the next edit.

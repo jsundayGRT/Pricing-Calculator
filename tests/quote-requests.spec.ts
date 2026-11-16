@@ -69,24 +69,17 @@ test('AI Command Center is off by default and a product is needed for a price', 
   await expect(frame.locator('#out .hero .amount')).toBeVisible();
 });
 
-test('an estimate downloads as a PDF and a draft proposal without saving anything', async ({ page, context }) => {
+test('Edit in Word downloads the draft proposal without saving anything; the estimate PDF is still there by API', async ({ page, context }) => {
   await signIn(context);
   const frame = await openCalculator(page);
   await frame.locator('#empcount').fill('40');
   await pickShadow(frame);
   await frame.locator('#cname').fill('Bank of the Rockies');
+  await expect(frame.locator('#stage')).toHaveCount(0); // no Stage field
+  await expect(frame.locator('#samplepdf')).toHaveCount(0); // no separate estimate row
 
   let posts = 0;
   page.on('request', (r) => { if (r.url().endsWith('/api/quotes') && r.method() === 'POST') posts += 1; });
-
-  const pdfDl = page.waitForEvent('download');
-  await frame.locator('#samplepdf').click();
-  const pdf = await pdfDl;
-  // the estimate PDF: the proposal's design, marked as a draft
-  expect(pdf.suggestedFilename()).toMatch(/^Guardrail Draft Proposal - Bank of the Rockies - \d{4}-\d{2}-\d{2}\.pdf$/);
-  const pdfText = readFileSync(await pdf.path()).toString('latin1');
-  expect(pdfText.startsWith('%PDF-')).toBe(true);
-  expect(pdfText.match(/\/Type \/Page\b/g)?.length).toBe(4);
 
   const docxDl = page.waitForEvent('download');
   await frame.locator('#sampledocx').click();
@@ -103,17 +96,16 @@ test('an estimate downloads as a PDF and a draft proposal without saving anythin
   expect(posts).toBe(0);
 });
 
-test('pricing that needs Deal Review offers no estimate PDF, only the draft proposal', async ({ page, context }) => {
+test('pricing that needs Deal Review still offers the preview and the draft proposal', async ({ page, context }) => {
   await signIn(context);
   const frame = await openCalculator(page);
   await frame.locator('#empcount').fill('40');
   await pickShadow(frame);
-  await expect(frame.locator('#samplepdf')).toBeVisible();
   await frame.locator('#pilot .chip[data-k="content"]').click(); // a non-standard pilot needs approval
   await expect(frame.locator('#out .status-row.review')).toBeVisible();
-  await expect(frame.locator('#samplepdf')).toBeHidden();
   await expect(frame.locator('#sampledocx')).toBeVisible();
   await expect(frame.locator('#previewbtn')).toBeVisible();
+  await expect(frame.locator('#attachbtn')).toBeVisible();
 });
 
 test('revising an older version saves the next version instead of overwriting', async ({ page, context }) => {
